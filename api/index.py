@@ -8,6 +8,15 @@ app = Flask(__name__)
 def home():
     return 'Why are you here? 0.0'
 
+@app.route('/test', methods=['POST'])
+def test():
+    try:
+        data = request.get_json()
+        print(data)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/chess_v1', methods=['POST'])
 def get_best_move():
     try:
