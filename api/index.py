@@ -6,9 +6,9 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'Welcome to Shamanbenny/chess-flask/api!'
+    return 'Why are you here? 0.0'
 
-@app.route('/get_best_move', methods=['POST'])
+@app.route('/chess_v1', methods=['POST'])
 def get_best_move():
     try:
         # Extract FEN from the request JSON
@@ -31,7 +31,7 @@ def get_best_move():
 
         random_move = random.choice(legal_moves)
 
-        return jsonify({"best_move": board.san(random_move)})
+        return jsonify({"move": board.san(random_move)})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
