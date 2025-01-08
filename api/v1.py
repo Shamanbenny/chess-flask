@@ -93,6 +93,7 @@ def chess_v1_1():
     """
     [POST] /chess_v1_1 {MINIMAX ALGORITHM WITH ALPHA-BETA PRUNING}
     Given a FEN string, use depth 3 recursive minimax algorithm with alpha-beta pruning to return the best move.
+    [REFERENCE] https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
     """
     try:
         # Extract FEN from the request JSON
@@ -118,11 +119,9 @@ def chess_v1_1():
 
         def v1_1_alphabeta(depth: int, alpha: int, beta: int, perspective: chess.Color, board: chess.Board):
             # Alpha-Beta Pruning
-            #   >> alpha: The best value that the maximizing player currently can guarantee at that level or above
-            #   >> beta: The best value that the minimizing player currently can guarantee at that level or above
+            #   >> Prune the branch if the evaluation is worse than the current best evaluation
             if depth == 0:
                 return evaluate_board(board) if perspective == chess.WHITE else -evaluate_board(board)
-            
             if board.is_game_over():
                 if board.is_checkmate():
                     return -math.inf if board.turn == perspective else math.inf
@@ -137,20 +136,36 @@ def chess_v1_1():
                         return -math.inf
                     else:
                         return 0
-
             legal_moves = list(board.legal_moves)
-            for move in legal_moves:
-                board.push(move)
-                # Note the negation of the returned evaluation (This is what makes it a minimax algorithm)
-                #   >> Minimize the opponent's evaluation, while Maximize the bot's evaluation
-                eval = -v1_1_alphabeta(depth - 1, -alpha, -beta, perspective, board)
-                board.pop()
-                if eval >= beta:
-                    # Prune the branch
-                    return beta
-                alpha = max(alpha, eval)
-            
-            return alpha
+
+            if (perspective == board.turn):
+                # IF maximizing player
+                eval = -math.inf
+                for move in legal_moves:
+                    board.push(move)
+                    # Note the negation of the returned evaluation (This is what makes it a minimax algorithm)
+                    #   >> Minimize the opponent's evaluation, while Maximize the bot's evaluation
+                    eval = max(eval, v1_1_alphabeta(depth - 1, alpha, beta, perspective, board))
+                    board.pop()
+                    if eval >= beta:
+                        # Prune the branch
+                        break
+                    alpha = max(alpha, eval)
+                return eval
+            else:
+                # IF NOT maximizing player
+                eval = math.inf
+                for move in legal_moves:
+                    board.push(move)
+                    # Note the negation of the returned evaluation (This is what makes it a minimax algorithm)
+                    #   >> Minimize the opponent's evaluation, while Maximize the bot's evaluation
+                    eval = min(eval, v1_1_alphabeta(depth - 1, alpha, beta, perspective, board))
+                    board.pop()
+                    if eval <= alpha:
+                        # Prune the branch
+                        break
+                    beta = min(beta, eval)
+                return eval
         
         board = chess.Board(fen)
         legal_moves = list(board.legal_moves)
@@ -166,7 +181,7 @@ def chess_v1_1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
-            eval = -v1_1_alphabeta(3, -math.inf, math.inf, board.turn, board)
+            eval = v1_1_alphabeta(3, -math.inf, math.inf, board.turn, board)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
