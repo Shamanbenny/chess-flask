@@ -5,7 +5,7 @@ import random
 import math
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://sneakyowl.net"}})
+CORS(app, resources={r"/*": {"origins": ["https://sneakyowl.net", "https://www.sneakyowl.net"]}})
 
 @app.route('/')
 def home():
