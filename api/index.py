@@ -115,6 +115,27 @@ def chess_v1():
                 board.pop()
             
             return best_eval
-
+        
+        board = chess.Board(fen)
+        legal_moves = list(board.legal_moves)
+        if board.is_game_over():
+            if board.is_checkmate():
+                return jsonify({"error": "Checkmate"}), 400
+            elif board.is_stalemate():
+                return jsonify({"error": "Stalemate"}), 400
+        if not legal_moves:
+            return jsonify({"error": "No legal moves available"}), 400
+        
+        best_move = None
+        best_eval = -math.inf
+        for move in legal_moves:
+            board.push(move)
+            eval = -v1_minimax(board.turn, 5, board)
+            if eval > best_eval:
+                best_eval = eval
+                best_move = move
+            board.pop()
+        
+        return jsonify({"move": board.san(best_move)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
