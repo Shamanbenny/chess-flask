@@ -129,27 +129,25 @@ def chess_v1_1():
             legal_moves = list(board.legal_moves)
 
             if maximizing_player:
-                max_eval = -math.inf
+                eval = -math.inf
                 for move in legal_moves:
                     board.push(move)
-                    eval = v1_1_alphabeta(depth - 1, alpha, beta, False, board)
+                    eval = max(eval, v1_1_alphabeta(depth - 1, alpha, beta, False, board))
                     board.pop()
-                    max_eval = max(max_eval, eval)
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
+                    if eval >= beta:
                         break  # Beta cutoff
-                return max_eval
+                    alpha = max(alpha, eval)
+                return eval
             else:
-                min_eval = math.inf
+                eval = math.inf
                 for move in legal_moves:
                     board.push(move)
-                    eval = v1_1_alphabeta(depth - 1, alpha, beta, True, board)
+                    eval = min(eval, v1_1_alphabeta(depth - 1, alpha, beta, True, board))
                     board.pop()
-                    min_eval = min(min_eval, eval)
-                    beta = min(beta, eval)
-                    if beta <= alpha:
+                    if eval <= alpha:
                         break  # Alpha cutoff
-                return min_eval
+                    beta = min(beta, eval)
+                return eval
         
         board = chess.Board(fen)
         legal_moves = list(board.legal_moves)
