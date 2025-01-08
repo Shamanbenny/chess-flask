@@ -103,7 +103,7 @@ def chess_v1_1():
         if not fen:
             return jsonify({"error": "FEN string is required"}), 400
 
-        def evaluate_board(board: chess.Board):
+        def evaluate_board(board: chess.Board, perspective: chess.Color):
             PIECE_VALUES = {
                 chess.PAWN: 100,
                 chess.KNIGHT: 300,
@@ -115,16 +115,19 @@ def chess_v1_1():
 
             white_material = sum(PIECE_VALUES[piece_type] * len(board.pieces(piece_type, chess.WHITE)) for piece_type in PIECE_VALUES)
             black_material = sum(PIECE_VALUES[piece_type] * len(board.pieces(piece_type, chess.BLACK)) for piece_type in PIECE_VALUES)
-            return white_material - black_material
+            if perspective == chess.WHITE:
+                return white_material - black_material
+            else:
+                return black_material - white_material
 
-        def v1_1_alphabeta(depth: int, alpha: int, beta: int, maximizing_player: bool, board: chess.Board):
+        def v1_1_alphabeta(depth: int, alpha: int, beta: int, maximizing_player: bool, board: chess.Board, perspective: chess.Color):
             if depth == 0 or board.is_game_over():
                 if board.is_game_over():
                     if board.is_checkmate():
                         # If the current player is in checkmate, it's bad for them
                         return -math.inf if maximizing_player else math.inf
                     return 0  # Stalemate or draw
-                return evaluate_board(board)  # Use the heuristic evaluation
+                return evaluate_board(board, perspective)
             
             legal_moves = list(board.legal_moves)
 
@@ -163,7 +166,7 @@ def chess_v1_1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
-            eval = v1_1_alphabeta(3, -math.inf, math.inf, False, board)
+            eval = v1_1_alphabeta(3, -math.inf, math.inf, False, board, board.turn)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
