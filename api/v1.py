@@ -127,7 +127,7 @@ def chess_v1_1():
                         # If the current player is in checkmate, it's bad for them
                         return -math.inf if maximizing_player else math.inf
                     return 0  # Stalemate or draw
-                return evaluate_board(board, perspective)
+                return -evaluate_board(board, perspective)
             
             legal_moves = list(board.legal_moves)
 
