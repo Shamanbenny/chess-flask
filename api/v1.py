@@ -127,7 +127,7 @@ def chess_v1_1():
                         # If the current player is in checkmate, it's bad for them
                         return -math.inf if maximizing_player else math.inf
                     return 0  # Stalemate or draw
-                return -evaluate_board(board, perspective)
+                return evaluate_board(board, perspective)
             
             legal_moves = list(board.legal_moves)
 
@@ -135,7 +135,7 @@ def chess_v1_1():
                 eval = -math.inf
                 for move in legal_moves:
                     board.push(move)
-                    eval = max(eval, v1_1_alphabeta(depth - 1, alpha, beta, False, board))
+                    eval = max(eval, v1_1_alphabeta(depth - 1, alpha, beta, False, board, perspective))
                     board.pop()
                     if eval >= beta:
                         break  # Beta cutoff
@@ -145,7 +145,7 @@ def chess_v1_1():
                 eval = math.inf
                 for move in legal_moves:
                     board.push(move)
-                    eval = min(eval, v1_1_alphabeta(depth - 1, alpha, beta, True, board))
+                    eval = min(eval, v1_1_alphabeta(depth - 1, alpha, beta, True, board, perspective))
                     board.pop()
                     if eval <= alpha:
                         break  # Alpha cutoff
