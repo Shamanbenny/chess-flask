@@ -117,55 +117,39 @@ def chess_v1_1():
             black_material = sum(PIECE_VALUES[piece_type] * len(board.pieces(piece_type, chess.BLACK)) for piece_type in PIECE_VALUES)
             return white_material - black_material
 
-        def v1_1_alphabeta(depth: int, alpha: int, beta: int, perspective: chess.Color, board: chess.Board):
-            # Alpha-Beta Pruning
-            #   >> Prune the branch if the evaluation is worse than the current best evaluation
-            if depth == 0:
-                return evaluate_board(board) if perspective == chess.WHITE else -evaluate_board(board)
-            if board.is_game_over():
-                if board.is_checkmate():
-                    return -math.inf if board.turn == perspective else math.inf
-                elif board.is_stalemate():
-                    # [Depends heavily on the bot's motivation]
-                    # If the bot is already winning, then stalemate is bad
-                    # If the bot is losing or equal, then stalemate is neutral
-                    prev_board = board.copy()
-                    prev_board.pop()
-                    prev_eval = evaluate_board(prev_board) if perspective == chess.WHITE else -evaluate_board(prev_board)
-                    if prev_eval > 0:
-                        return -math.inf
-                    else:
-                        return 0
+        def v1_1_alphabeta(depth: int, alpha: int, beta: int, maximizing_player: bool, board: chess.Board):
+            if depth == 0 or board.is_game_over():
+                if board.is_game_over():
+                    if board.is_checkmate():
+                        # If the current player is in checkmate, it's bad for them
+                        return -math.inf if maximizing_player else math.inf
+                    return 0  # Stalemate or draw
+                return evaluate_board(board)  # Use the heuristic evaluation
+            
             legal_moves = list(board.legal_moves)
 
-            if not (perspective == board.turn):
-                # IF maximizing player
-                eval = -math.inf
+            if maximizing_player:
+                max_eval = -math.inf
                 for move in legal_moves:
                     board.push(move)
-                    # Note the negation of the returned evaluation (This is what makes it a minimax algorithm)
-                    #   >> Minimize the opponent's evaluation, while Maximize the bot's evaluation
-                    eval = max(eval, v1_1_alphabeta(depth - 1, alpha, beta, perspective, board))
+                    eval = v1_1_alphabeta(depth - 1, alpha, beta, False, board)
                     board.pop()
-                    if eval >= beta:
-                        # Prune the branch
-                        break
+                    max_eval = max(max_eval, eval)
                     alpha = max(alpha, eval)
-                return eval
+                    if beta <= alpha:
+                        break  # Beta cutoff
+                return max_eval
             else:
-                # IF NOT maximizing player
-                eval = math.inf
+                min_eval = math.inf
                 for move in legal_moves:
                     board.push(move)
-                    # Note the negation of the returned evaluation (This is what makes it a minimax algorithm)
-                    #   >> Minimize the opponent's evaluation, while Maximize the bot's evaluation
-                    eval = min(eval, v1_1_alphabeta(depth - 1, alpha, beta, perspective, board))
+                    eval = v1_1_alphabeta(depth - 1, alpha, beta, True, board)
                     board.pop()
-                    if eval <= alpha:
-                        # Prune the branch
-                        break
+                    min_eval = min(min_eval, eval)
                     beta = min(beta, eval)
-                return eval
+                    if beta <= alpha:
+                        break  # Alpha cutoff
+                return min_eval
         
         board = chess.Board(fen)
         legal_moves = list(board.legal_moves)
@@ -181,7 +165,7 @@ def chess_v1_1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
-            eval = v1_1_alphabeta(3, -math.inf, math.inf, board.turn, board)
+            eval = v1_1_alphabeta(3, -math.inf, math.inf, False, board)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
