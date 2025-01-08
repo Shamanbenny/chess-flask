@@ -138,7 +138,7 @@ def chess_v1_1():
                         return 0
             legal_moves = list(board.legal_moves)
 
-            if (perspective == board.turn):
+            if not (perspective == board.turn):
                 # IF maximizing player
                 eval = -math.inf
                 for move in legal_moves:
