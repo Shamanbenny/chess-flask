@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from v0 import v0_blueprint
-from v1 import v1_blueprint
+from .v0 import v0_blueprint
+from .v1 import v1_blueprint
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["https://sneakyowl.net", "https://www.sneakyowl.net"]}})
