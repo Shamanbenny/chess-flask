@@ -130,7 +130,7 @@ def chess_v1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
-            eval = -v1_minimax(board.turn, 2, board)
+            eval = -v1_minimax(board.turn, 5, board)
             if eval > best_eval:
                 best_eval = eval
                 best_move = move
