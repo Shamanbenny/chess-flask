@@ -116,7 +116,7 @@ def chess_v1_1():
             black_material = sum(PIECE_VALUES[piece_type] * len(board.pieces(piece_type, chess.BLACK)) for piece_type in PIECE_VALUES)
             return white_material - black_material
 
-        def v1_1_minimax(depth: int, alpha: int, beta: int, perspective: chess.Color, board: chess.Board):
+        def v1_1_alphabeta(depth: int, alpha: int, beta: int, perspective: chess.Color, board: chess.Board):
             # Alpha-Beta Pruning
             #   >> alpha: The best value that the maximizing player currently can guarantee at that level or above
             #   >> beta: The best value that the minimizing player currently can guarantee at that level or above
@@ -143,7 +143,7 @@ def chess_v1_1():
                 board.push(move)
                 # Note the negation of the returned evaluation (This is what makes it a minimax algorithm)
                 #   >> Minimize the opponent's evaluation, while Maximize the bot's evaluation
-                eval = -v1_1_minimax(depth - 1, -beta, -alpha, perspective, board)
+                eval = -v1_1_alphabeta(depth - 1, -alpha, -beta, perspective, board)
                 board.pop()
                 if eval >= beta:
                     # Prune the branch
@@ -166,7 +166,7 @@ def chess_v1_1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
-            eval = -v1_1_minimax(3, -math.inf, math.inf, board.turn, board)
+            eval = -v1_1_alphabeta(3, -math.inf, math.inf, board.turn, board)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
