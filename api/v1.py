@@ -65,7 +65,6 @@ def chess_v1():
             return best_eval
         
         board = chess.Board(fen)
-        perspective = board.turn
         legal_moves = list(board.legal_moves)
         if board.is_game_over():
             if board.is_checkmate():
@@ -79,7 +78,7 @@ def chess_v1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
-            eval = -v1_minimax(2, perspective, board)
+            eval = -v1_minimax(2, board.turn, board)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
@@ -154,7 +153,6 @@ def chess_v1_1():
             return alpha
         
         board = chess.Board(fen)
-        perspective = board.turn
         legal_moves = list(board.legal_moves)
         if board.is_game_over():
             if board.is_checkmate():
@@ -168,7 +166,7 @@ def chess_v1_1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
-            eval = -v1_1_minimax(3, -math.inf, math.inf, perspective, board)
+            eval = -v1_1_minimax(3, -math.inf, math.inf, board.turn, board)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
