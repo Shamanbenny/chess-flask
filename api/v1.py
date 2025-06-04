@@ -36,6 +36,8 @@ def chess_v1():
             return white_material - black_material
 
         def v1_minimax(depth: int, perspective: chess.Color, board: chess.Board):
+            nonlocal moves_evaluated
+
             if depth == 0:
                 return evaluate_board(board) if perspective == chess.WHITE else -evaluate_board(board)
             
@@ -131,6 +133,8 @@ def chess_v1_1():
                 return black_material - white_material
 
         def v1_1_alphabeta(depth: int, alpha: int, beta: int, maximizing_player: bool, board: chess.Board, perspective: chess.Color):
+            nonlocal moves_evaluated
+            
             if depth == 0 or board.is_game_over():
                 if board.is_game_over():
                     if board.is_checkmate():
@@ -257,6 +261,8 @@ def chess_v1_2():
             return score
 
         def v1_2_alphabeta(depth: int, alpha: int, beta: int, maximizing_player: bool, board: chess.Board, perspective: chess.Color):
+            nonlocal moves_evaluated
+
             if depth == 0 or board.is_game_over():
                 if board.is_game_over():
                     if board.is_checkmate():
