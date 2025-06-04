@@ -1,3 +1,4 @@
+import time
 import chess
 import math
 from flask import Blueprint, request, jsonify
@@ -11,6 +12,8 @@ def chess_v1():
     Given a FEN string, uses depth 2 recursive minimax algorithm to return the best move.
     """
     try:
+        start_time = time.time()
+        moves_evaluated = 0
         # Extract FEN from the request JSON
         data = request.get_json()
         fen = data.get('fen', '')
@@ -56,6 +59,7 @@ def chess_v1():
             legal_moves = list(board.legal_moves)
             for move in legal_moves:
                 board.push(move)
+                moves_evaluated += 1
                 # Note the negation of the returned evaluation (This is what makes it a minimax algorithm)
                 #   >> Minimize the opponent's evaluation, while Maximize the bot's evaluation
                 eval = -v1_minimax(depth - 1, perspective, board)
@@ -78,13 +82,17 @@ def chess_v1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
+            moves_evaluated += 1
             eval = -v1_minimax(2, board.turn, board)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
                 best_move = move
         
-        return jsonify({"move": board.san(best_move)})
+        return jsonify({"move": board.san(best_move),
+                        "processing_time": time.time() - start_time,
+                        "moves_evaluated": moves_evaluated
+                        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
@@ -96,6 +104,8 @@ def chess_v1_1():
     [REFERENCE] https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
     """
     try:
+        start_time = time.time()
+        moves_evaluated = 0
         # Extract FEN from the request JSON
         data = request.get_json()
         fen = data.get('fen', '')
@@ -135,6 +145,7 @@ def chess_v1_1():
                 eval = -math.inf
                 for move in legal_moves:
                     board.push(move)
+                    moves_evaluated += 1
                     eval = max(eval, v1_1_alphabeta(depth - 1, alpha, beta, False, board, perspective))
                     board.pop()
                     if eval >= beta:
@@ -145,6 +156,7 @@ def chess_v1_1():
                 eval = math.inf
                 for move in legal_moves:
                     board.push(move)
+                    moves_evaluated += 1
                     eval = min(eval, v1_1_alphabeta(depth - 1, alpha, beta, True, board, perspective))
                     board.pop()
                     if eval <= alpha:
@@ -166,13 +178,17 @@ def chess_v1_1():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
+            moves_evaluated += 1
             eval = v1_1_alphabeta(3, -math.inf, math.inf, False, board, board.turn)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
                 best_move = move
         
-        return jsonify({"move": board.san(best_move)})
+        return jsonify({"move": board.san(best_move),
+                        "processing_time": time.time() - start_time,
+                        "moves_evaluated": moves_evaluated
+                        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
@@ -184,6 +200,8 @@ def chess_v1_2():
     [REFERENCE] https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
     """
     try:
+        start_time = time.time()
+        moves_evaluated = 0
         # Extract FEN from the request JSON
         data = request.get_json()
         fen = data.get('fen', '')
@@ -254,6 +272,7 @@ def chess_v1_2():
                 eval = -math.inf
                 for move in legal_moves:
                     board.push(move)
+                    moves_evaluated += 1
                     eval = max(eval, v1_2_alphabeta(depth - 1, alpha, beta, False, board, perspective))
                     board.pop()
                     if eval >= beta:
@@ -264,6 +283,7 @@ def chess_v1_2():
                 eval = math.inf
                 for move in legal_moves:
                     board.push(move)
+                    moves_evaluated += 1
                     eval = min(eval, v1_2_alphabeta(depth - 1, alpha, beta, True, board, perspective))
                     board.pop()
                     if eval <= alpha:
@@ -285,12 +305,16 @@ def chess_v1_2():
         best_eval = -math.inf
         for move in legal_moves:
             board.push(move)
+            moves_evaluated += 1
             eval = v1_2_alphabeta(3, -math.inf, math.inf, False, board, board.turn)
             board.pop()
             if eval > best_eval:
                 best_eval = eval
                 best_move = move
         
-        return jsonify({"move": board.san(best_move)})
+        return jsonify({"move": board.san(best_move),
+                        "processing_time": time.time() - start_time,
+                        "moves_evaluated": moves_evaluated
+                        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
