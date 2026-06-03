@@ -22,6 +22,7 @@ The historical engine line in [`api/v1/__init__.py`](/home/benny/Desktop/_gitrep
 - `v1.1`: minimax with alpha-beta pruning
 - `v1.2`: alpha-beta pruning with move ordering
 - `v1.3`: alpha-beta pruning with move ordering and quiescence-style leaf extension
+- `v1.4`: `v1.3` plus an endgame mop-up heuristic and a tighter pruned quiescence search
 
 At the moment, the rough runtime picture is:
 
@@ -35,7 +36,7 @@ That is much better than crashing into a `30` second limit, but it is still too 
 
 There is now also a clearer controlled comparison from:
 
-- `python3 experiment.py --versions v1 v1.1 v1.2 --depth 4`
+- `python3 local_v1_tests/puzzle_1.py --versions v1 v1.1 v1.2 --depth 4`
 
 On the same tactical position at depth `4`, the result was:
 
@@ -52,7 +53,7 @@ So the progression from `v1` to `v1.1` to `v1.2` is not just a theoretical clean
 
 There is now a follow-up comparison for the later search line:
 
-- `python3 experiment.py --versions v1 v1.1 v1.2 v1.3 --depth 4`
+- `python3 local_v1_tests/puzzle_1.py --versions v1 v1.1 v1.2 v1.3 --depth 4`
 
 On that same tactical position at depth `4`, the new point of interest was `v1.3`:
 
@@ -65,6 +66,10 @@ That matters because it sharpens the interpretation of the earlier results:
 - the point of `v1.3` is not to beat `v1.2` on pure speed in every position, but to make the engine less likely to mis-score hanging material near the horizon
 
 So the progression from `v1.2` to `v1.3` should be understood as a stability improvement. It accepts some extra search cost in exchange for more trustworthy tactical evaluation near the horizon.
+
+The next manual step, `v1.4`, addresses a different weakness. Even with quiescence search, a depth-limited engine can easily reach a winning endgame where mate still lies beyond the current horizon. In those positions, pure material scoring is often too indifferent: the engine knows it is better, but not how to tighten the win. So `v1.4` adds a guarded mop-up heuristic for low-material positions where one side is already clearly ahead and still has plausible forcing mating material. The intent is not to fake a mate score. The intent is to make the engine behave more like it understands conversion: push the weaker king outward, bring the stronger king closer, and make later shallow searches more likely to finally see the finish.
+
+`v1.4` also had to diverge slightly from `v1.3`'s quiescence behavior. In queen endgames, allowing quiet checking continuations to spill through qsearch created long search tails that were too expensive for a version that is supposed to help with endgame conversion. So `v1.4` now keeps qsearch focused on captures when the side to move is not in check, and applies simple pruning there as well. On the evaluation side, `v1.4` no longer treats every winning ending like a pure lone-king mop-up either: advanced defender pawns near promotion and repetition in already won endgames are now scored much more aggressively. That still does not fully solve queen-versus-advanced-pawn conversion by itself, but it does make the engine's priorities closer to the real problem.
 
 This also reinforces why `v1.2` had to exist before `v1.3`. The note on [Limiting Quiescence](https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence) explicitly warns that quiescence search is vulnerable to search explosion without move ordering, and recommends simple capture ordering such as `MVV-LVA` before adding qsearch. That is broadly the same path taken here: first improve alpha-beta efficiency with move ordering, then extend the leaf search. In other words, `v1.2` was not just a nice optimization before `v1.3`; it was part of the practical groundwork that made `v1.3` reasonable to add at all.
 
@@ -155,4 +160,5 @@ The project direction is intentionally conservative right now:
 - treat roughly `100ms` as the kind of move budget worth targeting for serious iteration
 - improve the engine manually before relying heavily on large simulation batches
 - use Coding Adventure's staged search improvements as the near-term guide
+- accept that shallow search sometimes needs positional conversion guidance in winning endgames before a mate sequence becomes directly visible
 - begin the real `autoresearch` loop only after the baseline is fast enough to make that loop practical

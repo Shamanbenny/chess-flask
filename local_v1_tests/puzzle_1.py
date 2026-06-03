@@ -1,8 +1,11 @@
 import argparse
+import pathlib
 import sys
 import time
 
 import chess
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from api.v1 import search_move_for_version
 
@@ -11,7 +14,7 @@ DEFAULT_FEN = "8/8/6kp/3b4/1p1p4/1P1P3P/PK2N3/8 w - - 0 2"
 EXPECTED_FIRST_WHITE = "Nf4+"
 FORCED_BLACK_MOVE_UCI = "g6g7"
 EXPECTED_SECOND_WHITE = "Nxd5"
-DEFAULT_VERSIONS = ["v1", "v1.1", "v1.2", "v1.3"]
+DEFAULT_VERSIONS = ["v1", "v1.1", "v1.2", "v1.3", "v1.4"]
 
 
 def timed_search(version: str, board: chess.Board, depth: int) -> tuple[dict, float]:
@@ -74,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--versions",
         nargs="+",
         default=DEFAULT_VERSIONS,
-        help="Historical engine versions to include, for example: v1 v1.1 v1.2 v1.3",
+        help="Historical engine versions to include, for example: v1 v1.1 v1.2 v1.3 v1.4",
     )
     return parser
 

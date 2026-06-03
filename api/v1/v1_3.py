@@ -8,6 +8,7 @@ from .shared import evaluate_with_draw_penalty, ordered_legal_moves
 def search_move_v1_3(board: chess.Board, depth: int = 4) -> dict:
     moves_evaluated = 0
 
+    # v1.3's defining change over v1.2 is quiescence search to avoid stopping on unstable leaf positions.
     def ordered_quiescence_moves(search_board: chess.Board) -> list[chess.Move]:
         if search_board.is_check():
             return ordered_legal_moves(search_board)
@@ -94,7 +95,7 @@ def search_move_v1_3(board: chess.Board, depth: int = 4) -> dict:
         moves_evaluated += 1
         move_eval = -alphabeta(depth - 1, -math.inf, math.inf, board, not perspective)
         board.pop()
-        if move_eval > best_eval:
+        if best_move is None or move_eval > best_eval:
             best_eval = move_eval
             best_move = move
 

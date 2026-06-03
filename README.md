@@ -12,7 +12,7 @@ The `v1.x` engines in this repository heavily reference Sebastian Lague's [Codin
 - Entry point: [`api/index.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/index.py:1)
 - HTTP endpoint wrapper: [`api/endpoint.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/endpoint.py:1)
 - Historical search implementations: [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1)
-- Direct experiment runner: [`experiment.py`](/home/benny/Desktop/_gitrepo/chess-flask/experiment.py:1)
+- Direct local test runners: [`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) and [`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1)
 - Legacy local simulation runner: [`simulation.py`](/home/benny/Desktop/_gitrepo/chess-flask/simulation.py:1)
 - Rewrite rule: all requests are routed to `api/index`
 - Function limit: Vercel `maxDuration` is currently set to `30` seconds
@@ -20,7 +20,7 @@ The `v1.x` engines in this repository heavily reference Sebastian Lague's [Codin
   - `https://sneakyowl.net`
   - `https://www.sneakyowl.net`
 
-The HTTP surface is intentionally narrow right now. Only `v0` remains exposed as a route. The older `v1`, `v1.1`, and `v1.2` engines are still preserved in code as historical/manual search references, but they are currently used only through direct local tooling.
+The HTTP surface is intentionally narrow right now. Only `v0` remains exposed as a route. The older `v1` through `v1.4` engines are still preserved in code as historical/manual search references, but they are currently used only through direct local tooling.
 
 The `30` second limit is a temporary ceiling, not the product target. Real progress for this project means moving toward much faster move generation, ideally around `1` second or less in practical play and materially lower for serious local iteration.
 
@@ -67,6 +67,7 @@ The project still keeps the historical search family in [`api/v1/__init__.py`](/
 - `v1.1`: minimax with alpha-beta pruning
 - `v1.2`: alpha-beta pruning with move ordering
 - `v1.3`: alpha-beta pruning with move ordering and quiescence-style capture search
+- `v1.4`: `v1.3` plus endgame conversion evaluation and a tighter pruned quiescence search
 
 These are preserved as the manual/reference phase of the project. They are still callable directly from local tooling for experiments and search comparisons, but they are not currently part of the public HTTP surface.
 
@@ -76,6 +77,7 @@ The implementation path is intentionally close to Sebastian Lague's staged chess
 - `v1.1`: introduce alpha-beta pruning
 - `v1.2`: improve pruning efficiency with move ordering
 - `v1.3`: reduce horizon-effect mistakes by extending leaf evaluation through capture sequences
+- `v1.4`: make shallow winning endgames more conversion-oriented while keeping quiescence from exploding on non-capture checking sequences
 
 See [CHANGELOG.md](/home/benny/Desktop/_gitrepo/chess-flask/CHANGELOG.md:1) for the accepted algorithm history.
 
@@ -106,9 +108,11 @@ python3 serve.py
 
 That direct runner exposes the same currently supported Flask route on `http://localhost:3000`.
 
-## Experiment Runner
+## Local V1 Tests
 
-The active local workflow is the direct experiment runner at [`experiment.py`](/home/benny/Desktop/_gitrepo/chess-flask/experiment.py:1).
+The active local workflow now lives under [`local_v1_tests/`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests).
+
+[`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) keeps the fixed tactical comparison harness.
 
 It uses the fixed FEN:
 
@@ -127,8 +131,18 @@ For each requested historical version it will:
 Example:
 
 ```bash
-python3 experiment.py --versions v1 v1.1 v1.2 v1.3 --depth 4
+python3 local_v1_tests/puzzle_1.py --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
 ```
+
+`v1.4` exists because shallow search is often strong enough to know it is winning but not deep enough to see the mate yet. Its evaluation adds guarded endgame conversion terms in clearly winning, low-material positions so the engine prefers moves that compress the opposing king, bring its own king closer, respect dangerous advanced pawns, and avoid drifting into repetition. It also tightens quiescence so queen endgames do not burn large amounts of time chasing every quiet checking continuation.
+
+[`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1) is a dedicated `v1.4` self-play conversion test for the winning endgame:
+
+```bash
+python3 local_v1_tests/endgame_1.py
+```
+
+It runs `v1.4` for both sides from `3r4/8/3k4/8/3K4/8/8/8 b - - 1 1` at the script's fixed `depth=4` and `max_plies=60`, and reports whether Black manages to checkmate without the game drifting into repetition pressure.
 
 ## Simulation Runner
 
@@ -165,7 +179,7 @@ The repository includes a starter file at [`openings.txt`](/home/benny/Desktop/_
 
 The project history is intentionally split into two eras:
 
-- `v0` to `v1.3`
+- `v0` to `v1.4`
   - Manual coding / direct reference era.
   - These versions are preserved as part of the project's original implementation path.
 - `v2+`
@@ -180,7 +194,7 @@ For this repo, that does not mean copying the training setup from `autoresearch`
 
 ### Planned Acceptance Process
 
-- Preserve `v0` through `v1.3` as historical manual milestones.
+- Preserve `v0` through `v1.4` as historical manual milestones.
 - Develop `v2+` locally, not on Vercel.
 - Benchmark each candidate against the latest accepted version and against locked historical baselines such as `v1.3`.
 - Promote a version only if the benchmark says it is better.

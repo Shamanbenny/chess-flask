@@ -27,6 +27,7 @@ def search_move_v1_1(board: chess.Board, depth: int = 4) -> dict:
                 return -evaluate_with_draw_penalty(search_board, perspective)
             return evaluate_with_draw_penalty(search_board, perspective)
 
+        # v1.1's defining change over v1.0 is alpha-beta pruning inside the minimax recursion.
         legal_moves = list(search_board.legal_moves)
         if maximizing_player:
             move_eval = -math.inf
@@ -64,7 +65,7 @@ def search_move_v1_1(board: chess.Board, depth: int = 4) -> dict:
         moves_evaluated += 1
         move_eval = alphabeta(depth - 1, -math.inf, math.inf, False, board, board.turn)
         board.pop()
-        if move_eval > best_eval:
+        if best_move is None or move_eval > best_eval:
             best_eval = move_eval
             best_move = move
 

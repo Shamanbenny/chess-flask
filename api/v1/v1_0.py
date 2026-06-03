@@ -36,7 +36,7 @@ def search_move_v1(board: chess.Board, depth: int = 3) -> dict:
         moves_evaluated += 1
         move_eval = -v1_minimax(depth - 1, board.turn, board)
         board.pop()
-        if move_eval > best_eval:
+        if best_move is None or move_eval > best_eval:
             best_eval = move_eval
             best_move = move
 

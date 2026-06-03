@@ -27,6 +27,7 @@ def search_move_v1_2(board: chess.Board, depth: int = 4) -> dict:
                 return -evaluate_with_draw_penalty(search_board, perspective)
             return evaluate_with_draw_penalty(search_board, perspective)
 
+        # v1.2's defining change over v1.1 is move ordering before alpha-beta explores children.
         legal_moves = ordered_legal_moves(search_board)
         if maximizing_player:
             move_eval = -math.inf
@@ -59,12 +60,13 @@ def search_move_v1_2(board: chess.Board, depth: int = 4) -> dict:
 
     best_move = None
     best_eval = -math.inf
+    # Root move ordering is part of the same v1.2 pruning-efficiency improvement.
     for move in ordered_legal_moves(board):
         board.push(move)
         moves_evaluated += 1
         move_eval = alphabeta(depth - 1, -math.inf, math.inf, False, board, board.turn)
         board.pop()
-        if move_eval > best_eval:
+        if best_move is None or move_eval > best_eval:
             best_eval = move_eval
             best_move = move
 
