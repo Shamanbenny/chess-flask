@@ -1,0 +1,28 @@
+import chess
+
+from .v1_0 import choose_move_v1, search_move_v1
+from .v1_1 import choose_move_v1_1, search_move_v1_1
+from .v1_2 import choose_move_v1_2, search_move_v1_2
+from .v1_3 import choose_move_v1_3, search_move_v1_3
+
+
+def search_move_for_version(version: str, board: chess.Board, depth: int | None = None) -> dict:
+    normalized_version = version.lower()
+    if normalized_version in {"1", "v1"}:
+        return search_move_v1(board, 3 if depth is None else depth)
+    if normalized_version in {"1.1", "v1.1"}:
+        return search_move_v1_1(board, 4 if depth is None else depth)
+    if normalized_version in {"1.2", "v1.2"}:
+        return search_move_v1_2(board, 4 if depth is None else depth)
+    if normalized_version in {"1.3", "v1.3"}:
+        return search_move_v1_3(board, 4 if depth is None else depth)
+    raise ValueError(f"Unsupported engine version '{version}'")
+
+
+__all__ = [
+    "choose_move_v1",
+    "choose_move_v1_1",
+    "choose_move_v1_2",
+    "choose_move_v1_3",
+    "search_move_for_version",
+]
