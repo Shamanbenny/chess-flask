@@ -9,7 +9,8 @@ v1_blueprint = Blueprint('v1', __name__)
 def chess_v1():
     """
     [POST] /chess_v1 {MINIMAX ALGORITHM}
-    Given a FEN string, uses depth 2 recursive minimax algorithm to return the best move.
+    Given a FEN string, search one root move plus 2 recursive plies using
+    minimax to return the best move.
     """
     try:
         start_time = time.time()
@@ -102,7 +103,8 @@ def chess_v1():
 def chess_v1_1():
     """
     [POST] /chess_v1_1 {MINIMAX ALGORITHM WITH ALPHA-BETA PRUNING}
-    Given a FEN string, use depth 3 recursive minimax algorithm with alpha-beta pruning to return the best move.
+    Given a FEN string, search one root move plus 3 recursive plies using
+    minimax with alpha-beta pruning to return the best move.
     [REFERENCE] https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
     """
     try:
@@ -200,8 +202,9 @@ def chess_v1_1():
 def chess_v1_2():
     """
     [POST] /chess_v1_2 {MINIMAX ALGORITHM WITH ALPHA-BETA PRUNING AND MOVE ORDERING}
-    Given a FEN string, use depth 3 recursive minimax algorithm with alpha-beta pruning to return the best move.
-    [REFERENCE] https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
+    Given a FEN string, search one root move plus 3 recursive plies using
+    alpha-beta pruning and heuristic move ordering to return the best move.
+    [REFERENCE] https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
     """
     try:
         start_time = time.time()
@@ -229,36 +232,59 @@ def chess_v1_2():
                 return white_material - black_material
             else:
                 return black_material - white_material
-            
-        def get_move_score(move: chess.Move, board: chess.Board):
+
+        def score_move_for_ordering(move: chess.Move, board: chess.Board):
+            # Move ordering only affects search efficiency, not the final
+            # evaluation formula. The goal is to search "likely good" moves
+            # first so alpha-beta pruning can cut off more branches earlier.
             score = 0
 
-            # [PART 1] Basic move scoring based on current board state
-            captured_piece = board.piece_at(move.to_square)
-            captured_value = PIECE_VALUES.get(captured_piece.piece_type, 0) if captured_piece else 0
             attacker_piece = board.piece_at(move.from_square)
             attacker_value = PIECE_VALUES.get(attacker_piece.piece_type, 0) if attacker_piece else 0
+            captured_piece = board.piece_at(move.to_square)
 
-            # Capture heuristic
+            # En passant captures land on an empty square, so the captured pawn
+            # must be inferred manually.
+            if captured_piece is None and board.is_en_passant(move):
+                captured_value = PIECE_VALUES[chess.PAWN]
+            else:
+                captured_value = PIECE_VALUES.get(captured_piece.piece_type, 0) if captured_piece else 0
+
+            # MVV-LVA style ordering: prefer winning captures first.
+            # [REFERENCE] https://www.chessprogramming.org/MVV-LVA
             if board.is_capture(move):
-                score += captured_value - attacker_value
-            # Promotion heuristic
+                score += 10_000 + (10 * captured_value) - attacker_value
+
+            # Promotions often change the position drastically and should be
+            # searched early even when they are not captures.
             if move.promotion:
-                score += PIECE_VALUES.get(move.promotion, 0)
-            
-            # [PART 2] Slightly advanced move scoring based on the potential state of the board given the move
-            board_copy = board.copy()
-            board_copy.push(move)
-            
-            # Penalize moving our pieces to squares where they can be captured by an opponent's pawn
-            to_square = move.to_square
-            color_after_move = board_copy.turn
-            attackers = board_copy.attackers(color_after_move, to_square)
-            pawn_attackers = [sq for sq in attackers if board_copy.piece_type_at(sq) == chess.PAWN]
+                score += 8_000 + PIECE_VALUES.get(move.promotion, 0)
+
+            # We briefly make the move on the current board, inspect the
+            # resulting tactical features, then undo it. This avoids copying
+            # the board for every ordering score.
+            board.push(move)
+
+            # Checking and mating moves are usually strong forcing moves and
+            # give alpha-beta more opportunities to prune.
+            if board.is_checkmate():
+                score += 100_000
+            elif board.is_check():
+                score += 2_000
+
+            # Penalize moves that place the moved piece on a square immediately
+            # attacked by an enemy pawn. Pawn attacks are cheap to detect and
+            # often punish naive material grabs.
+            attackers = board.attackers(board.turn, move.to_square)
+            pawn_attackers = [sq for sq in attackers if board.piece_type_at(sq) == chess.PAWN]
             if pawn_attackers:
                 score -= attacker_value
-            
+
+            board.pop()
             return score
+
+        def ordered_legal_moves(board: chess.Board):
+            return sorted(board.legal_moves, key=lambda move: -score_move_for_ordering(move, board))
 
         def v1_2_alphabeta(depth: int, alpha: int, beta: int, maximizing_player: bool, board: chess.Board, perspective: chess.Color):
             nonlocal moves_evaluated
@@ -271,8 +297,9 @@ def chess_v1_2():
                     return 0  # Stalemate or draw
                 return -evaluate_board(board, perspective) if maximizing_player else evaluate_board(board, perspective)
             
-            # Order moves by heuristic score
-            legal_moves = sorted(board.legal_moves, key=lambda m: -get_move_score(m, board))
+            # Search promising moves first so alpha-beta can cut off more of
+            # the remaining move list.
+            legal_moves = ordered_legal_moves(board)
 
             if maximizing_player:
                 eval = -math.inf
@@ -298,7 +325,7 @@ def chess_v1_2():
                 return eval
         
         board = chess.Board(fen)
-        legal_moves = sorted(board.legal_moves, key=lambda m: -get_move_score(m, board))
+        legal_moves = ordered_legal_moves(board)
         if board.is_game_over():
             if board.is_checkmate():
                 return jsonify({"error": "Checkmate"}), 400
@@ -312,6 +339,8 @@ def chess_v1_2():
         for move in legal_moves:
             board.push(move)
             moves_evaluated += 1
+            # The root loop is also ordered so we spend time on stronger
+            # candidates first instead of only ordering inside recursion.
             eval = v1_2_alphabeta(3, -math.inf, math.inf, False, board, board.turn)
             board.pop()
             if eval > best_eval:

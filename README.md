@@ -98,7 +98,7 @@ vercel dev
 
 The app will then be available at `http://localhost:3000`.
 
-There is also a local helper script at [`local.py`](/home/benny/Desktop/_gitrepo/chess-flask/local.py:1) for testing the non-random search versions outside the HTTP layer.
+There is also a local helper script at [`local.py`](/home/benny/Desktop/_gitrepo/chess-flask/local.py:1) for testing the HTTP endpoints locally. It can send one request to a chosen version or run a small concurrent benchmark against `vercel dev`.
 
 ## Roadmap for `v2+`
 
