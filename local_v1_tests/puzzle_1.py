@@ -18,6 +18,27 @@ DEFAULT_VERSIONS = ["v1", "v1.1", "v1.2", "v1.3", "v1.4", "v1.5"]
 DEFAULT_TIME_LIMIT_SECONDS = 1.0
 
 
+def print_search_detail(label: str, result: dict) -> None:
+    if "completed_depth" not in result:
+        return
+
+    detail = (
+        f"{label} detail: completed_depth={result['completed_depth']} "
+        f"| timed_out={result['timed_out']} | tt_entries={result['tt_entries']}"
+    )
+
+    if "tt_probes" in result and "tt_hits" in result and "tt_cutoffs" in result:
+        tt_probes = result["tt_probes"]
+        tt_hits = result["tt_hits"]
+        tt_hit_rate = (result["tt_hits"] / tt_probes) if tt_probes else 0.0
+        detail += (
+            f" | tt_probes={tt_probes} | tt_hits={result['tt_hits']}"
+            f" | tt_hit_rate={tt_hit_rate:.3f} | tt_cutoffs={result['tt_cutoffs']}"
+        )
+
+    print(detail)
+
+
 def timed_search(
     version: str,
     board: chess.Board,
@@ -52,11 +73,7 @@ def run_experiment(versions: list[str], fen: str, depth: int, time_limit_seconds
             f"| score={first_result['score']} | positions={first_result['moves_evaluated']} "
             f"| elapsed={first_elapsed:.6f}s"
         )
-        if "completed_depth" in first_result:
-            print(
-                f"White 1 detail: completed_depth={first_result['completed_depth']} "
-                f"| timed_out={first_result['timed_out']} | tt_entries={first_result['tt_entries']}"
-            )
+        print_search_detail("White 1", first_result)
 
         if first_result["move_san"] != EXPECTED_FIRST_WHITE:
             print("Forced black move skipped because white did not find the target first move.")
@@ -77,11 +94,7 @@ def run_experiment(versions: list[str], fen: str, depth: int, time_limit_seconds
             f"| score={second_result['score']} | positions={second_result['moves_evaluated']} "
             f"| elapsed={second_elapsed:.6f}s"
         )
-        if "completed_depth" in second_result:
-            print(
-                f"White 2 detail: completed_depth={second_result['completed_depth']} "
-                f"| timed_out={second_result['timed_out']} | tt_entries={second_result['tt_entries']}"
-            )
+        print_search_detail("White 2", second_result)
         print(
             f"White total: positions={first_result['moves_evaluated'] + second_result['moves_evaluated']} "
             f"| elapsed={first_elapsed + second_elapsed:.6f}s"

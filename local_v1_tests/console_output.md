@@ -2,7 +2,7 @@
 ![Puzzle #1](img/puzzle_1.png)
 > White to Move
 ```
-python3 local_v1_tests/puzzle_1.py --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
+python3 local_v1_tests/puzzle_1.py --versions v1 v1.1 v1.2 v1.3 v1.4 v1.5 --depth 4 -- 
 ```
 
 ```
@@ -40,6 +40,15 @@ White 1: Nf4+ (e2f4) | expected=Nf4+ | match=True | score=400 | positions=5711 |
 Black forced: Kg7 (g6g7)
 White 2: Nxd5 (f4d5) | expected=Nxd5 | match=True | score=500 | positions=3701 | elapsed=1.121361s
 White total: positions=9412 | elapsed=2.805300s
+
+=== v1.5 experiment at time_limit=1.000s ===
+Start FEN: 8/8/6kp/3b4/1p1p4/1P1P3P/PK2N3/8 w - - 0 2
+White 1: Nf4+ (e2f4) | expected=Nf4+ | match=True | score=400 | positions=3223 | elapsed=1.000059s
+White 1 detail: completed_depth=3 | timed_out=True | tt_entries=444 | tt_probes=1306 | tt_hits=139 | tt_hit_rate=0.106 | tt_cutoffs=6
+Black forced: Kg7 (g6g7)
+White 2: Nxd5 (f4d5) | expected=Nxd5 | match=True | score=500 | positions=3014 | elapsed=1.000068s
+White 2 detail: completed_depth=3 | timed_out=True | tt_entries=354 | tt_probes=1071 | tt_hits=118 | tt_hit_rate=0.110 | tt_cutoffs=3
+White total: positions=6237 | elapsed=2.000127s
 ```
 
 # `endgame_1.py` for v1.4

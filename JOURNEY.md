@@ -23,6 +23,7 @@ The historical engine line in [`api/v1/__init__.py`](/home/benny/Desktop/_gitrep
 - `v1.2`: alpha-beta pruning with move ordering
 - `v1.3`: alpha-beta pruning with move ordering and quiescence-style leaf extension
 - `v1.4`: `v1.3` plus an endgame mop-up heuristic and a tighter pruned quiescence search
+- `v1.5`: `v1.4` adapted into iterative deepening with a fixed think-time budget, plus a transposition table reused across passes for search optimization
 
 At the moment, the rough runtime picture is:
 
@@ -73,6 +74,22 @@ The next manual step, `v1.4`, addresses a different weakness. Even with quiescen
 
 This also reinforces why `v1.2` had to exist before `v1.3`. The note on [Limiting Quiescence](https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence) explicitly warns that quiescence search is vulnerable to search explosion without move ordering, and recommends simple capture ordering such as `MVV-LVA` before adding qsearch. That is broadly the same path taken here: first improve alpha-beta efficiency with move ordering, then extend the leaf search. In other words, `v1.2` was not just a nice optimization before `v1.3`; it was part of the practical groundwork that made `v1.3` reasonable to add at all.
 
+There is now also an early `v1.5` result from the same `puzzle_1.py` position, but this one should be interpreted differently because it is no longer a fixed-depth test:
+
+- `python3 local_v1_tests/puzzle_1.py --versions v1.5 --depth 4`
+- `v1.5` ran with a `1.000s` limit per white move rather than a fixed depth
+- on both white moves, it found the expected continuation: `Nf4+` and then `Nxd5`
+- it searched `3,223` positions on the first move and `3,014` on the second, for `6,237` total
+- each move used essentially the full budget and reported `completed_depth=3` with `timed_out=True`
+- the first move ended with `444` TT entries, `1306` probes, `139` hits, a `10.6%` hit rate, and `6` TT cutoffs
+- the second move ended with `354` TT entries, `1071` probes, `118` hits, a `11.0%` hit rate, and `3` TT cutoffs
+
+That gives a cleaner picture of what `v1.5` is actually adding. The big structural change is iterative deepening under a fixed time limit, which is a more practical search model than demanding a fixed depth from every position. The second change is the transposition table, and the console output now shows that it is active rather than ornamental: the search is probing it often and getting some reuse back.
+
+At the same time, this specific run does not suggest that the table is carrying the search yet. A hit rate around `10%` to `11%`, with only a few direct TT cutoffs, looks more like modest help than a major collapse of the tree. That is still useful, especially because `v1.5` is only completing depth `3` before the `1` second limit expires, but it also means the current result should be read as “the TT is contributing” rather than “the TT is already highly effective.”
+
+So the immediate lesson from `v1.5` is fairly simple: the engine can now return the right tactical move inside a fixed time budget, and it is beginning to benefit from transposition-table reuse while doing so. The next question is not whether the TT exists, but whether the overall implementation can process enough nodes per second for iterative deepening and TT reuse to pay off more strongly. That is where the language question becomes more concrete. At this stage, the point is not to conclude that the engine must leave Python or that another language automatically solves the problem. The point is to recognize that once the budget is fixed, raw execution speed becomes much more visible. A faster language such as C# could, in principle, complete deeper iterations within the same time limit and create more opportunities for the transposition table to matter.
+
 ## Why Simulation Is Not The Immediate Focus
 
 Large-scale engine-vs-engine simulation only becomes useful when individual move generation is already cheap enough.
@@ -109,12 +126,15 @@ The immediate goal is not to run massive automated gauntlets.
 
 The immediate goal is to manually work toward an algorithm that is strong enough to choose decent moves within roughly a `100ms` budget.
 
+With `v1.5`, that goal is now being framed in the more realistic form: not “reach a chosen fixed depth,” but “use iterative deepening to return the best move found within a chosen time limit.” That is a more honest target for engine work because it matches how practical chess engines are actually constrained.
+
 That changes the order of operations:
 
 1. Improve the search approach manually.
-2. Get runtime down to something that is actually usable.
-3. Establish a stronger baseline engine.
-4. Only then lean harder on automated simulation and `autoresearch`-style evaluation loops.
+2. Get time-budgeted search working reliably under fixed think-time limits.
+3. Get runtime per node down to something that is actually usable.
+4. Establish a stronger baseline engine.
+5. Only then lean harder on automated simulation and `autoresearch`-style evaluation loops.
 
 Until the engine is cheap enough per move, large simulation campaigns are mostly an expensive way to confirm that the current setup is too slow.
 
@@ -158,7 +178,9 @@ The project direction is intentionally conservative right now:
 - do not mistake that ceiling for the real performance goal
 - treat `1` second or less as the practical direction for real play
 - treat roughly `100ms` as the kind of move budget worth targeting for serious iteration
+- move away from treating fixed depth as the main benchmark and toward iterative deepening under fixed time limits
 - improve the engine manually before relying heavily on large simulation batches
 - use Coding Adventure's staged search improvements as the near-term guide
 - accept that shallow search sometimes needs positional conversion guidance in winning endgames before a mate sequence becomes directly visible
+- treat programming-language speed as a legitimate part of the investigation once the engine is judged by fixed time instead of fixed depth
 - begin the real `autoresearch` loop only after the baseline is fast enough to make that loop practical
