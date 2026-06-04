@@ -9,9 +9,9 @@ return exitCode;
 
 internal static class LocalTestingProgram
 {
-    private const int DefaultEvaluationGames = 500;
+    private const int DefaultEvaluationGames = 50;
     private const int DefaultEvaluationMaxPlies = 200;
-    private const double DefaultEvaluationTimeLimitSeconds = 0.100;
+    private const double DefaultEvaluationTimeLimitSeconds = 1.000;
 
     public static int Run(string[] args)
     {
