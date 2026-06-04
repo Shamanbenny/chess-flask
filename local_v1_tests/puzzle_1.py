@@ -14,30 +14,49 @@ DEFAULT_FEN = "8/8/6kp/3b4/1p1p4/1P1P3P/PK2N3/8 w - - 0 2"
 EXPECTED_FIRST_WHITE = "Nf4+"
 FORCED_BLACK_MOVE_UCI = "g6g7"
 EXPECTED_SECOND_WHITE = "Nxd5"
-DEFAULT_VERSIONS = ["v1", "v1.1", "v1.2", "v1.3", "v1.4"]
+DEFAULT_VERSIONS = ["v1", "v1.1", "v1.2", "v1.3", "v1.4", "v1.5"]
+DEFAULT_TIME_LIMIT_SECONDS = 1.0
 
 
-def timed_search(version: str, board: chess.Board, depth: int) -> tuple[dict, float]:
+def timed_search(
+    version: str,
+    board: chess.Board,
+    depth: int,
+    time_limit_seconds: float,
+) -> tuple[dict, float]:
     started_at = time.perf_counter()
-    result = search_move_for_version(version, board, depth)
+    result = search_move_for_version(
+        version,
+        board,
+        depth=depth,
+        time_limit_seconds=time_limit_seconds,
+    )
     return result, time.perf_counter() - started_at
 
 
-def run_experiment(versions: list[str], fen: str, depth: int) -> int:
+def run_experiment(versions: list[str], fen: str, depth: int, time_limit_seconds: float) -> int:
     forced_black_move = chess.Move.from_uci(FORCED_BLACK_MOVE_UCI)
 
     for version in versions:
         board = chess.Board(fen)
-        print(f"=== {version} experiment at depth {depth} ===")
+        if version.lower() in {"1.5", "v1.5"}:
+            print(f"=== {version} experiment at time_limit={time_limit_seconds:.3f}s ===")
+        else:
+            print(f"=== {version} experiment at depth {depth} ===")
         print(f"Start FEN: {fen}")
 
-        first_result, first_elapsed = timed_search(version, board, depth)
+        first_result, first_elapsed = timed_search(version, board, depth, time_limit_seconds)
         print(
             f"White 1: {first_result['move_san']} ({first_result['move'].uci()}) "
             f"| expected={EXPECTED_FIRST_WHITE} | match={first_result['move_san'] == EXPECTED_FIRST_WHITE} "
             f"| score={first_result['score']} | positions={first_result['moves_evaluated']} "
             f"| elapsed={first_elapsed:.6f}s"
         )
+        if "completed_depth" in first_result:
+            print(
+                f"White 1 detail: completed_depth={first_result['completed_depth']} "
+                f"| timed_out={first_result['timed_out']} | tt_entries={first_result['tt_entries']}"
+            )
 
         if first_result["move_san"] != EXPECTED_FIRST_WHITE:
             print("Forced black move skipped because white did not find the target first move.")
@@ -51,13 +70,18 @@ def run_experiment(versions: list[str], fen: str, depth: int) -> int:
         print(f"Black forced: {board.san(forced_black_move)} ({forced_black_move.uci()})")
         board.push(forced_black_move)
 
-        second_result, second_elapsed = timed_search(version, board, depth)
+        second_result, second_elapsed = timed_search(version, board, depth, time_limit_seconds)
         print(
             f"White 2: {second_result['move_san']} ({second_result['move'].uci()}) "
             f"| expected={EXPECTED_SECOND_WHITE} | match={second_result['move_san'] == EXPECTED_SECOND_WHITE} "
             f"| score={second_result['score']} | positions={second_result['moves_evaluated']} "
             f"| elapsed={second_elapsed:.6f}s"
         )
+        if "completed_depth" in second_result:
+            print(
+                f"White 2 detail: completed_depth={second_result['completed_depth']} "
+                f"| timed_out={second_result['timed_out']} | tt_entries={second_result['tt_entries']}"
+            )
         print(
             f"White total: positions={first_result['moves_evaluated'] + second_result['moves_evaluated']} "
             f"| elapsed={first_elapsed + second_elapsed:.6f}s"
@@ -74,10 +98,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fen", default=DEFAULT_FEN, help="Starting FEN for the experiment.")
     parser.add_argument("--depth", type=int, default=4, help="Search depth for each historical engine.")
     parser.add_argument(
+        "--time-limit-seconds",
+        type=float,
+        default=DEFAULT_TIME_LIMIT_SECONDS,
+        help="Think time budget for v1.5. Older versions still use --depth.",
+    )
+    parser.add_argument(
         "--versions",
         nargs="+",
         default=DEFAULT_VERSIONS,
-        help="Historical engine versions to include, for example: v1 v1.1 v1.2 v1.3 v1.4",
+        help="Historical engine versions to include, for example: v1 v1.1 v1.2 v1.3 v1.4 v1.5",
     )
     return parser
 
@@ -88,9 +118,11 @@ def main() -> int:
 
     if args.depth < 1:
         parser.error("--depth must be at least 1")
+    if args.time_limit_seconds <= 0:
+        parser.error("--time-limit-seconds must be greater than 0")
 
     try:
-        return run_experiment(args.versions, args.fen, args.depth)
+        return run_experiment(args.versions, args.fen, args.depth, args.time_limit_seconds)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2

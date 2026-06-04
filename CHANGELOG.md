@@ -4,6 +4,30 @@ This file tracks the accepted algorithm history of the chess bots in this reposi
 
 The `v1.x` family is heavily informed by Sebastian Lague's [Coding Adventure: Chess](https://www.youtube.com/watch?v=U4ogK0MIzqk). That reference should be read as implementation guidance for the search progression, not as a claim that this repository is a line-by-line copy of his engine.
 
+## v1.5
+
+- Search: `v1.4`-style alpha-beta plus quiescence, but the root search is now driven by a think-time budget instead of a fixed depth.
+- Added [iterative deepening](https://www.chessprogramming.org/Iterative_Deepening) so the engine always keeps the best fully searched root move from the latest completed iteration and can return immediately when the clock expires.
+- Added a bounded [transposition table](https://www.chessprogramming.org/Transposition_Table) with:
+  - position verification via python-chess transposition keys when available
+  - stored best move for hash-move ordering
+  - stored depth, score, and node-bound type (`exact`, `lower`, `upper`)
+  - depth/age-aware replacement inside a fixed-size indexed table
+- Transposition table use in `v1.5`:
+  - probe before searching a node to allow exact and bound-based cutoffs
+  - search the stored hash move first for stronger move ordering
+  - retain entries across iterative-deepening passes within the same move search
+- Intended improvement over `v1.4`:
+  - make move generation controllable by wall-clock budget instead of a hard depth knob
+  - spend available time on progressively deeper searches instead of risking one unfinished deep pass
+  - reuse earlier search work inside the same move search to cut redundant computation
+
+### References
+
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Transposition Table](https://www.chessprogramming.org/Transposition_Table)
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Iterative Deepening](https://www.chessprogramming.org/Iterative_Deepening)
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Zobrist Hashing](https://www.chessprogramming.org/Zobrist_Hashing)
+
 ## v1.4
 
 - Search: `v1.3`-style alpha-beta pruning and move ordering, but with a more constrained quiescence search for `v1.4`.

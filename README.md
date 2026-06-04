@@ -68,6 +68,7 @@ The project still keeps the historical search family in [`api/v1/__init__.py`](/
 - `v1.2`: alpha-beta pruning with move ordering
 - `v1.3`: alpha-beta pruning with move ordering and quiescence-style capture search
 - `v1.4`: `v1.3` plus endgame conversion evaluation and a tighter pruned quiescence search
+- `v1.5`: `v1.4` plus time-budgeted iterative deepening and a transposition table
 
 These are preserved as the manual/reference phase of the project. They are still callable directly from local tooling for experiments and search comparisons, but they are not currently part of the public HTTP surface.
 
@@ -78,6 +79,7 @@ The implementation path is intentionally close to Sebastian Lague's staged chess
 - `v1.2`: improve pruning efficiency with move ordering
 - `v1.3`: reduce horizon-effect mistakes by extending leaf evaluation through capture sequences
 - `v1.4`: make shallow winning endgames more conversion-oriented while keeping quiescence from exploding on non-capture checking sequences
+- `v1.5`: shift the search budget from fixed depth to think time, using iterative deepening and hash-table reuse between iterations
 
 See [CHANGELOG.md](/home/benny/Desktop/_gitrepo/chess-flask/CHANGELOG.md:1) for the accepted algorithm history.
 
@@ -132,9 +134,32 @@ Example:
 
 ```bash
 python3 local_v1_tests/puzzle_1.py --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
+python3 local_v1_tests/puzzle_1.py --versions v1.5 --time-limit-seconds 1.0
 ```
 
 `v1.4` exists because shallow search is often strong enough to know it is winning but not deep enough to see the mate yet. Its evaluation adds guarded endgame conversion terms in clearly winning, low-material positions so the engine prefers moves that compress the opposing king, bring its own king closer, respect dangerous advanced pawns, and avoid drifting into repetition. It also tightens quiescence so queen endgames do not burn large amounts of time chasing every quiet checking continuation.
+
+`v1.5` keeps that evaluation/search base but changes the control surface: instead of being told how deep to search, it keeps deepening until the think-time budget expires. The transposition table preserves best moves, bounds, and searched depths across those iterations so later passes can order moves better and cut repeated work.
+
+[`local_v1_tests/puzzle_2.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_2.py:1) is a dedicated `v1.5` endgame test for the FEN:
+
+```text
+8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1
+```
+
+Run it with:
+
+```bash
+python3 local_v1_tests/puzzle_2.py --time-limit-seconds 1.0 --max-plies 70
+```
+
+The script:
+
+- checks whether White's first move matches the intended move `Kb1`
+- if `Kb1` is found, continues `v1.5` self-play for up to `70` plies
+- reports per-move completed depth and timeout status
+- reports per-move transposition-table usage including entries, probes, hits, and cutoffs
+- reports whether White managed to checkmate within the configured ply limit without drifting into repetition pressure
 
 [`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1) is a dedicated `v1.4` self-play conversion test for the winning endgame:
 
