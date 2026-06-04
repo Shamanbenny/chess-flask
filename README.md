@@ -29,7 +29,6 @@ The important boundary is now very simple:
 - Historical search implementations: [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1)
 - Direct Python reference runners: [`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) and [`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1)
 - Native workspace scaffold: [`engine_csharp/README.md`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/README.md:1)
-- Legacy local simulation runner: [`simulation.py`](/home/benny/Desktop/_gitrepo/chess-flask/simulation.py:1)
 - Rewrite rule: all requests are routed to `api/index`
 - Function limit: Vercel `maxDuration` is currently set to `30` seconds
 - Allowed CORS origins:
@@ -212,37 +211,6 @@ python3 local_v1_tests/endgame_1.py
 
 It runs `v1.4` for both sides from `3r4/8/3k4/8/3K4/8/8/8 b - - 1 1` at the script's fixed `depth=4` and `max_plies=60`, and reports whether Black manages to checkmate without the game drifting into repetition pressure.
 
-## Simulation Runner
-
-The older local simulation harness has been moved to [`simulation.py`](/home/benny/Desktop/_gitrepo/chess-flask/simulation.py:1).
-
-It is not the primary workflow right now, but it is still kept around for later engine-vs-engine evaluation work.
-
-Example:
-
-```bash
-python3 simulation.py --mode simulate --versions v1 v1.1 v1.2 --games-per-pair 20 --max-plies 200 --openings-file openings.txt --output-dir results --simulation-transport direct --workers 4
-```
-
-That script also keeps the older single-request and HTTP benchmark paths, but the active project direction is the direct experiment workflow rather than large simulation runs.
-
-The simulation command writes three CSV files and one text log into `results/`:
-
-- `*_games.csv`
-  - one row per game
-  - useful for win-rate, game-length, and per-game latency charts
-- `*_moves.csv`
-  - one row per move
-  - useful for latency and search-cost charts by ply or by engine version
-- `*_summary.csv`
-  - one row per ordered matchup
-  - useful for quick blog-post tables and bar charts
-- `*_output.txt`
-  - mirrored live progress output from the simulator
-  - useful for reviewing elapsed time, failures, and long-running matchups after the run completes
-
-The repository includes a starter file at [`openings.txt`](/home/benny/Desktop/_gitrepo/chess-flask/openings.txt:1). The simulator can rotate through those FENs across games within each ordered matchup.
-
 ## Project Versions
 
 The project history is intentionally split into two eras:
@@ -251,43 +219,46 @@ The project history is intentionally split into two eras:
   - Manual coding / direct reference era.
   - These versions are preserved as part of the project's original implementation path.
 - `v2+`
-  - Planned `autoresearch` era.
+  - `autoresearch` era.
   - New versions should be accepted only when they measurably outperform the current accepted baseline.
 
 The language split does not create a new engine version by itself. `CHANGELOG.md` remains about accepted algorithm milestones, not about workspace layout.
 
-## Roadmap for `v2+`
+## `v2+` Workflow
 
-Future versions will use the `autoresearch` workflow pattern from Andrej Karpathy's [`karpathy/autoresearch`](https://github.com/karpathy/autoresearch): constrained code changes, a fast evaluation loop, and keep-or-reject decisions based on one mechanical metric.
+The repository now includes a chess-specific `autoresearch` workflow inspired by Andrej Karpathy's [`karpathy/autoresearch`](https://github.com/karpathy/autoresearch): constrained code changes, a fixed local evaluator, and keep-or-reject decisions based on one mechanical promotion rule.
 
-For this repo, that does not mean copying the training setup from `autoresearch`. It means applying the same improvement loop to chess-engine development, but only after the baseline engine is fast enough that repeated evaluation is practical.
+For this repo, that does not mean copying the upstream training setup. It means applying the same improvement loop to chess-engine development through versioned local engine candidates.
 
-### Planned Acceptance Process
+The workflow contract lives in:
 
-- Preserve `v0` through `v1.4` as historical manual milestones.
+- [`autoresearch/README.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/README.md:1)
+- [`autoresearch/PROGRAM.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/PROGRAM.md:1)
+- [`autoresearch/EVALUATE.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/EVALUATE.md:1)
+- [`autoresearch/ATTEMPTS.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/ATTEMPTS.md:1)
+
+### Current Acceptance Process
+
+- Preserve `v0` through `v1.6` as accepted pre-`v2` history.
 - Develop `v2+` locally, not on Vercel.
-- Benchmark each candidate against the latest accepted version and against locked historical baselines such as `v1.3`.
-- Promote a version only if the benchmark says it is better.
-- Tighten the practical move-time budget as stronger and faster versions become available.
-- Record accepted algorithm changes in `CHANGELOG.md`.
+- Clone the latest approved engine into a new candidate file and modify only that candidate.
+- Evaluate the candidate only against the latest approved baseline under the fixed `autoresearch/EVALUATE.md` match contract.
+- Promote a version only if that fixed evaluator approves it.
+- Log every completed evaluation, including rejected attempts, in `autoresearch/ATTEMPTS.md`.
+- Record accepted algorithm milestones in `CHANGELOG.md`.
 
 ### Evaluation Direction
 
-The initial evaluation direction is still local automated matches, not online bot play, but the project is explicitly not treating large simulation campaigns as the immediate inner loop while the historical engines remain slow.
+The active `v2+` direction is local automated engine-vs-engine evaluation, not online bot play.
 
-Recommended rules for the future evaluation harness:
+The fixed evaluator is centered on:
 
-- Run offline engine-vs-engine matches locally.
-- Use paired games from the same opening positions with colors swapped.
-- Enforce a fixed per-move time budget.
-- Track:
-  - win/draw/loss
-  - timeout rate
-  - average move latency
-  - throughput under configured concurrency
-- Use the latest accepted version as the primary promotion gate.
+- offline head-to-head matches
+- the latest approved engine as the sole promotion baseline
+- a strict per-move time budget
+- paired, repeatable results recorded under `autoresearch/logs/`
 
-This remains the preferred long-term direction because it is reproducible, automatable, cheaper to run repeatedly, and easier to use inside an `autoresearch` loop than online ladder play.
+That remains the preferred direction because it is reproducible, automatable, cheaper to run repeatedly, and easier to use inside an `autoresearch` loop than online ladder play.
 
 ## Notes
 
@@ -295,5 +266,5 @@ This remains the preferred long-term direction because it is reproducible, autom
 - No unified `/move` or `/chess` endpoint exists yet.
 - `v0` and Python `v1.5` are currently exposed through Flask routes.
 - Historical engines remain versioned under `api/v1/`, with `v1.5.py` also serving the public Flask route.
-- No `v2` engine implementation exists yet in this repository.
+- No accepted `v2+` engine implementation exists yet in this repository, but the `autoresearch` workflow and baseline metadata now do.
 - The current Vercel duration setting is a temporary operational choice, not a statement that `30` seconds per move is the desired long-term UX target.
