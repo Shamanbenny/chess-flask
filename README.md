@@ -6,13 +6,29 @@ The backend accepts a chess board state as a FEN string and returns the next mov
 
 The `v1.x` engines in this repository heavily reference Sebastian Lague's [Coding Adventure: Chess](https://www.youtube.com/watch?v=U4ogK0MIzqk) and his [YouTube channel](https://www.youtube.com/@SebastianLague). The project uses that series as a practical guide for the search progression from plain minimax to pruning, move ordering, and capture-search refinement.
 
+## Architecture Direction
+
+The repository now intentionally separates two concerns:
+
+- Python/Flask remains the serving layer for public HTTP endpoints.
+- C# is the local-development workspace for direct rewrites of the `v1.*` reference engines.
+
+That split exists because the search code wants a faster local tooling loop than Python alone provides, while the website still needs a Vercel-hosted Python backend.
+
+The important boundary is now very simple:
+
+- C# files mirror the Python engine files for local engine development, timing, and algorithm experiments.
+- Python is for the deployed Flask surface.
+- If a final `v1.*` engine is promoted to the public site, it should be rewritten into Python for the Vercel-served Flask app rather than having Flask try to execute C# in production.
+
 ## Current Backend Shape
 
 - Runtime: Flask on Vercel serverless functions
 - Entry point: [`api/index.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/index.py:1)
 - HTTP endpoint wrapper: [`api/endpoint.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/endpoint.py:1)
 - Historical search implementations: [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1)
-- Direct local test runners: [`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) and [`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1)
+- Direct Python reference runners: [`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) and [`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1)
+- Native workspace scaffold: [`engine_csharp/README.md`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/README.md:1)
 - Legacy local simulation runner: [`simulation.py`](/home/benny/Desktop/_gitrepo/chess-flask/simulation.py:1)
 - Rewrite rule: all requests are routed to `api/index`
 - Function limit: Vercel `maxDuration` is currently set to `30` seconds
@@ -21,6 +37,12 @@ The `v1.x` engines in this repository heavily reference Sebastian Lague's [Codin
   - `https://www.sneakyowl.net`
 
 The HTTP surface is intentionally narrow right now. Only `v0` remains exposed as a route. The older `v1` through `v1.4` engines are still preserved in code as historical/manual search references, but they are currently used only through direct local tooling.
+
+The new rule for the repo is:
+
+- Flask route behavior stays in Python.
+- `v1.*` local algorithm work happens in direct C# rewrites of the Python reference engines.
+- Future public `v1.*` exposure should be rewritten into Python for Flask/Vercel once the final engine shape is accepted.
 
 The `30` second limit is a temporary ceiling, not the product target. Real progress for this project means moving toward much faster move generation, ideally around `1` second or less in practical play and materially lower for serious local iteration.
 
@@ -66,9 +88,10 @@ The project still keeps the historical search family in [`api/v1/__init__.py`](/
 - `v1`: minimax
 - `v1.1`: minimax with alpha-beta pruning
 - `v1.2`: alpha-beta pruning with move ordering
-- `v1.3`: alpha-beta pruning with move ordering and quiescence-style capture search
+- `v1.3`: alpha-beta pruning with move ordering and quiescence-style leaf extension through captures and quiet checks
 - `v1.4`: `v1.3` plus endgame conversion evaluation and a tighter pruned quiescence search
 - `v1.5`: `v1.4` plus time-budgeted iterative deepening and a transposition table
+- `v1.6`: C#-specific speed-focused follow-up to `v1.5`, cross-referenced against `Chess-Coding-Adventure` to reduce hot-path search overhead
 
 These are preserved as the manual/reference phase of the project. They are still callable directly from local tooling for experiments and search comparisons, but they are not currently part of the public HTTP surface.
 
@@ -77,9 +100,10 @@ The implementation path is intentionally close to Sebastian Lague's staged chess
 - `v1`: establish a plain minimax baseline
 - `v1.1`: introduce alpha-beta pruning
 - `v1.2`: improve pruning efficiency with move ordering
-- `v1.3`: reduce horizon-effect mistakes by extending leaf evaluation through capture sequences
+- `v1.3`: reduce horizon-effect mistakes by extending leaf evaluation through forcing capture and check sequences
 - `v1.4`: make shallow winning endgames more conversion-oriented while keeping quiescence from exploding on non-capture checking sequences
 - `v1.5`: shift the search budget from fixed depth to think time, using iterative deepening and hash-table reuse between iterations
+- `v1.6`: keep the `v1.5` search shape, but make each searched node materially cheaper in the C# port
 
 See [CHANGELOG.md](/home/benny/Desktop/_gitrepo/chess-flask/CHANGELOG.md:1) for the accepted algorithm history.
 
@@ -110,9 +134,27 @@ python3 serve.py
 
 That direct runner exposes the same currently supported Flask route on `http://localhost:3000`.
 
+### Native Engine Workspace
+
+The C# workspace is scaffolded under [`engine_csharp/`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/README.md:1).
+
+Once the .NET SDK is installed, the intended workflow is:
+
+```bash
+dotnet build engine_csharp/ChessEngine.sln
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v1.6 --time-limit-seconds 1.0 --max-plies 70
+dotnet run --project engine_csharp/src/LocalTesting -- endgame-1
+```
+
+The C# workspace now exists to hold direct source rewrites of the Python `api/v1/*.py` engines and the local scenario runners. The active local runner project in this repo is `engine_csharp/src/LocalTesting`.
+
 ## Local V1 Tests
 
 The active local workflow now lives under [`local_v1_tests/`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests).
+
+The Python `api/v1/*.py` engines should now be read as retired reference implementations from the original manual-engine phase, not as the long-term active development path.
 
 [`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) keeps the fixed tactical comparison harness.
 
@@ -210,6 +252,8 @@ The project history is intentionally split into two eras:
 - `v2+`
   - Planned `autoresearch` era.
   - New versions should be accepted only when they measurably outperform the current accepted baseline.
+
+The language split does not create a new engine version by itself. `CHANGELOG.md` remains about accepted algorithm milestones, not about workspace layout.
 
 ## Roadmap for `v2+`
 

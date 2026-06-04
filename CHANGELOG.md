@@ -4,6 +4,69 @@ This file tracks the accepted algorithm history of the chess bots in this reposi
 
 The `v1.x` family is heavily informed by Sebastian Lague's [Coding Adventure: Chess](https://www.youtube.com/watch?v=U4ogK0MIzqk). That reference should be read as implementation guidance for the search progression, not as a claim that this repository is a line-by-line copy of his engine.
 
+Architecture note: the repository may change how local development and serving are organized, but this file should only record accepted engine-version behavior. Workspace or language splits are documented in `README.md` and `JOURNEY.md`, not as standalone engine versions.
+
+## v1.6
+
+- C#-specific follow-up to `v1.5` focused on search throughput after cross-referencing Sebastian Lague's [`Chess-Coding-Adventure`](https://github.com/SebLague/Chess-Coding-Adventure/tree/Chess-V1-Unity) implementation path and recognizing how much slower this repository's search was under the same kind of endgame pressure.
+- Search: retained the `v1.5` shape of iterative deepening, alpha-beta, quiescence, and transposition-table reuse, but changed several hot-path costs that were suppressing node throughput.
+- Board-state and hash changes in the C# port:
+  - replaced full-board Zobrist recomputation on every `Push`/`Pop` with a deterministic hash over the normalized FEN position key already being cached for repetition logic
+  - switched repetition history from string keys to hashed position keys so repetition checks stop paying string-comparison costs on every probe
+  - added direct `HasAnyLegalMoves()` and `LegalMoveCount()` helpers so terminal checks no longer need `LegalMoves().ToList()` allocations
+- Transposition-table changes in `v1.6`:
+  - replaced the dictionary-backed TT used by the early C# `v1.5` path with a fixed-size indexed table
+  - kept best-move, depth, bound, and age replacement semantics, but removed avoidable dictionary and allocation overhead from every probe/store
+- Move-ordering changes in `v1.6`:
+  - stopped scoring every legal move by pushing it on the board, checking derived state, and popping it again
+  - now uses a cheaper static ordering mix of TT move priority, MVV-LVA-style capture scoring, promotion bonuses, and pawn-danger penalties
+- Evaluation changes in `v1.6`:
+  - replaced repeated piece-count scans and clone-based king-mobility checks with a lighter single-pass snapshot of material and endgame structure
+  - preserved the `v1.4` / `v1.5` endgame-conversion ideas, but made them cheaper to apply per node
+- Search-bound changes in `v1.6`:
+  - added mate-distance pruning so once a shorter mating line is known, obviously longer mates do not keep expanding the tree
+  - moved time checks onto `Stopwatch` timestamps in the new search path while still keeping periodic timeout safety
+- Observed local effect during the first C# `puzzle-1` comparison at `1.0s` per move:
+  - `v1.5` completed depth `2` and searched `784` nodes on White 1
+  - `v1.6` completed depth `3` and searched `6,090` nodes on White 1
+  - `v1.6` also raised TT reuse materially on that run, from a very low-hit `v1.5` baseline to a much more active cutoff-producing table
+- Intended improvement over `v1.5`:
+  - make each searched node meaningfully cheaper before attempting more ambitious pruning ideas
+  - align the local C# engine more closely with the performance-conscious style seen in `Chess-Coding-Adventure`
+  - improve the odds that iterative deepening and TT reuse actually pay off inside a `1` second budget instead of being drowned out by board-management overhead
+
+### References
+
+- Sebastian Lague's [`Chess-Coding-Adventure`](https://github.com/SebLague/Chess-Coding-Adventure/tree/Chess-V1-Unity)
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Mate Distance Pruning](https://www.chessprogramming.org/Mate_Distance_Pruning)
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Move Ordering](https://www.chessprogramming.org/Move_Ordering)
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Transposition Table](https://www.chessprogramming.org/Transposition_Table)
+
+## v1.5b
+
+- C#-specific `engine_csharp` follow-up to `v1.5`; this is not a new cross-repo historical engine version for the Python path.
+- Search: retained the `v1.5` iterative-deepening, alpha-beta, and quiescence structure, but corrected several performance-costly local implementation choices in the C# port.
+- Transposition table changes in the C# port:
+  - replaced FEN-string dictionary keys with a deterministic [Zobrist hash](https://www.chessprogramming.org/Zobrist_Hashing) over piece placement, side to move, castling rights, and en-passant file
+  - kept TT probing and bound cutoffs in the main negamax search
+  - removed TT probing from quiescence because the local C# `v1.5` implementation was not storing quiescence entries and was paying lookup overhead for little or no reuse
+- Time-management changes in the C# port:
+  - wall-clock timeout checks are now throttled to periodic node intervals instead of calling `DateTime.UtcNow` at every searched node
+  - this preserves iterative-deepening timeout safety while improving node throughput under short think times
+- Local testing output changes in the C# port:
+  - `positions=` now reports searched nodes for `v1.5` when that metric is available, instead of reusing `MovesEvaluated` as a proxy
+  - detailed output also exposes both `moves_evaluated` and `nodes_searched` so C# `v1.5` runs can be compared more honestly against fixed-depth versions
+- Intended improvement over the initial C# `v1.5` port:
+  - reduce avoidable hashing and clock-check overhead that was suppressing search depth under a 1-second budget
+  - make the TT more aligned with normal engine practice and more likely to pay for itself at short time controls
+  - make local benchmark output reflect actual search effort instead of a root/edge-count proxy
+
+### References
+
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Zobrist Hashing](https://www.chessprogramming.org/Zobrist_Hashing)
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Transposition Table](https://www.chessprogramming.org/Transposition_Table)
+- [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) on [Time Management](https://www.chessprogramming.org/Time_Management)
+
 ## v1.5
 
 - Search: `v1.4`-style alpha-beta plus quiescence, but the root search is now driven by a think-time budget instead of a fixed depth.
@@ -63,6 +126,7 @@ The `v1.x` family is heavily informed by Sebastian Lague's [Coding Adventure: Ch
 - Search: minimax with alpha-beta pruning, move ordering, and capture-search extension at leaf nodes.
 - Evaluation: material balance plus repetition and draw penalties, but leaf evaluation is no longer allowed to stop before resolving immediate capture sequences.
 - Added a [quiescence-style follow-up search](https://www.chessprogramming.org/Quiescence_Search) so unstable positions are evaluated after forcing captures instead of at the first depth cutoff.
+- Local C# port note: the `engine_csharp` `v1.3` rewrite now applies a defensive quiescence bound and draw-claim stop in local testing so quiet-check tails cannot recurse indefinitely under the `Gera.Chess` port.
 - Historical engine files are now split under `api/v1/` instead of being kept together in one `api/v1.py`.
 - Intended improvement over `v1.2`:
   - reduce horizon-effect mistakes where hanging material still counts as if it were safe

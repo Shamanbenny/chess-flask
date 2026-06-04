@@ -1,3 +1,5 @@
+"""Retired Python reference implementation for v1.3."""
+
 import math
 
 import chess

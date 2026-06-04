@@ -120,6 +120,148 @@ The correct interpretation is:
 
 The right fix is not “allow slower thinking.” The right fix is “make the engine think faster while staying useful.”
 
+## Why Python Serves And C# Develops
+
+The repo now makes this distinction explicit:
+
+- Python remains the Flask and Vercel runtime.
+- C# becomes the local-development target for the `v1.*` search family.
+
+The reason Python stays in the repo is much simpler than that: the project needed a backend that could be hosted on Vercel so the chess bot could interact with users on the portfolio site. That is the job Flask is doing here.
+
+That hosted backend requirement is not the same thing as the local engine-development requirement.
+
+The real pressure in engine development is how many positions can be searched inside a fixed think-time budget. That cost sits in:
+
+- move generation loops
+- recursive search
+- repeated board copying and mutation
+- transposition-table probing
+- the general node-per-second ceiling of the engine
+
+Once the engine is judged by time instead of fixed depth, raw execution speed becomes much harder to ignore. A faster language such as C# could, in principle, complete deeper iterations within the same time limit and create more opportunities for the transposition table to matter. That is the real reason to set the project up this way early.
+
+The practical concern is not just that Python might be slower. The practical concern is uncertainty. If the engine is underperforming, the project should be able to say with more confidence:
+
+- the algorithm is the limiting factor
+- the evaluation is weak
+- the move ordering is weak
+- the pruning is weak
+- or the transposition-table reuse is weak
+
+What the project should not have to keep wondering is whether the current result is mostly a language ceiling.
+
+So the architectural choice here is to remove that ambiguity as early as possible. It is better to make the split while the engine family is still young than to wait until `v2+`, when more tooling, more tests, more blog-post narrative, and more version history would have to be rewritten around a late-stage migration.
+
+That does not mean Flask should call the C# engine in production. For this repo, the cleaner rule is:
+
+- C# is the local research and testing language
+- Python is the deployed Flask/Vercel language
+- if a final `v1.*` engine is worth exposing publicly, it gets rewritten into Python at that point
+
+Python owns:
+
+- request validation
+- route-level error mapping
+- deployment-facing concerns
+
+The C# local engine workspace owns:
+
+- versioned move search
+- evaluation logic
+- time-budgeted search behavior
+- low-level performance work
+
+This also fits the blog-post story better. The project can explain, clearly and honestly, that:
+
+- Python remained because the website project needed a Vercel-hosted backend for user interaction
+- C# was chosen early so deeper same-budget search could be pursued without constant doubt about Python throughput
+- the architecture was split before the repo became too version-heavy to revamp cleanly
+- the goal was to separate algorithm limits from language limits as soon as practical
+
+In other words, the decision is not “Python bad, C# good.” The decision is that engine research becomes much easier to reason about when the project stops wondering whether the language is the main bottleneck.
+
+## Why `v1.6` Exists
+
+`v1.6` exists because the first local C# `v1.5` rewrite still behaved much more slowly (like, REALLY slowly) than the staged engine work in [`Chess-Coding-Adventure`](https://github.com/SebLague/Chess-Coding-Adventure/tree/Chess-V1-Unity), especially in forcing endgames where depth gained inside the same time budget matters a lot more.
+
+The important realization was that the broad search recipe was not the main problem anymore.
+
+Both sides were already using the recognizable chess-engine stack:
+
+- iterative deepening
+- negamax with alpha-beta pruning
+- quiescence search
+- transposition-table reuse
+
+So the next bottleneck was not “missing alpha-beta” or “missing a TT.” The bottleneck was the cost of each node.
+
+### What The Python Version Missed
+
+The original Python `v1.5` had the same structural blind spots that later showed up in the first C# rewrite:
+
+- move ordering was too expensive for the amount of search benefit it produced
+- evaluation repeatedly asked the board for derived state in ways that were acceptable for clarity but not for high node throughput
+- terminal and repetition logic were cheap enough for experimentation but not cheap enough for aggressive time-budgeted search
+- the implementation leaned on a general-purpose board library rather than a purpose-built incremental board/search substrate
+
+That made the Python engine useful as a reference implementation, but a poor ceiling for serious same-budget depth comparisons.
+
+### What The Early C# Port Still Missed
+
+Moving from Python to C# did not automatically fix those issues.
+
+The first C# `v1.5` port kept too much of the same cost profile:
+
+- it still paid too much per node for state management
+- it still let move ordering do work that looked more like mini-search than cheap ordering
+- it still made evaluation and terminal logic more allocation-heavy than they needed to be
+- it still used a TT implementation that was technically correct but not especially cheap
+
+That is the key reason the early local C# port could still feel much slower than expected even after the language migration.
+
+### What Cross-Referencing `Chess-Coding-Adventure` Changed
+
+Cross-referencing Sebastian Lague's `Chess-Coding-Adventure` was useful here not because this repository needed to copy it line by line, but because it forced a harder question:
+
+- if the broad search ideas are already similar, why is this engine still so much slower?
+
+The answer was mostly in the hot path:
+
+- cheaper board-state bookkeeping
+- cheaper move ordering
+- cheaper transposition-table probing
+- cheaper terminal checks
+- cheaper evaluation passes
+
+That is the practical shift behind `v1.6`. The goal was to stop treating all nodes as if they cost roughly the same regardless of implementation details.
+
+### What `v1.6` Changes
+
+`v1.6` makes the C# search path more performance-conscious in several specific ways:
+
+- repetition history now uses hashed position keys instead of string history comparisons
+- position hashing no longer rescans the full board to rebuild Zobrist state after every `Push` and `Pop`
+- move ordering no longer pushes and pops each candidate move just to score it
+- the transposition table is now a fixed-size indexed structure instead of a dictionary-backed table
+- terminal checks can ask whether any legal move exists without forcing a full `ToList()` allocation
+- endgame evaluation now works from a lighter one-pass snapshot instead of repeated board scans and clone-based helper calls
+- mate-distance pruning is now applied so known shorter mates can collapse obviously longer branches
+
+None of that changes the broad identity of the engine. It changes how much work the engine pays to express that identity.
+
+### What That Meant In Practice
+
+The first local `puzzle-1` comparison at `1.0` second per move already showed the intended direction clearly:
+
+- the early C# `v1.5` path completed depth `2` on White 1 and searched `784` nodes
+- `v1.6` completed depth `3` on White 1 and searched `6,090` nodes
+- `v1.6` also pushed TT hit rate and TT cutoff usage much higher on that run, which is exactly the kind of payoff that only appears once per-node overhead drops enough
+
+That does not mean `v1.6` solves every endgame conversion line yet.
+
+It means the engine is starting to buy more real search with the same clock budget, which is the prerequisite for later improvements to matter.
+
 ## The Current Development Priority
 
 The immediate goal is not to run massive automated gauntlets.

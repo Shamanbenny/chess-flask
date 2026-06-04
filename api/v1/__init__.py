@@ -1,3 +1,9 @@
+"""Retired Python reference engines for the original v1.x manual-search line.
+
+These modules remain useful for historical comparison and local reference runs.
+They are no longer the planned active development path for future engine work.
+"""
+
 import chess
 
 from .v1_0 import choose_move_v1, search_move_v1

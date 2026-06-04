@@ -1,3 +1,5 @@
+"""Retired Python reference implementation for v1.5."""
+
 import math
 import time
 from dataclasses import dataclass

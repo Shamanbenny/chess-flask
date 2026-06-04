@@ -1,0 +1,5 @@
+{
+  "startFen": "3r4/3r4/3k4/8/3K4/8/8/8 b - - 1 1",
+  "defaultDepth": 4,
+  "defaultMaxPlies": 60
+}
