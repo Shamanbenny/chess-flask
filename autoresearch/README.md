@@ -4,6 +4,12 @@ This directory adapts the core `autoresearch` idea to a chess-engine improvement
 
 Credit for the original paradigm goes to Andrej Karpathy's [`karpathy/autoresearch`](https://github.com/karpathy/autoresearch), which framed a deliberately minimal autonomous research setup: let an agent modify a tightly scoped program, run a fixed evaluation, keep the change only if the metric improves, and repeat.
 
+To get started, simply sign in to your CLI Model (and disable all permissions), then you can prompt something along the lines of: 
+
+```
+Start by looking at `autoresearch/PROGRAM.md` and let's kick off the experiment loop! Feel free to acquaint yourself with the repo before starting.
+```
+
 ## Gist
 
 The original upstream repo applies that pattern to neural-network training:
