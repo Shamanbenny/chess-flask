@@ -4,7 +4,14 @@ import time
 import chess
 from flask import Blueprint, jsonify, request
 
-from .v1 import choose_move_v1, choose_move_v1_1, choose_move_v1_2, choose_move_v1_3, choose_move_v1_4
+from .v1 import (
+    choose_move_v1,
+    choose_move_v1_1,
+    choose_move_v1_2,
+    choose_move_v1_3,
+    choose_move_v1_4,
+    choose_move_v1_5,
+)
 
 
 endpoint_blueprint = Blueprint("endpoint", __name__)
@@ -50,6 +57,8 @@ def generate_engine_response(version: str, fen: str) -> tuple[dict, int]:
         return choose_move_v1_3(board), 200
     if version.lower() in {"1.4", "v1.4"}:
         return choose_move_v1_4(board), 200
+    if version.lower() in {"1.5", "v1.5"}:
+        return choose_move_v1_5(board), 200
     return {"error": f"Unsupported version '{version}'"}, 400
 
 
@@ -74,5 +83,13 @@ def handle_engine_request(version: str):
 def chess_v0():
     try:
         return handle_engine_request("v0")
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@endpoint_blueprint.route("/chess_v1_5", methods=["POST"])
+def chess_v1_5():
+    try:
+        return handle_engine_request("v1.5")
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

@@ -1,4 +1,4 @@
-"""Retired Python reference implementation for v1.5."""
+"""Python Flask implementation currently used for the public v1.5 route."""
 
 import math
 import time

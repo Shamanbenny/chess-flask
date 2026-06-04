@@ -23,12 +23,14 @@ DEFAULT_BASE_URL = "http://localhost:3000"
 DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 # Historical note:
-# Only v0 is currently exposed over Flask routes. The simulation code remains
-# here because it may be useful again once historical engine-vs-engine
-# simulation becomes part of the active workflow.
+# Flask currently exposes v0 and the Python v1.5 route. The simulation code
+# remains here because it may be useful again once broader historical
+# engine-vs-engine simulation becomes part of the active workflow.
 VERSION_TO_PATH = {
     "0": "/chess_v0",
     "v0": "/chess_v0",
+    "1.5": "/chess_v1_5",
+    "v1.5": "/chess_v1_5",
 }
 
 

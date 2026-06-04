@@ -48,11 +48,12 @@ The `30` second limit is a temporary ceiling, not the product target. Real progr
 
 ## API
 
-The deployed endpoint currently exposed by Flask is:
+The deployed endpoints currently exposed by Flask are:
 
 | Endpoint | Version | Summary |
 | --- | --- | --- |
 | `POST /chess_v0` | `v0` | Random legal move baseline |
+| `POST /chess_v1_5` | `v1.5` | Python `v1.5` engine with iterative deepening and a transposition table |
 
 It expects JSON like:
 
@@ -154,7 +155,7 @@ The C# workspace now exists to hold direct source rewrites of the Python `api/v1
 
 The active local workflow now lives under [`local_v1_tests/`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests).
 
-The Python `api/v1/*.py` engines should now be read as retired reference implementations from the original manual-engine phase, not as the long-term active development path.
+The Python `api/v1/*.py` engines remain the Flask-side historical engine implementations, and `v1.5.py` is currently used by the public `POST /chess_v1_5` route.
 
 [`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) keeps the fixed tactical comparison harness.
 
@@ -292,7 +293,7 @@ This remains the preferred long-term direction because it is reproducible, autom
 
 - This repo currently documents the backend as it exists today.
 - No unified `/move` or `/chess` endpoint exists yet.
-- Only `v0` is exposed through Flask routes at the moment.
-- Historical engines remain versioned under `api/v1/` for direct local use.
+- `v0` and Python `v1.5` are currently exposed through Flask routes.
+- Historical engines remain versioned under `api/v1/`, with `v1.5.py` also serving the public Flask route.
 - No `v2` engine implementation exists yet in this repository.
 - The current Vercel duration setting is a temporary operational choice, not a statement that `30` seconds per move is the desired long-term UX target.
