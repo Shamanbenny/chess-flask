@@ -26,7 +26,7 @@ Before changing code:
 
 - read the most recent attempts and inferred conclusions
 - inspect the latest approved engine file itself
-- form at most `3` active hypotheses at one time
+- form at most `1` active hypotheses at one time
 
 Example hypotheses:
 
@@ -82,8 +82,8 @@ The experiment runs on a dedicated branch for the run, for example `autoresearch
 Loop forever:
 
 1. Look at the git state: current branch, current commit, and whether you are still positioned at the latest approved commit.
-2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved engine, and choose `1` to `3` active hypotheses grounded in the latest approved code plus prior attempt conclusions.
-3. Clone the latest approved engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change.
+2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved engine, and choose `1` active hypotheses grounded in the latest approved code plus prior attempt conclusions.
+3. Clone the latest approved engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
 4. Modify only that newly cloned candidate engine file with the improvement, optimization, or fix.
 5. Check that the code builds successfully.
 6. Commit the candidate.

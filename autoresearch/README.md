@@ -36,7 +36,7 @@ This modified paradigm is chess-specific:
 The intended rhythm is:
 
 1. Read prior attempts and the latest approved engine.
-2. Form at most a few concrete hypotheses.
+2. Form one concrete hypotheses.
 3. Clone the approved engine into a new versioned file.
 4. Change only that new engine.
 5. Build it.

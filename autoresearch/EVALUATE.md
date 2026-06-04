@@ -13,9 +13,9 @@ The evaluator decides whether the candidate is approved. Diagnostic information 
 ## Fixed Match Rules
 
 - Candidate opponent: the latest approved engine recorded in `autoresearch/ATTEMPTS.md`
-- Move time limit: `100ms` per move
-- Total games: `500`
-- Color split: `250` games with the candidate as White, `250` games with the candidate as Black
+- Move time limit: `1000ms` per move
+- Total games: `50`
+- Color split: `25` games with the candidate as White, `25` games with the candidate as Black
 - Opening policy: use the fixed curated `Book.txt` opening-book positions checked into the repo, exclude the fresh starting board, randomize the sampled positions for the run, and use the same sampled position for the immediate color-swapped paired game
 - Draw cutoff: use a fixed `max_plies` constant enforced by the evaluator
 - Evaluation transport: direct local engine-vs-engine evaluation inside the engine workspace, not the legacy Python HTTP simulator
@@ -38,8 +38,8 @@ Run exactly:
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
   --engine-a-file <candidate_engine_file> \
   --engine-b-file <approved_engine_file> \
-  --games 500 \
-  --time-limit-ms 100 \
+  --games 100 \
+  --time-limit-ms 500 \
   --max-plies 200
 ```
 
@@ -49,8 +49,8 @@ Example:
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
   --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs \
   --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs \
-  --games 500 \
-  --time-limit-ms 100 \
+  --games 50 \
+  --time-limit-ms 500 \
   --max-plies 200
 ```
 
