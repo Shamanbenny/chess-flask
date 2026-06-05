@@ -97,8 +97,8 @@ Loop forever:
 11. If those signatures are missing, determine whether evaluation is still running, the build failed, or the evaluator crashed or terminated mid-run.
 12. If evaluation completed properly, append the result and inferred conclusion to `autoresearch/ATTEMPTS.md`.
    Include the canonical CSV path `autoresearch/logs/<short_sha>-result.csv` and mention any optional extra log files separately if they were produced.
-13. If the evaluation is a positive improvement according to `autoresearch/EVALUATE.md`, keep the commit and advance the branch baseline.
-14. If the evaluation is equal or worse, or if the evaluator fails, reset back to where the experiment started: the previously approved commit.
+13. If the evaluation is a positive improvement according to `autoresearch/EVALUATE.md`, keep the commit and advance the branch baseline. Afterwards, move the logs associated with the newly approved engine from `autoresearch/logs/` to `autoresearch/approved_logs/` using `mv` command and renaming the file to `V*_*Engine-<short_sha>-result.csv` (Similar naming convention for additional log files associated with the approved version as well)
+14. If the evaluation is equal or worse, or if the evaluator fails, reset back to where the experiment started: the previously approved commit. (E.g. `git reset --hard <short_approved_sha>`)
 
 The branch should only advance when the fixed evaluator says the candidate is better.
 
