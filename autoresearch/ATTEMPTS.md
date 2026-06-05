@@ -148,3 +148,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=1`
 - verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4758 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, and max_plies_rate=0.0020.`
 - inferred_conclusion: `The cached king-phase cleanup did increase candidate nodes versus v2.2 (16057.04 vs 14956.35 average positions/nodes), but the timing/search perturbation did not translate into strength and slightly underperformed. Future work should not promote pure semantics-preserving micro-optimizations unless they also demonstrate a move-choice or search-depth advantage in paired results.`
+
+## Attempt: 2026-06-05T22:04:03Z - v2.4
+
+- branch: `autoresearch/Jun6a`
+- commit: `b00b540`
+- status: `rejected`
+- baseline_version: `v2.2`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_2Engine.cs`
+- candidate_version: `v2.4`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_4Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A small bishop-pair bonus will improve positional decisions on top of v2.2 with negligible extra evaluation cost.`
+- implementation_summary: `Cloned v2.2 into v2.4, renamed the public type/search entrypoint, and added a 35 centipawn bishop-pair bonus to each side's existing positional total after bishop counts are collected.`
+- evaluation_log_path: `autoresearch/logs/b00b540-result.csv`
+- extra_log_paths: `n/a`
+- wins: `80`
+- draws: `348`
+- losses: `72`
+- score: `254.0/500`
+- score_rate: `0.5080`
+- average_plies: `76.55`
+- average_processing_time_ms: `103.299`
+- average_positions_or_nodes: `14658.04`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
+- verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4909 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, raw score_rate=0.5080, and max_plies_rate=0.0000.`
+- inferred_conclusion: `The bishop-pair bonus was directionally positive on raw score but too noisy and not statistically reliable against v2.2. Future evaluation changes should either be broader than a single small static bonus or targeted at specific conversion/draw problems, since small generic bonuses may add variance without clearing the paired confidence threshold.`
