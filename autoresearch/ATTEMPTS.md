@@ -13,9 +13,9 @@ Do not rewrite or delete prior entries (Except for the `## Latest Approved Basel
 
 - approved_version: `v2.0`
 - approved_file: `engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`
-- approved_commit: 
+- approved_commit: `9090a86`
 - approved_recorded_at: `2026-06-05`
-- notes:
+- notes: `Current v2.0 baseline after the in-house board representation and move-generation revamp.`
 
 ## Entry Template
 

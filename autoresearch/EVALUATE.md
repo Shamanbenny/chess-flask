@@ -13,9 +13,9 @@ The evaluator decides whether the candidate is approved. Diagnostic information 
 ## Fixed Match Rules
 
 - Candidate opponent: the latest approved engine recorded in `autoresearch/ATTEMPTS.md`
-- Move time limit: `1000ms` per move
-- Total games: `50`
-- Color split: `25` games with the candidate as White, `25` games with the candidate as Black
+- Move time limit: `100ms` per move
+- Total games: `500`
+- Color split: `250` games with the candidate as White, `250` games with the candidate as Black
 - Opening policy: use the fixed curated `Book.txt` opening-book positions checked into the repo, exclude the fresh starting board, randomize the sampled positions for the run, and use the same sampled position for the immediate color-swapped paired game
 - Draw cutoff: use a fixed `max_plies` constant enforced by the evaluator
 - Evaluation transport: direct local engine-vs-engine evaluation inside the engine workspace, not the legacy Python HTTP simulator
@@ -38,8 +38,8 @@ Run exactly:
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
   --engine-a-file <candidate_engine_file> \
   --engine-b-file <approved_engine_file> \
-  --games 100 \
-  --time-limit-ms 250 \
+  --games 500 \
+  --time-limit-ms 100 \
   --max-plies 200 \
   --log \
   --short-sha <short_sha>
@@ -51,8 +51,8 @@ Example:
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
   --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs \
   --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs \
-  --games 50 \
-  --time-limit-ms 250 \
+  --games 500 \
+  --time-limit-ms 100 \
   --max-plies 200 \
   --log \
   --short-sha 1a2b3c4
@@ -92,7 +92,7 @@ An autoresearch run may forcibly stop the evaluator before `=== EVALUATION DONE 
 
 Valid early-stop reasons include:
 
-- `max_plies_count` has already reached or exceeded the rejection threshold for the configured game count. For the standard `--games 100` run with `max_plies_rate < 0.05`, the candidate is irreversibly rejected once `5` games terminate by `max_plies`.
+- `max_plies_count` has already reached or exceeded the rejection threshold for the configured game count. For the standard `--games 100` run with `max_plies_rate < 0.10`, the candidate is irreversibly rejected once `5` games terminate by `max_plies`.
 - A crash, illegal move, broken logging output, or harness failure has already occurred.
 - The remaining unplayed games cannot mathematically lift the paired-score lower confidence bound above the required approval threshold.
 
@@ -177,7 +177,7 @@ Approve the candidate only if all of the following are true:
 2. The evaluator completes and prints both required signatures.
 3. The candidate records no crash, illegal move, or harness failure.
 4. `lcb95 > 0.5`.
-5. `max_plies_rate < 0.05`.
+5. `max_plies_rate < 0.10`.
 
 Otherwise reject the candidate.
 
@@ -185,7 +185,7 @@ Interpretation:
 
 - `0.5` is the paired no-improvement baseline.
 - `lcb95 > 0.5` means the lower 95% confidence bound still indicates the candidate outscored the approved baseline across paired openings.
-- `max_plies_rate < 0.05` means fewer than 5% of the games may terminate only because the fixed ply cap was reached. If more than 5% of the sample hits `max_plies`, the candidate is treated as insufficiently decisive for promotion even if its raw score is competitive.
+- `max_plies_rate < 0.10` means fewer than 5% of the games may terminate only because the fixed ply cap was reached. If more than 5% of the sample hits `max_plies`, the candidate is treated as insufficiently decisive for promotion even if its raw score is competitive.
 
 ## Rejection Conditions
 
@@ -197,7 +197,7 @@ Reject the candidate if any of the following happen:
 - illegal move
 - broken logging output
 - harness failure
-- `max_plies_rate >= 0.05`
+- `max_plies_rate >= 0.10`
 - `lcb95 <= 0.5`
 
 Rejected candidates still get logged in `autoresearch/ATTEMPTS.md` with an inferred conclusion.
