@@ -67,3 +67,30 @@ Use this exact structure for each appended attempt:
 - The current starting baseline is `v2.0`.
 - Early experiments should bias toward contained changes that are easy to evaluate and easy to explain from the resulting metrics.
 - Repeating a rejected idea is allowed only when the new attempt clearly differs in mechanism or scope.
+
+## Attempt: 2026-06-05T18:39:57Z - v2.1
+
+- branch: `autoresearch/Jun6a`
+- commit: `6aee088`
+- status: `rejected`
+- baseline_version: `v2.0`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`
+- candidate_version: `v2.1`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_1Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A lightweight quiet-history move-ordering table will improve alpha-beta cutoffs at 100ms per move without changing evaluation.`
+- implementation_summary: `Cloned v2.0 into v2.1, renamed the public type/search entrypoint, and added a per-search quiet history table that rewards quiet beta-cutoff moves by side/from/to square.`
+- evaluation_log_path: `autoresearch/logs/6aee088-result.csv`
+- extra_log_paths: `n/a`
+- wins: `n/a`
+- draws: `n/a`
+- losses: `n/a`
+- score: `n/a`
+- score_rate: `n/a`
+- average_plies: `n/a`
+- average_processing_time_ms: `n/a`
+- average_positions_or_nodes: `n/a`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=1 incomplete/interrupted evaluation`
+- verdict: `Rejected because the required 500-game evaluator run did not complete with the required === EVALUATION DONE === signature and the canonical CSV artifact is not a valid 500-game result. A prior partial run was draw-heavy and was interrupted by the user; a later diagnostic/retry overwrote the CSV to an invalid header-only artifact, so no fixed-contract metrics are recorded for approval.`
+- inferred_conclusion: `The quiet-history ordering hypothesis did not produce enough visible early separation to justify continuing this interrupted run. Future attempts should prefer changes that alter decisive move choice or endgame conversion rather than only same-evaluation ordering tweaks, unless they include a mechanism likely to affect paired scores rather than mostly mirrored draws.`
