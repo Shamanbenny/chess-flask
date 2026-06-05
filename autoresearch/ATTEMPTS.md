@@ -121,3 +121,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
 - verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, max_plies_rate was 0.0000, and paired lcb95 was 0.5641 > 0.5.`
 - inferred_conclusion: `A small direct positional evaluation layer is a strong improvement over pure material plus endgame/repetition terms for the v2.0 engine. Future attempts should build on v2.2 and tune or extend evaluation terms carefully, while watching for any added per-node cost that could reduce the current node rate advantage.`
+
+## Attempt: 2026-06-05T20:56:06Z - v2.3
+
+- branch: `autoresearch/Jun6a`
+- commit: `d178e81`
+- status: `rejected`
+- baseline_version: `v2.2`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_2Engine.cs`
+- candidate_version: `v2.3`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_3Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `Caching the endgame phase for king piece-square scoring will preserve v2.2 evaluation semantics while increasing searched nodes enough to improve paired results.`
+- implementation_summary: `Cloned v2.2 into v2.3, renamed the public type/search entrypoint, and changed evaluation snapshot construction to compute endgame phase once, collect king squares during the existing board scan, and score king PSTs from the cached phase instead of rescanning the board.`
+- evaluation_log_path: `autoresearch/logs/d178e81-result.csv`
+- extra_log_paths: `n/a`
+- wins: `65`
+- draws: `359`
+- losses: `76`
+- score: `244.5/500`
+- score_rate: `0.4890`
+- average_plies: `79.41`
+- average_processing_time_ms: `103.207`
+- average_positions_or_nodes: `16057.04`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=1`
+- verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4758 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, and max_plies_rate=0.0020.`
+- inferred_conclusion: `The cached king-phase cleanup did increase candidate nodes versus v2.2 (16057.04 vs 14956.35 average positions/nodes), but the timing/search perturbation did not translate into strength and slightly underperformed. Future work should not promote pure semantics-preserving micro-optimizations unless they also demonstrate a move-choice or search-depth advantage in paired results.`
