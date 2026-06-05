@@ -95,6 +95,8 @@ Every completed evaluation must expose at least:
 - total score
 - score rate
 - average plies per game
+- max_plies game count
+- max_plies game rate
 - timeout count
 - crash / invalid-move / harness-failure counts
 
@@ -124,7 +126,7 @@ For pair `i`, compute the candidate paired score:
 
 `p_i = (score_as_white_i + score_as_black_i) / 2`
 
-With `n = 250` opening pairs, compute:
+With `n = games / 2` opening pairs, compute:
 
 - `mean = (1 / n) * sum(p_i)`
 - `sd = sample standard deviation of the p_i values`
@@ -140,6 +142,7 @@ Approve the candidate only if all of the following are true:
 2. The evaluator completes and prints both required signatures.
 3. The candidate records no crash, illegal move, or harness failure.
 4. `lcb95 > 0.5`.
+5. `max_plies_rate < 0.05`.
 
 Otherwise reject the candidate.
 
@@ -147,6 +150,7 @@ Interpretation:
 
 - `0.5` is the paired no-improvement baseline.
 - `lcb95 > 0.5` means the lower 95% confidence bound still indicates the candidate outscored the approved baseline across paired openings.
+- `max_plies_rate < 0.05` means fewer than 5% of the games may terminate only because the fixed ply cap was reached. If more than 5% of the sample hits `max_plies`, the candidate is treated as insufficiently decisive for promotion even if its raw score is competitive.
 
 ## Rejection Conditions
 
@@ -158,6 +162,7 @@ Reject the candidate if any of the following happen:
 - illegal move
 - broken logging output
 - harness failure
+- `max_plies_rate >= 0.05`
 - `lcb95 <= 0.5`
 
 Rejected candidates still get logged in `autoresearch/ATTEMPTS.md` with an inferred conclusion.
