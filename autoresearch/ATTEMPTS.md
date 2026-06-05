@@ -176,3 +176,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation halted/rejected after 32 logged games; end signature absent)`
 - verdict: `Rejected. The build succeeded and the evaluator printed the start signature, but the candidate became non-promotable once max_plies_count reached 5. The partial CSV contains 9 max_plies games in 32 logged games (28.13%), far above the max_plies_rate < 0.05 approval requirement; the run did not produce the required done signature and cannot approve.`
 - inferred_conclusion: `Root reordering based on shallow prior-iteration scores did not improve effective search efficiency against v2.0. It trailed in score and produced many long max-plies games, so future search-efficiency attempts should not let previous root scores override the baseline's static/TT ordering without a much stricter guard such as only pinning the prior PV move.`
+
+## Attempt: 2026-06-05 20:17:27 +08 - v2.1
+
+- branch: `autoresearch/Jun5b`
+- commit: `e6ab03a`
+- status: `rejected`
+- baseline_version: `v2.0`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`
+- candidate_version: `v2.1`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_1Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A bounded one-ply check extension will make forcing and mating lines visible earlier under the fixed 250ms budget, improving decisiveness without using the previously rejected quiet-move history, broad LMR, or root-score reordering ideas.`
+- implementation_summary: `Cloned v2.0 into v2.1, renamed the engine entrypoint, and changed only SearchChild so moves that give check preserve one extra ply of depth up to ply 12. Evaluation, TT behavior, quiescence, PVS, and aspiration windows were otherwise unchanged.`
+- evaluation_log_path: `autoresearch/logs/e6ab03a-result.csv`
+- extra_log_paths: `n/a`
+- wins: `3`
+- draws: `9`
+- losses: `6`
+- score: `7.5/18`
+- score_rate: `0.4167`
+- average_plies: `123.39`
+- average_processing_time_ms: `314.943`
+- average_positions_or_nodes: `944.27`
+- failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation intentionally stopped after 18 logged games; end signature absent)`
+- verdict: `Rejected. The build succeeded and the evaluator printed the start signature, but the candidate became non-promotable once max_plies_count reached 5. The partial CSV contains 5 max_plies games in 18 logged games (27.78%), far above the max_plies_rate < 0.05 approval requirement; the run did not produce the required done signature and cannot approve.`
+- inferred_conclusion: `Bounded check extension increased tactical visibility in some short wins but did not improve match strength or decisiveness against v2.0. It slowed candidate moves relative to the fixed budget and still produced many max-plies games, so future search-efficiency work should not add extensions without a stronger guard such as only extending evasions, recaptures near the king, or TT-supported forcing moves.`
