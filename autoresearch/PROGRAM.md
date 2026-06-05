@@ -6,15 +6,16 @@ This is an experiment to have the LLM run a constrained chess-engine improvement
 
 To set up a new experiment, work with the user to:
 
-1. **Agree on a run tag**: propose a tag based on today's date (for example `jun5`). The branch `autoresearch/<tag>` must not already exist.
-2. **Create the branch**: `git checkout -b autoresearch/<tag>` from the current accepted branch tip.
+1. **Start from `main`**: check out `main` and make sure it is current before creating an experiment branch.
+2. **Choose the branch name**: create a unique branch named `autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>`, using title-case month text and a lowercase incremental alphabet suffix. Example: `autoresearch/Jun6a`; if that exists, use `autoresearch/Jun6b`, then `autoresearch/Jun6c`, and so on.
 3. **Read the in-scope files**: read these files for full context:
    - `autoresearch/PROGRAM.md` - this workflow contract.
    - `autoresearch/EVALUATE.md` - fixed evaluation rules. Read-only.
    - `autoresearch/ATTEMPTS.md` - previous attempts, outcomes, conclusions, and latest approved metadata.
 4. **Identify the latest approved baseline**: read `autoresearch/ATTEMPTS.md`, find the latest **approved** engine version/file, and review recent approved and rejected conclusions before choosing a new hypothesis.
-5. **Clone the approved engine into a new candidate**: copy the latest approved engine file to the next versioned file name, using a minor or major bump based on change scope, and place it under the corresponding major folder (for example `V2/` or `V3/`).
-6. **Confirm and go**: confirm the baseline, candidate target name, and active hypotheses look coherent before beginning the loop.
+5. **Create the branch**: `git checkout -b autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>` from `main`.
+6. **Clone the approved engine into a new candidate**: copy the latest approved engine file to the next versioned file name, using a minor or major bump based on change scope, and place it under the corresponding major folder (for example `V2/` or `V3/`).
+7. **Confirm and go**: confirm the baseline, candidate target name, and active hypotheses look coherent before beginning the loop.
 
 Once setup is complete, begin experimenting.
 
@@ -42,11 +43,12 @@ Hypotheses should be concrete enough that the resulting code change can be descr
 - Modify your current newly cloned engine file with the incremented version number.
 - Treat everything inside that new engine file as fair game: search, evaluation, move ordering, time management, hashing, transposition-table logic, constants local to that engine, and internal helpers.
 - For `Version 2+`, keep all functions used by that engine inside that file itself. Do not create util/shared support files for the active experiment engine.
-- Append to `autoresearch/ATTEMPTS.md` after each completed evaluation so later runs can build on the recorded conclusion.
+- After each completed, halted, or failed evaluation, switch back to `main`, append/update `autoresearch/ATTEMPTS.md`, commit that documentation update on `main`, and push `main` to the remote so later runs can build on the recorded conclusion.
 
 **What you CANNOT do:**
 
 - Modify `autoresearch/PROGRAM.md` or `autoresearch/EVALUATE.md`. They are read-only workflow and evaluation contracts.
+- Modify `autoresearch/ATTEMPTS.md` **WITHIN** the experiment loop branch. You are **ONLY ALLOWED** to modify it from the `main` branch.
 - Modify the evaluation harness.
 - Install new packages or add dependencies.
 - Change the fixed evaluation constants that the evaluator enforces.
@@ -63,7 +65,7 @@ Speed, plies per game, positions evaluated, and similar diagnostics are useful s
 
 ## Output Format
 
-Every completed experiment, whether approved or rejected, must append a structured entry to `autoresearch/ATTEMPTS.md`.
+Every completed, halted, or failed experiment must append a structured entry to `autoresearch/ATTEMPTS.md` from the `main` branch.
 
 Each entry must include enough information for future runs to answer:
 
@@ -78,31 +80,40 @@ The attempts log is append-only (Append at tail end) during the run. It is the a
 
 ## The Experiment Loop
 
-The experiment runs on a dedicated branch for the run, for example `autoresearch/jun5` or `autoresearch/<tag>`.
+Each experiment loop starts from a dedicated branch created from `main`, for example `autoresearch/Jun6a`.
+
+The branch holds candidate engine changes. `main` holds the canonical `autoresearch/ATTEMPTS.md` record after each evaluated outcome.
 
 Loop forever:
 1. Create and track in your todo-list feature the following steps, making sure that the last task acts as a reminder to rehydrate your context where necessary, but **most importantly as a reminder to re-loop!**
-2. Look at the git state: current branch, current commit, and whether you are still positioned at the latest approved commit.
-3. Read `autoresearch/ATTEMPTS.md`, identify the latest approved engine, and choose `1` active hypotheses grounded in the latest approved code plus prior attempt conclusions.
-4. Clone the latest approved engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
-5. Modify only that newly cloned candidate engine file with the improvement, optimization, or fix.
-6. Check that the code builds successfully.
-7. Commit the candidate.
-8. Run the fixed evaluation from `autoresearch/EVALUATE.md`.
+2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved engine, and choose `1` active hypotheses grounded in the latest approved code plus prior attempt conclusions.
+3. For a new experiment loop, check out `main`, make sure it is current, and create one unique branch from `main` using the `autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>` convention. For continued attempts in that same loop, return to the existing experiment branch instead of creating another branch.
+4. Look at the git state: current branch, current commit, and whether the experiment branch is positioned at the latest approved commit recorded in `main`.
+5. Clone the latest approved engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
+6. Modify only that newly cloned candidate engine file with the improvement, optimization, or fix.
+7. Check that the code builds successfully.
+8. Commit the candidate.
+9. Run the fixed evaluation from `autoresearch/EVALUATE.md`.
    The evaluation command must include `--log --short-sha <short_sha>` so the canonical per-game CSV lands under `autoresearch/logs/`.
-9. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll infrequently.
-10. Verify the evaluation output contains both required signatures:
+10. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll infrequently.
+11. Verify the evaluation output contains both required signatures:
    - `=== EVALUATION START ===`
    - `=== EVALUATION DONE ===`
-11. If those signatures are missing, determine whether evaluation is still running, the build failed, or the evaluator crashed or terminated mid-run.
-12. If evaluation completed properly, append the result and inferred conclusion to `autoresearch/ATTEMPTS.md`.
-   Include the canonical CSV path `autoresearch/logs/<short_sha>-result.csv` and mention any optional extra log files separately if they were produced.
-13. If the evaluation is a positive improvement according to `autoresearch/EVALUATE.md`, keep the commit and advance the branch baseline. Afterwards, move the logs associated with the newly approved engine from `autoresearch/logs/` to `autoresearch/approved_logs/` using `mv` command and renaming the file to `V*_*Engine-<short_sha>-result.csv` (Similar naming convention for additional log files associated with the approved version as well)
-14. If the evaluation is equal or worse, or if the evaluator fails, reset back to where the experiment started: the previously approved commit. (E.g. `git reset --hard <short_approved_sha>`)
+12. If those signatures are missing, determine whether evaluation is still running, the build failed, or the evaluator crashed or terminated mid-run.
+13. After the evaluation is successful, halted, or failed, capture the outcome details, then check out `main`.
+14. On `main`, update `autoresearch/ATTEMPTS.md`:
+   - append the result and inferred conclusion for every completed, halted, or failed attempt
+   - include the canonical CSV path `autoresearch/logs/<short_sha>-result.csv` and mention any optional extra log files separately if they were produced
+   - if the evaluation is a positive improvement according to `autoresearch/EVALUATE.md`, update the `Latest Approved Baseline` section to the approved candidate
+   - if the evaluation is approved, move the logs associated with the newly approved engine from `autoresearch/logs/` to `autoresearch/approved_logs/` using `mv` command and rename the file to `V*_*Engine-<short_sha>-result.csv` (Similar naming convention for additional log files associated with the approved version as well)
+15. Commit the updates on `main`, then push `main` to the remote.
+16. Return to the experiment branch to continue the loop:
+   - if the candidate was approved, keep the candidate commit, advance the branch from that commit, and continue with the next candidate
+   - if the candidate was rejected, halted without approval, or failed, reset the experiment branch back to the previously approved commit, then restart the workflow from a new hypothesis (I am EXPLICITLY looking for `git reset --hard <short_sha>` should a candidate experiment FAILS)
 
-The branch should only advance when the fixed evaluator says the candidate is better.
+The experiment branch should only advance when the fixed evaluator says the candidate is better. `main` advances after every recorded outcome so that the attempt history is durable and shared.
 
-The idea is that you are a completely autonomous researcher trying things out. If they work, keep. If they don't, discard. And you're advancing the branch so that you can iterate. If you feel like you're getting stuck in some way, you can rewind but you should probably do this very very sparingly (if ever).
+The idea is that you are a completely autonomous researcher trying things out. If they work, keep and continue the experiment branch from the approved candidate. If they do not work, discard the candidate commit on the experiment branch and restart from the latest approved baseline recorded on `main`. If you feel like you're getting stuck in some way, you can rewind but you should probably do this very very sparingly (if ever).
 
 **NEVER STOP**: Once the experiment loop has begun (after the initial setup), do NOT pause to ask the human if you should continue. Do NOT ask "should I keep going?" or "is this a good stopping point?". The human might be asleep, or gone from a computer and expects you to continue working *indefinitely* until you are manually stopped. You are autonomous. If you run out of ideas, think harder — read papers referenced in the code, re-read the in-scope files for new angles, try combining previous near-misses, try more radical architectural changes. The loop runs until the human interrupts you, period.
 

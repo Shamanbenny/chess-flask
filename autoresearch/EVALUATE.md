@@ -62,6 +62,21 @@ The caller must provide `<short_sha>` explicitly. Do not make the runner infer g
 
 Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop.
 
+## Git Recording Contract
+
+Run the evaluator from the active experiment branch, where the candidate commit exists.
+
+After the evaluation is successful, halted, or failed:
+
+1. Capture the candidate short SHA and evaluation outcome.
+2. Check out `main`.
+3. Update `autoresearch/ATTEMPTS.md` on `main`.
+4. Commit the attempts-log update on `main`.
+5. Push `main` to the remote.
+6. Return to the experiment branch.
+
+If the candidate was approved, keep the candidate commit and continue the experiment branch from that commit. If the candidate was rejected, halted without approval, or failed, reset the experiment branch back to the previously approved commit before starting the next hypothesis.
+
 ## Required Evaluator Output
 
 The evaluator must print these exact signatures:
@@ -86,10 +101,10 @@ Early stopping is only a rejection convenience. It can never approve a candidate
 When an early stop is used:
 
 - Preserve the partial canonical CSV if one was produced.
-- Record the attempt in `autoresearch/ATTEMPTS.md` as `rejected`.
+- Check out `main`, record the attempt in `autoresearch/ATTEMPTS.md` as `rejected`, commit that attempts-log update on `main`, and push `main` to the remote.
 - State that `=== EVALUATION DONE ===` was intentionally absent due to early rejection.
 - Report partial metrics from the games completed so far and identify the irreversible rejection condition.
-- Reset back to the previously approved baseline commit as with any rejected candidate.
+- Return to the experiment branch and reset back to the previously approved baseline commit as with any rejected candidate.
 
 ## Required Logged Artifacts
 
@@ -107,7 +122,7 @@ The Chess Engine written is allowed to produce optional additional artifacts wit
 
 ## Required Reported Metrics
 
-Every completed evaluation must expose at least:
+Every completed or halted evaluation must expose at least:
 
 - candidate engine version/file
 - baseline engine version/file

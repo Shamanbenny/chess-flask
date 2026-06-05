@@ -1,13 +1,13 @@
 # Autoresearch Attempts
 
-This file is append-only during `autoresearch` runs.
+This file is append-only during `autoresearch` runs and is updated on `main` after each evaluated outcome.
 
 It serves two purposes:
 
 - experiment log for approved and rejected candidates
 - authoritative source of the latest approved baseline
 
-Do not rewrite or delete prior entries (Except for the `## Latest Approved Baseline`). Add new entries at the end.
+Do not rewrite or delete prior entries (Except for the `## Latest Approved Baseline`). Add new entries at the end. Historical entries may use older branch naming conventions; keep them as recorded.
 
 ## Latest Approved Baseline (Adjust accordingly ONLY WHEN experiment is approved by evaluator)
 
@@ -24,7 +24,7 @@ Use this exact structure for each appended attempt:
 ```md
 ## Attempt: <timestamp> - <candidate_version>
 
-- branch: `autoresearch/<tag>`
+- branch: `autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>`
 - commit: `<short_sha>`
 - status: `approved` | `rejected`
 - baseline_version: `<version>`
@@ -54,10 +54,13 @@ Use this exact structure for each appended attempt:
 
 ## Logging Rules
 
-- Log every completed evaluation, including rejected candidates.
+- Log every completed, halted, or failed evaluation.
 - If evaluation does not complete cleanly enough to produce a valid result, record the failure reason once the cause is understood.
 - The inferred conclusion is mandatory even for failures.
 - If an attempt is approved, its entry becomes the new effective latest approved baseline for future runs.
+- Update this file only after checking out `main`.
+- Commit the attempts-log update on `main`, then push `main` to the remote before returning to the experiment branch.
+- New experiment branches use the format `autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>`, for example `autoresearch/Jun6a`, then `autoresearch/Jun6b` if the first branch already exists.
 
 ## Initial Notes
 
