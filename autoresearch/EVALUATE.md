@@ -71,6 +71,26 @@ The evaluator must print these exact signatures:
 
 If either signature is missing, treat the evaluation as failed until proven otherwise.
 
+## Early Rejection Stop
+
+An autoresearch run may forcibly stop the evaluator before `=== EVALUATION DONE ===` only when the observed partial result already makes promotion impossible under this contract.
+
+Valid early-stop reasons include:
+
+- `max_plies_count` has already reached or exceeded the rejection threshold for the configured game count. For the standard `--games 100` run with `max_plies_rate < 0.05`, the candidate is irreversibly rejected once `5` games terminate by `max_plies`.
+- A crash, illegal move, broken logging output, or harness failure has already occurred.
+- The remaining unplayed games cannot mathematically lift the paired-score lower confidence bound above the required approval threshold.
+
+Early stopping is only a rejection convenience. It can never approve a candidate, and it does not weaken any approval requirement.
+
+When an early stop is used:
+
+- Preserve the partial canonical CSV if one was produced.
+- Record the attempt in `autoresearch/ATTEMPTS.md` as `rejected`.
+- State that `=== EVALUATION DONE ===` was intentionally absent due to early rejection.
+- Report partial metrics from the games completed so far and identify the irreversible rejection condition.
+- Reset back to the previously approved baseline commit as with any rejected candidate.
+
 ## Required Logged Artifacts
 
 When `--log --short-sha <short_sha>` is supplied, the evaluator creates `autoresearch/logs/` on demand and writes its canonical per-game results file to:

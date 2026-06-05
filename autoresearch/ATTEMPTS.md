@@ -119,3 +119,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation interrupted by user after 52 games)`
 - verdict: `Rejected. The build succeeded, but the evaluation was interrupted before completion and therefore did not satisfy the required end-signature contract. The partial 52-game sample was also already non-promotable: score_rate = 0.4712 and max_plies_count = 28/52 (53.85%), which exceeds the updated decisiveness threshold in EVALUATE.md.`
 - inferred_conclusion: `This simple killer/history weighting did not make the search meaningfully more decisive against v2.0 and likely over-prioritized quiet refutation patterns that increase drawish max-plies games. The next search-efficiency hypothesis should bias toward selective pruning or reduction rather than stronger quiet-move bonuses alone.`
+
+## Attempt: 2026-06-05 14:11:45 +08 - v2.1
+
+- branch: `autoresearch/jun5-efficiency`
+- commit: `769d639`
+- status: `rejected`
+- baseline_version: `v2.0`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`
+- candidate_version: `v2.1`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_1Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `Late-move reductions for quiet non-checking moves in deeper non-root nodes will improve effective search depth under the fixed 250ms budget without repeating the rejected killer/history quiet-move weighting approach.`
+- implementation_summary: `Cloned v2.0 into v2.1 and added a one-ply late-move reduction for quiet non-promotion, non-capture moves after the first few ordered moves, with full-depth re-search when the reduced zero-window search raised alpha.`
+- evaluation_log_path (partial, Local ONLY): `autoresearch/logs/769d639-result.csv`
+- extra_log_paths: `n/a`
+- wins: `18`
+- draws: `35`
+- losses: `10`
+- score: `35.5`
+- score_rate: `0.5635`
+- average_plies: `159.52`
+- average_processing_time_ms: `284.383`
+- average_positions_or_nodes: `864.83`
+- failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation intentionally stopped after 63 games; end signature absent)`
+- verdict: `Rejected. The build succeeded and no engine crash or illegal move was observed, but the evaluator was stopped after 63/100 games once rejection was already clear: max_plies_count = 25/63 (39.68%), far above the max_plies_rate < 0.05 promotion requirement. The run did not print the required done signature and therefore cannot approve the candidate.`
+- inferred_conclusion: `This blunt LMR rule increased searched nodes per move and did not solve decisiveness; it produced many max-plies games and unstable tactical outcomes despite a positive partial score. Future search-efficiency attempts should avoid broad late quiet-move reduction unless guarded by stronger tactical conditions, and should prefer safer ordering, check extensions, or mate-conversion mechanisms.`
