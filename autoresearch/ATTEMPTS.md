@@ -11,11 +11,11 @@ Do not rewrite or delete prior entries (Except for the `## Latest Approved Basel
 
 ## Latest Approved Baseline (Adjust accordingly ONLY WHEN experiment is approved by evaluator)
 
-- approved_version: `v2.2`
-- approved_file: `engine_csharp/src/Engine.Core/V2/V2_2Engine.cs`
-- approved_commit: `765feb6`
+- approved_version: `v2.5`
+- approved_file: `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`
+- approved_commit: `eef7533`
 - approved_recorded_at: `2026-06-05`
-- notes: `Current v2.2 baseline after adding contained piece-square positional evaluation to the v2.0 in-house board engine.`
+- notes: `Current v2.5 baseline after adding passed-pawn advancement scoring to v2.2. Evaluated candidate commit was 519f5a3 and local main contains the equivalent cherry-pick eef7533.`
 
 ## Entry Template
 
@@ -175,3 +175,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
 - verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4909 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, raw score_rate=0.5080, and max_plies_rate=0.0000.`
 - inferred_conclusion: `The bishop-pair bonus was directionally positive on raw score but too noisy and not statistically reliable against v2.2. Future evaluation changes should either be broader than a single small static bonus or targeted at specific conversion/draw problems, since small generic bonuses may add variance without clearing the paired confidence threshold.`
+
+## Attempt: 2026-06-05T23:14:22Z - v2.5
+
+- branch: `autoresearch/Jun6a`
+- commit: `519f5a3`
+- status: `approved`
+- baseline_version: `v2.2`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_2Engine.cs`
+- candidate_version: `v2.5`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A modest passed-pawn advancement bonus will improve conversion and pawn-structure decisions beyond v2.2's indirect endgame pawn-danger term.`
+- implementation_summary: `Cloned v2.2 into v2.5, renamed the public type/search entrypoint, and added rank-scaled passed-pawn bonuses for pawns with no opposing pawn ahead on the same or adjacent files.`
+- evaluation_log_path: `autoresearch/logs/519f5a3-result.csv` moved to `autoresearch/approved_logs/V2_5Engine-519f5a3-result.csv`
+- extra_log_paths: `n/a`
+- wins: `118`
+- draws: `315`
+- losses: `67`
+- score: `275.5/500`
+- score_rate: `0.5510`
+- average_plies: `79.30`
+- average_processing_time_ms: `103.412`
+- average_positions_or_nodes: `14199.67`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
+- verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, max_plies_rate was 0.0000, and paired lcb95 was 0.5315 > 0.5.`
+- inferred_conclusion: `Passed-pawn advancement scoring is a statistically reliable improvement over v2.2 despite slightly lower node throughput. Future work should build from v2.5 and prefer targeted pawn/conversion evaluation refinements over isolated generic bonuses.`
