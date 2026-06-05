@@ -51,6 +51,7 @@ Hypotheses should be concrete enough that the resulting code change can be descr
 - Install new packages or add dependencies.
 - Change the fixed evaluation constants that the evaluator enforces.
 - Intentionally "cheat" the system (E.g. Internally ignore the `time_limit_seconds` within the Chess Engine)
+- Make the decision to "halt" the experiment loop
 
 ## Goal
 
@@ -80,22 +81,22 @@ The attempts log is append-only (Append at tail end) during the run. It is the a
 The experiment runs on a dedicated branch for the run, for example `autoresearch/jun5` or `autoresearch/<tag>`.
 
 Loop forever:
-
-1. Look at the git state: current branch, current commit, and whether you are still positioned at the latest approved commit.
-2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved engine, and choose `1` active hypotheses grounded in the latest approved code plus prior attempt conclusions.
-3. Clone the latest approved engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
-4. Modify only that newly cloned candidate engine file with the improvement, optimization, or fix.
-5. Check that the code builds successfully.
-6. Commit the candidate.
-7. Run the fixed evaluation from `autoresearch/EVALUATE.md`.
-8. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll infrequently.
-9. Verify the evaluation output contains both required signatures:
+1. Create and track in your todo-list feature the following steps, making sure that the last task acts as a reminder to rehydrate your context where necessary, but **most importantly as a reminder to re-loop!**
+2. Look at the git state: current branch, current commit, and whether you are still positioned at the latest approved commit.
+3. Read `autoresearch/ATTEMPTS.md`, identify the latest approved engine, and choose `1` active hypotheses grounded in the latest approved code plus prior attempt conclusions.
+4. Clone the latest approved engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
+5. Modify only that newly cloned candidate engine file with the improvement, optimization, or fix.
+6. Check that the code builds successfully.
+7. Commit the candidate.
+8. Run the fixed evaluation from `autoresearch/EVALUATE.md`.
+9. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll infrequently.
+10. Verify the evaluation output contains both required signatures:
    - `=== EVALUATION START ===`
    - `=== EVALUATION DONE ===`
-10. If those signatures are missing, determine whether evaluation is still running, the build failed, or the evaluator crashed or terminated mid-run.
-11. If evaluation completed properly, append the result and inferred conclusion to `autoresearch/ATTEMPTS.md`.
-12. If the evaluation is a positive improvement according to `autoresearch/EVALUATE.md`, keep the commit and advance the branch baseline.
-13. If the evaluation is equal or worse, or if the evaluator fails, reset back to where the experiment started: the previously approved commit.
+11. If those signatures are missing, determine whether evaluation is still running, the build failed, or the evaluator crashed or terminated mid-run.
+12. If evaluation completed properly, append the result and inferred conclusion to `autoresearch/ATTEMPTS.md`.
+13. If the evaluation is a positive improvement according to `autoresearch/EVALUATE.md`, keep the commit and advance the branch baseline.
+14. If the evaluation is equal or worse, or if the evaluator fails, reset back to where the experiment started: the previously approved commit.
 
 The branch should only advance when the fixed evaluator says the candidate is better.
 
