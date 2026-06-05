@@ -37,8 +37,8 @@ Use this exact structure for each appended attempt:
   - `<hypothesis 2>`
   - `<hypothesis 3>`
 - implementation_summary: `<short summary of what changed>`
-- evaluation_run_id: `<run_id>`
-- evaluation_log_path: `autoresearch/logs/<run_id>/...`
+- evaluation_log_path: `autoresearch/logs/<short_sha>-result.csv`
+- extra_log_paths: `<optional additional csv/log files or n/a>`
 - wins: `<int>`
 - draws: `<int>`
 - losses: `<int>`

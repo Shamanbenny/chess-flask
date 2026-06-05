@@ -89,12 +89,14 @@ Loop forever:
 6. Check that the code builds successfully.
 7. Commit the candidate.
 8. Run the fixed evaluation from `autoresearch/EVALUATE.md`.
+   The evaluation command must include `--log --short-sha <short_sha>` so the canonical per-game CSV lands under `autoresearch/logs/`.
 9. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll infrequently.
 10. Verify the evaluation output contains both required signatures:
    - `=== EVALUATION START ===`
    - `=== EVALUATION DONE ===`
 11. If those signatures are missing, determine whether evaluation is still running, the build failed, or the evaluator crashed or terminated mid-run.
 12. If evaluation completed properly, append the result and inferred conclusion to `autoresearch/ATTEMPTS.md`.
+   Include the canonical CSV path `autoresearch/logs/<short_sha>-result.csv` and mention any optional extra log files separately if they were produced.
 13. If the evaluation is a positive improvement according to `autoresearch/EVALUATE.md`, keep the commit and advance the branch baseline.
 14. If the evaluation is equal or worse, or if the evaluator fails, reset back to where the experiment started: the previously approved commit.
 
@@ -105,6 +107,7 @@ The branch should only advance when the fixed evaluator says the candidate is be
 - If the candidate does not build, reject it.
 - If evaluation fails to complete, reject it unless the failure is a trivial operator issue that can be immediately corrected without changing the experiment itself.
 - If the candidate crashes, returns illegal moves, times out incorrectly, or breaks the evaluator contract, reject it.
+- If `--log` is requested but the canonical CSV is missing or malformed, reject it as an evaluator-contract failure.
 - If a hypothesis repeatedly fails, record the inferred conclusion clearly so later runs do not waste time retrying the same weak idea without a new angle.
 
 ## Simplicity Criterion

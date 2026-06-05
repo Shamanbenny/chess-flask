@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Chess;
 using Engine.Core;
@@ -9,9 +10,11 @@ return exitCode;
 
 internal static class LocalTestingProgram
 {
-    private const int DefaultEvaluationGames = 50;
+    // This default serves as the ACTUAL final goal as we improve the engine. However, know that the arg. parameter
+    // mentioned by `autoresearch/EVALUATE.md` serves as the single ground source of truth to abide by at all times
+    private const int DefaultEvaluationGames = 500;
     private const int DefaultEvaluationMaxPlies = 200;
-    private const double DefaultEvaluationTimeLimitSeconds = 1.000;
+    private const double DefaultEvaluationTimeLimitSeconds = 0.100;
 
     public static int Run(string[] args)
     {
@@ -297,55 +300,80 @@ internal static class LocalTestingProgram
         var openingFens = LoadOpeningPositions(options.OpeningsFilePath);
         var totalPairs = options.Games / 2;
         var aggregate = new MatchAggregate(engineA, engineB);
+        var csvLogger = options.Log
+            ? EvaluationCsvLogger.Create(options.ShortSha!)
+            : null;
 
-        Console.WriteLine("=== EVALUATION START ===");
-        Console.WriteLine($"Engine A file: {engineA.SourcePath}");
-        Console.WriteLine($"Engine A method: {engineA.SearchMethodName}");
-        Console.WriteLine($"Engine B file: {engineB.SourcePath}");
-        Console.WriteLine($"Engine B method: {engineB.SearchMethodName}");
-        Console.WriteLine($"Games: {options.Games}");
-        Console.WriteLine($"Pairs: {totalPairs}");
-        Console.WriteLine($"Time limit per move: {options.TimeLimitSeconds * 1000.0:F1}ms");
-        Console.WriteLine($"Max plies: {options.MaxPlies}");
-        Console.WriteLine($"Opening source file: {options.OpeningsFilePath}");
-        Console.WriteLine($"Unique opening positions loaded: {openingFens.Count}");
-
-        for (var pairIndex = 0; pairIndex < totalPairs; pairIndex++)
+        try
         {
-            var openingFen = openingFens[pairIndex % openingFens.Count];
-            var whiteGameNumber = pairIndex * 2 + 1;
-            var blackGameNumber = pairIndex * 2 + 2;
+            Console.WriteLine("=== EVALUATION START ===");
+            Console.WriteLine($"Engine A file: {engineA.SourcePath}");
+            Console.WriteLine($"Engine A method: {engineA.SearchMethodName}");
+            Console.WriteLine($"Engine B file: {engineB.SourcePath}");
+            Console.WriteLine($"Engine B method: {engineB.SearchMethodName}");
+            Console.WriteLine($"Games: {options.Games}");
+            Console.WriteLine($"Pairs: {totalPairs}");
+            Console.WriteLine($"Time limit per move: {options.TimeLimitSeconds * 1000.0:F1}ms");
+            Console.WriteLine($"Max plies: {options.MaxPlies}");
+            Console.WriteLine($"Opening source file: {options.OpeningsFilePath}");
+            Console.WriteLine($"Unique opening positions loaded: {openingFens.Count}");
+            Console.WriteLine($"Logging enabled: {options.Log}");
+            if (csvLogger is not null)
+            {
+                Console.WriteLine($"Logging short SHA: {options.ShortSha}");
+                Console.WriteLine($"CSV log file: {csvLogger.FilePath}");
+            }
 
-            var gameAWhite = PlayEvaluationGame(
-                whiteGameNumber,
-                openingFen,
-                engineA,
-                engineB,
-                options.TimeLimitSeconds,
-                options.MaxPlies,
-                engineAWasWhite: true);
-            aggregate.Record(gameAWhite);
-            PrintGameSummary(gameAWhite);
+            for (var pairIndex = 0; pairIndex < totalPairs; pairIndex++)
+            {
+                var openingFen = openingFens[pairIndex % openingFens.Count];
+                var whiteGameNumber = pairIndex * 2 + 1;
+                var blackGameNumber = pairIndex * 2 + 2;
+                var pairNumber = pairIndex + 1;
+                var openingIndex = pairIndex % openingFens.Count + 1;
 
-            var gameBWhite = PlayEvaluationGame(
-                blackGameNumber,
-                openingFen,
-                engineB,
-                engineA,
-                options.TimeLimitSeconds,
-                options.MaxPlies,
-                engineAWasWhite: false);
-            aggregate.Record(gameBWhite);
-            PrintGameSummary(gameBWhite);
+                var gameAWhite = PlayEvaluationGame(
+                    whiteGameNumber,
+                    pairNumber,
+                    openingIndex,
+                    openingFen,
+                    engineA,
+                    engineB,
+                    options.TimeLimitSeconds,
+                    options.MaxPlies,
+                    engineAWasWhite: true);
+                aggregate.Record(gameAWhite);
+                PrintGameSummary(gameAWhite);
+                csvLogger?.WriteGame(gameAWhite);
 
-            var pairScore = aggregate.PairScores[^1];
-            Console.WriteLine(
-                $"Pair {pairIndex + 1}/{totalPairs}: opening_index={(pairIndex % openingFens.Count) + 1} | engine_a_pair_score={pairScore:F2}");
+                var gameBWhite = PlayEvaluationGame(
+                    blackGameNumber,
+                    pairNumber,
+                    openingIndex,
+                    openingFen,
+                    engineB,
+                    engineA,
+                    options.TimeLimitSeconds,
+                    options.MaxPlies,
+                    engineAWasWhite: false);
+                aggregate.Record(gameBWhite);
+                PrintGameSummary(gameBWhite);
+                csvLogger?.WriteGame(gameBWhite);
+
+                var pairScore = aggregate.PairScores[^1];
+                Console.WriteLine(
+                    $"Pair {pairNumber}/{totalPairs}: opening_index={openingIndex} | engine_a_pair_score={pairScore:F2}");
+            }
+
+            var aggregateMetrics = BuildAggregateMetrics(aggregate, totalPairs);
+            PrintEvaluationSummary(aggregate, aggregateMetrics);
+            Console.WriteLine("=== EVALUATION DONE ===");
+            return aggregate.Failures > 0 ? 1 : 0;
         }
-
-        PrintEvaluationSummary(aggregate, totalPairs);
-        Console.WriteLine("=== EVALUATION DONE ===");
-        return aggregate.Failures > 0 ? 1 : 0;
+        finally
+        {
+            csvLogger?.Dispose();
+        }
     }
 
     private static EvaluateMatchOptions ParseEvaluateMatchOptions(string[] args)
@@ -356,6 +384,8 @@ internal static class LocalTestingProgram
         var maxPlies = DefaultEvaluationMaxPlies;
         var timeLimitSeconds = DefaultEvaluationTimeLimitSeconds;
         var openingsFilePath = FindDefaultOpeningSourceFile();
+        var log = false;
+        string? shortSha = null;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -379,6 +409,12 @@ internal static class LocalTestingProgram
                 case "--openings-file":
                     openingsFilePath = ResolveCliPath(args[++index]);
                     break;
+                case "--log":
+                    log = true;
+                    break;
+                case "--short-sha":
+                    shortSha = args[++index];
+                    break;
                 default:
                     throw new ArgumentException($"Unknown argument '{args[index]}'");
             }
@@ -389,17 +425,26 @@ internal static class LocalTestingProgram
             throw new ArgumentException("--engine-a-file and --engine-b-file are required.");
         }
 
+        if (log && string.IsNullOrWhiteSpace(shortSha))
+        {
+            throw new ArgumentException("--short-sha is required when --log is enabled.");
+        }
+
         return new EvaluateMatchOptions(
             ResolveCliPath(engineAFilePath),
             ResolveCliPath(engineBFilePath),
             openingsFilePath,
             games,
             maxPlies,
-            timeLimitSeconds);
+            timeLimitSeconds,
+            log,
+            shortSha);
     }
 
     private static EvaluationGameResult PlayEvaluationGame(
         int gameNumber,
+        int pairNumber,
+        int openingIndex,
         string openingFen,
         EngineVersions.ResolvedEngineFile whiteEngine,
         EngineVersions.ResolvedEngineFile blackEngine,
@@ -439,6 +484,8 @@ internal static class LocalTestingProgram
                 gameStopwatch.Stop();
                 return new EvaluationGameResult(
                     gameNumber,
+                    pairNumber,
+                    openingIndex,
                     openingFen,
                     whiteEngine.EngineStem,
                     blackEngine.EngineStem,
@@ -465,6 +512,8 @@ internal static class LocalTestingProgram
                 gameStopwatch.Stop();
                 return new EvaluationGameResult(
                     gameNumber,
+                    pairNumber,
+                    openingIndex,
                     openingFen,
                     whiteEngine.EngineStem,
                     blackEngine.EngineStem,
@@ -513,6 +562,8 @@ internal static class LocalTestingProgram
 
         return new EvaluationGameResult(
             gameNumber,
+            pairNumber,
+            openingIndex,
             openingFen,
             whiteEngine.EngineStem,
             blackEngine.EngineStem,
@@ -540,7 +591,7 @@ internal static class LocalTestingProgram
         }
     }
 
-    private static void PrintEvaluationSummary(MatchAggregate aggregate, int totalPairs)
+    private static void PrintEvaluationSummary(MatchAggregate aggregate, AggregateMetrics metrics)
     {
         Console.WriteLine();
         Console.WriteLine("Summary:");
@@ -553,21 +604,51 @@ internal static class LocalTestingProgram
         Console.WriteLine($"Engine A score rate: {aggregate.EngineAScore / aggregate.Games:F4}");
         Console.WriteLine($"Average plies per game: {aggregate.TotalPlies / (double)aggregate.Games:F2}");
         Console.WriteLine($"Failures: {aggregate.Failures}");
-        Console.WriteLine($"Engine A average move time: {AverageOrZero(aggregate.EngineATotalMoveSeconds, aggregate.EngineATotalMoves) * 1000.0:F3}ms");
-        Console.WriteLine($"Engine B average move time: {AverageOrZero(aggregate.EngineBTotalMoveSeconds, aggregate.EngineBTotalMoves) * 1000.0:F3}ms");
-        Console.WriteLine($"Engine A average positions/nodes: {AverageOrZero(aggregate.EngineATotalPositions, aggregate.EngineATotalMoves):F2}");
-        Console.WriteLine($"Engine B average positions/nodes: {AverageOrZero(aggregate.EngineBTotalPositions, aggregate.EngineBTotalMoves):F2}");
+        Console.WriteLine($"Engine A average move time: {metrics.EngineAAverageMoveMs:F3}ms");
+        Console.WriteLine($"Engine B average move time: {metrics.EngineBAverageMoveMs:F3}ms");
+        Console.WriteLine($"Engine A average positions/nodes: {metrics.EngineAAveragePositions:F2}");
+        Console.WriteLine($"Engine B average positions/nodes: {metrics.EngineBAveragePositions:F2}");
 
-        if (totalPairs > 0)
+        if (metrics.PairMean is not null)
         {
-            var mean = aggregate.PairScores.Average();
-            var standardDeviation = SampleStandardDeviation(aggregate.PairScores, mean);
-            var tCritical = OneSidedT95Critical(totalPairs - 1);
-            var lcb95 = mean - tCritical * standardDeviation / Math.Sqrt(totalPairs);
-            Console.WriteLine($"Engine A paired mean score: {mean:F4}");
-            Console.WriteLine($"Engine A paired score sd: {standardDeviation:F4}");
-            Console.WriteLine($"Engine A lcb95: {lcb95:F4}");
+            Console.WriteLine($"Engine A paired mean score: {metrics.PairMean.Value:F4}");
+            Console.WriteLine($"Engine A paired score sd: {metrics.PairStandardDeviation!.Value:F4}");
+            Console.WriteLine($"Engine A lcb95: {metrics.PairLcb95!.Value:F4}");
         }
+    }
+
+    private static AggregateMetrics BuildAggregateMetrics(MatchAggregate aggregate, int totalPairs)
+    {
+        var engineAAverageMoveMs = AverageOrZero(aggregate.EngineATotalMoveSeconds, aggregate.EngineATotalMoves) * 1000.0;
+        var engineBAverageMoveMs = AverageOrZero(aggregate.EngineBTotalMoveSeconds, aggregate.EngineBTotalMoves) * 1000.0;
+        var engineAAveragePositions = AverageOrZero(aggregate.EngineATotalPositions, aggregate.EngineATotalMoves);
+        var engineBAveragePositions = AverageOrZero(aggregate.EngineBTotalPositions, aggregate.EngineBTotalMoves);
+
+        if (totalPairs <= 0)
+        {
+            return new AggregateMetrics(
+                engineAAverageMoveMs,
+                engineBAverageMoveMs,
+                engineAAveragePositions,
+                engineBAveragePositions,
+                null,
+                null,
+                null);
+        }
+
+        var mean = aggregate.PairScores.Average();
+        var standardDeviation = SampleStandardDeviation(aggregate.PairScores, mean);
+        var tCritical = OneSidedT95Critical(totalPairs - 1);
+        var lcb95 = mean - tCritical * standardDeviation / Math.Sqrt(totalPairs);
+
+        return new AggregateMetrics(
+            engineAAverageMoveMs,
+            engineBAverageMoveMs,
+            engineAAveragePositions,
+            engineBAveragePositions,
+            mean,
+            standardDeviation,
+            lcb95);
     }
 
     private static Exception UnwrapInvocationException(Exception exception)
@@ -959,7 +1040,7 @@ internal static class LocalTestingProgram
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v1.6 --time-limit-seconds 1.0 --max-plies 70");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --log --short-sha 1a2b3c4");
     }
 
     private sealed record Puzzle1Scenario(
@@ -988,7 +1069,18 @@ internal static class LocalTestingProgram
         string OpeningsFilePath,
         int Games,
         int MaxPlies,
-        double TimeLimitSeconds);
+        double TimeLimitSeconds,
+        bool Log,
+        string? ShortSha);
+
+    private sealed record AggregateMetrics(
+        double EngineAAverageMoveMs,
+        double EngineBAverageMoveMs,
+        double EngineAAveragePositions,
+        double EngineBAveragePositions,
+        double? PairMean,
+        double? PairStandardDeviation,
+        double? PairLcb95);
 
     private sealed class EngineGameStats
     {
@@ -1008,6 +1100,8 @@ internal static class LocalTestingProgram
 
     private sealed record EvaluationGameResult(
         int GameNumber,
+        int PairNumber,
+        int OpeningIndex,
         string OpeningFen,
         string WhiteEngineStem,
         string BlackEngineStem,
@@ -1020,6 +1114,141 @@ internal static class LocalTestingProgram
         EngineGameStats WhiteStats,
         EngineGameStats BlackStats,
         TimeSpan Elapsed);
+
+    private sealed class EvaluationCsvLogger : IDisposable
+    {
+        private readonly StreamWriter _writer;
+        private bool _disposed;
+
+        private EvaluationCsvLogger(string filePath, StreamWriter writer, string commitShortSha)
+        {
+            FilePath = filePath;
+            CommitShortSha = commitShortSha;
+            _writer = writer;
+        }
+
+        public string FilePath { get; }
+
+        public string CommitShortSha { get; }
+
+        public static EvaluationCsvLogger Create(string commitShortSha)
+        {
+            var logsDirectory = Path.Combine(FindRepoRoot(), "autoresearch", "logs");
+            Directory.CreateDirectory(logsDirectory);
+
+            var filePath = Path.Combine(logsDirectory, $"{commitShortSha}-result.csv");
+            var writer = new StreamWriter(filePath, append: false);
+            var logger = new EvaluationCsvLogger(filePath, writer, commitShortSha);
+            logger.WriteHeader();
+            return logger;
+        }
+
+        public void WriteGame(EvaluationGameResult result)
+        {
+            ThrowIfDisposed();
+
+            var engineAScore = ScoreForEngine(result);
+            var whiteAverageMoveMs = AverageOrZero(result.WhiteStats.TotalMoveSeconds, result.WhiteStats.Moves) * 1000.0;
+            var blackAverageMoveMs = AverageOrZero(result.BlackStats.TotalMoveSeconds, result.BlackStats.Moves) * 1000.0;
+            var whiteAveragePositions = AverageOrZero(result.WhiteStats.TotalPositions, result.WhiteStats.Moves);
+            var blackAveragePositions = AverageOrZero(result.BlackStats.TotalPositions, result.BlackStats.Moves);
+
+            WriteFields(
+                CommitShortSha,
+                result.GameNumber,
+                result.PairNumber,
+                result.OpeningIndex,
+                result.EngineAWasWhite,
+                result.WhiteEngineStem,
+                result.BlackEngineStem,
+                result.Result,
+                result.TerminationReason,
+                result.Plies,
+                engineAScore,
+                result.WhiteStats.Moves,
+                result.BlackStats.Moves,
+                result.WhiteStats.TotalPositions,
+                result.BlackStats.TotalPositions,
+                whiteAveragePositions,
+                blackAveragePositions,
+                whiteAverageMoveMs,
+                blackAverageMoveMs,
+                result.Elapsed.TotalMilliseconds,
+                result.FailureEngineStem ?? string.Empty,
+                result.FailureMessage ?? string.Empty,
+                result.OpeningFen);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _writer.Dispose();
+            _disposed = true;
+        }
+
+        private void WriteHeader()
+        {
+            WriteFields(
+                "commit_short_sha",
+                "game_number",
+                "pair_number",
+                "opening_index",
+                "engine_a_was_white",
+                "white_engine",
+                "black_engine",
+                "result",
+                "termination_reason",
+                "plies",
+                "engine_a_score",
+                "white_moves",
+                "black_moves",
+                "white_total_positions",
+                "black_total_positions",
+                "white_average_positions",
+                "black_average_positions",
+                "white_average_move_ms",
+                "black_average_move_ms",
+                "game_elapsed_ms",
+                "failure_engine",
+                "failure_message",
+                "opening_fen");
+        }
+
+        private void WriteFields(params object[] values)
+        {
+            _writer.WriteLine(string.Join(",", values.Select(FormatCsvField)));
+            _writer.Flush();
+        }
+
+        private static string FormatCsvField(object value)
+        {
+            var text = value switch
+            {
+                bool boolValue => boolValue ? "true" : "false",
+                IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+                _ => value.ToString() ?? string.Empty,
+            };
+
+            if (text.Contains('"') || text.Contains(',') || text.Contains('\n') || text.Contains('\r'))
+            {
+                return $"\"{text.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+            }
+
+            return text;
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(EvaluationCsvLogger));
+            }
+        }
+    }
 
     private sealed class MatchAggregate
     {

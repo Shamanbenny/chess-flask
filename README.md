@@ -256,7 +256,7 @@ The fixed evaluator is centered on:
 - offline head-to-head matches
 - the latest approved engine as the sole promotion baseline
 - a strict per-move time budget
-- paired, repeatable results recorded under `autoresearch/logs/`
+- paired, repeatable results recorded under `autoresearch/logs/<short_sha>-result.csv` when `--log --short-sha <short_sha>` is used
 
 That remains the preferred direction because it is reproducible, automatable, cheaper to run repeatedly, and easier to use inside an `autoresearch` loop than online ladder play.
 

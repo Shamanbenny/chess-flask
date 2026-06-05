@@ -39,8 +39,10 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
   --engine-a-file <candidate_engine_file> \
   --engine-b-file <approved_engine_file> \
   --games 100 \
-  --time-limit-ms 500 \
-  --max-plies 200
+  --time-limit-ms 250 \
+  --max-plies 200 \
+  --log \
+  --short-sha <short_sha>
 ```
 
 Example:
@@ -50,9 +52,13 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
   --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs \
   --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs \
   --games 50 \
-  --time-limit-ms 500 \
-  --max-plies 200
+  --time-limit-ms 250 \
+  --max-plies 200 \
+  --log \
+  --short-sha 1a2b3c4
 ```
+
+The caller must provide `<short_sha>` explicitly. Do not make the runner infer git state on behalf of the experiment loop.
 
 Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop.
 
@@ -67,15 +73,15 @@ If either signature is missing, treat the evaluation as failed until proven othe
 
 ## Required Logged Artifacts
 
-The evaluator writes run artifacts under `autoresearch/logs/<run_id>/`.
+When `--log --short-sha <short_sha>` is supplied, the evaluator creates `autoresearch/logs/` on demand and writes its canonical per-game results file to:
 
-Required artifacts:
+`autoresearch/logs/<short_sha>-result.csv`
 
-- raw console log
-- machine-readable per-game results
-- machine-readable aggregate summary
+That CSV is the stable machine-readable artifact for per-game analysis. The console output must still be printed normally to stdout during the run so progress remains visible in real time.
 
-Optional artifacts are allowed if they help analysis, for example model-generated CSV summaries of positions evaluated or other diagnostics, but they are not part of the approval decision.
+The fixed CSV columns are owned by `engine_csharp/src/LocalTesting/Program.cs` and must stay stable across experiments unless this contract is intentionally revised outside the loop.
+
+The Chess Engine written is allowed to produce optional additional artifacts within the same directory, for example `autoresearch/logs/<short_sha>-extra_info.csv`, but they are diagnostic only and do not replace the canonical result CSV. Here, you are free to track additional experiment unique information (E.g. Average number of depth evaluated per plier per game, Total transposition table utilization, etc) by generating the artifact from WITHIN the Engine code (NOT by altering `engine_csharp/src/LocalTesting/Program.cs`).
 
 `autoresearch/logs/` should remain untracked by git.
 
