@@ -203,3 +203,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation intentionally stopped after 18 logged games; end signature absent)`
 - verdict: `Rejected. The build succeeded and the evaluator printed the start signature, but the candidate became non-promotable once max_plies_count reached 5. The partial CSV contains 5 max_plies games in 18 logged games (27.78%), far above the max_plies_rate < 0.05 approval requirement; the run did not produce the required done signature and cannot approve.`
 - inferred_conclusion: `Bounded check extension increased tactical visibility in some short wins but did not improve match strength or decisiveness against v2.0. It slowed candidate moves relative to the fixed budget and still produced many max-plies games, so future search-efficiency work should not add extensions without a stronger guard such as only extending evasions, recaptures near the king, or TT-supported forcing moves.`
+
+## Attempt: 2026-06-05 20:34:27 +08 - v2.1
+
+- branch: `autoresearch/Jun5b`
+- commit: `c3a1841`
+- status: `rejected`
+- baseline_version: `v2.0`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`
+- candidate_version: `v2.1`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_1Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `Caching the current check-state inside quiescence and capture-only move generation will reduce repeated board/legal-state work without changing intended search decisions, improving effective speed under the fixed 250ms budget.`
+- implementation_summary: `Cloned v2.0 into v2.1, renamed the engine entrypoint, and threaded a cached inCheck value through OrderedSearchMoves and quiescence pruning. Search depth, evaluation, TT behavior, PVS, aspiration windows, and move-order scores were otherwise unchanged.`
+- evaluation_log_path: `autoresearch/logs/c3a1841-result.csv`
+- extra_log_paths: `n/a`
+- wins: `6`
+- draws: `11`
+- losses: `2`
+- score: `11.5/19`
+- score_rate: `0.6053`
+- average_plies: `137.89`
+- average_processing_time_ms: `305.076`
+- average_positions_or_nodes: `988.51`
+- failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation intentionally stopped after 19 logged games; end signature absent)`
+- verdict: `Rejected. The build succeeded and the evaluator printed the start signature, but the candidate became non-promotable once max_plies_count reached 5. The partial CSV contains 7 max_plies games in 19 logged games (36.84%), far above the max_plies_rate < 0.05 approval requirement; the run did not produce the required done signature and cannot approve.`
+- inferred_conclusion: `Pure quiescence overhead cleanup may be tactically competitive, but it does not address the current evaluator bottleneck: too many games still drift to the fixed ply cap. Future attempts should prioritize decisiveness mechanisms that convert winning positions or avoid sterile repetition, rather than relying only on small per-node speedups.`
