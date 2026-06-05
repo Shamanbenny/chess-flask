@@ -1,6 +1,7 @@
 using System.Reflection;
 using Chess;
 using Engine.Core.V1;
+using Engine.Core.V2;
 
 namespace Engine.Core;
 
@@ -41,6 +42,7 @@ public static class EngineVersions
             "1.4" or "v1.4" => HistoricalEngines.SearchMoveV1_4(board, depth ?? 4),
             "1.5" or "v1.5" => HistoricalEngines.SearchMoveV1_5(board, timeLimitSeconds ?? 1.0),
             "1.6" or "v1.6" => HistoricalEngines.SearchMoveV1_6(board, timeLimitSeconds ?? 1.0),
+            "2.0" or "v2.0" => V2_0Engine.SearchMoveV2_0(board, timeLimitSeconds ?? 1.0),
             _ => throw new ArgumentException($"Unsupported engine version '{version}'", nameof(version)),
         };
     }

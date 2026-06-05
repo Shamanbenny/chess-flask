@@ -6,6 +6,31 @@ The `v1.x` family is heavily informed by Sebastian Lague's [Coding Adventure: Ch
 
 Architecture note: the repository may change how local development and serving are organized, but this file should only record accepted engine-version behavior. Workspace or language splits are documented in `README.md` and `JOURNEY.md`, not as standalone engine versions.
 
+## v2.0
+
+- Search: keeps the accepted `v1.6` structure of iterative deepening, negamax with alpha-beta pruning, quiescence search, and fixed-size transposition-table reuse.
+- Evaluation: keeps the same broad `v1.6` scoring ideas around material balance, draw/repetition pressure, and endgame conversion pressure.
+- Main implementation shift in `v2.0`:
+  - moved the inner search off the library-backed `BoardState` hot path and onto an in-house board representation with encoded moves, direct make/unmake, internal repetition history, and internal attack detection
+  - root integration still converts the chosen move back into the existing `Chess.Move`/`BoardState` world so the local runner and evaluator can continue to use the same harness
+- Board-state and move-generation changes in `v2.0`:
+  - legal move generation now runs against the engine's own `64`-square board array rather than repeatedly asking the library board for move lists inside the recursive tree
+  - move application and rollback are handled through a compact undo record instead of library push/pop plus cached-state refresh work
+  - transposition keys are maintained directly from the native board state rather than being rebuilt through the outer board wrapper during search
+  - repetition tracking for search/evaluation now stays inside the native engine state instead of depending on the wrapper's board-history path during recursion
+- Search-cost implication of `v2.0`:
+  - the broad algorithm is intentionally close to `v1.6`
+  - the main gain comes from reducing the per-node cost of board-state bookkeeping and legal move generation
+  - this change exists specifically to make later search experiments meaningful under the fixed evaluator time budget instead of having them drowned out by substrate overhead
+- Intended improvement over `v1.6`:
+  - preserve the same broad search identity while making node expansion dramatically cheaper
+  - make the local evaluator's `250ms` move budget much more informative for future `autoresearch` runs
+  - establish a practical `v2+` baseline that is fast enough for search improvements to compound
+
+### References
+
+- Sebastian Lague's [`Chess-Coding-Adventure`](https://github.com/SebLague/Chess-Coding-Adventure/tree/Chess-V1-Unity)
+
 ## v1.6
 
 - C#-specific follow-up to `v1.5` focused on search throughput after cross-referencing Sebastian Lague's [`Chess-Coding-Adventure`](https://github.com/SebLague/Chess-Coding-Adventure/tree/Chess-V1-Unity) implementation path and recognizing how much slower this repository's search was under the same kind of endgame pressure.

@@ -78,7 +78,9 @@ internal static class LocalTestingProgram
             if (version.Equals("v1.5", StringComparison.OrdinalIgnoreCase)
                 || version.Equals("1.5", StringComparison.OrdinalIgnoreCase)
                 || version.Equals("v1.6", StringComparison.OrdinalIgnoreCase)
-                || version.Equals("1.6", StringComparison.OrdinalIgnoreCase))
+                || version.Equals("1.6", StringComparison.OrdinalIgnoreCase)
+                || version.Equals("v2.0", StringComparison.OrdinalIgnoreCase)
+                || version.Equals("2.0", StringComparison.OrdinalIgnoreCase))
             {
                 Console.WriteLine($"=== {version} local test at time_limit={timeLimitSeconds:F3}s ===");
             }
@@ -226,19 +228,56 @@ internal static class LocalTestingProgram
 
     private static int RunEndgame(string scenarioName, string[] args)
     {
-        if (args.Length > 0)
+        var scenario = LoadScenario<EndgameScenario>(scenarioName);
+        var version = "v1.4";
+        var depth = scenario.DefaultDepth;
+        double? timeLimitSeconds = null;
+
+        for (var index = 0; index < args.Length; index++)
         {
-            return Fail($"Unknown argument '{args[0]}'");
+            switch (args[index])
+            {
+                case "--version":
+                    version = args[++index];
+                    break;
+                case "--depth":
+                    depth = int.Parse(args[++index]);
+                    break;
+                case "--time-limit-seconds":
+                    timeLimitSeconds = double.Parse(args[++index]);
+                    break;
+                default:
+                    return Fail($"Unknown argument '{args[index]}'");
+            }
         }
 
-        var scenario = LoadScenario<EndgameScenario>(scenarioName);
         var board = new BoardState(scenario.StartFen);
-        Console.WriteLine($"=== v1.4 endgame local self-play at depth {scenario.DefaultDepth} ===");
+        var isTimeLimitedVersion =
+            version.Equals("v1.5", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("1.5", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("v1.6", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("1.6", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("v2.0", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("2.0", StringComparison.OrdinalIgnoreCase);
+
+        if (isTimeLimitedVersion)
+        {
+            Console.WriteLine($"=== {version} endgame local self-play at time_limit={(timeLimitSeconds ?? 1.0):F3}s ===");
+        }
+        else
+        {
+            Console.WriteLine($"=== {version} endgame local self-play at depth {depth} ===");
+        }
+
         Console.WriteLine($"Start FEN: {scenario.StartFen}");
         Console.WriteLine($"Start turn: {(board.WhiteToMove ? "white" : "black")} | max_plies={scenario.DefaultMaxPlies}");
 
         var totalPositions = 0;
         var repetitionDetected = false;
+        var totalTtProbes = 0;
+        var totalTtHits = 0;
+        var totalTtCutoffs = 0;
+        var totalElapsed = TimeSpan.Zero;
 
         for (var ply = 1; ply <= scenario.DefaultMaxPlies; ply++)
         {
@@ -247,16 +286,29 @@ internal static class LocalTestingProgram
                 break;
             }
 
-            Console.WriteLine(
-                $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} to move | legal_moves={board.LegalMoves().Count} | depth={scenario.DefaultDepth} | search started");
+            if (isTimeLimitedVersion)
+            {
+                Console.WriteLine(
+                    $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} to move | legal_moves={board.LegalMoves().Count} | time_limit={(timeLimitSeconds ?? 1.0):F3}s | search started");
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} to move | legal_moves={board.LegalMoves().Count} | depth={depth} | search started");
+            }
 
             var startedAt = DateTime.UtcNow;
-            var result = HistoricalEngines.SearchMoveV1_4(board, scenario.DefaultDepth);
+            var result = EngineVersions.SearchMoveForVersion(version, board, depth, timeLimitSeconds);
             var elapsed = DateTime.UtcNow - startedAt;
             totalPositions += PositionCount(result);
+            totalTtProbes += result.TtProbes ?? 0;
+            totalTtHits += result.TtHits ?? 0;
+            totalTtCutoffs += result.TtCutoffs ?? 0;
+            totalElapsed += elapsed;
 
             Console.WriteLine(
                 $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} plays {result.MoveSan} ({MoveToUci(result.Move)}) | score={result.Score} | positions={PositionCount(result)} | elapsed={elapsed.TotalSeconds:F6}s");
+            PrintSearchDetail($"Ply {ply}", result);
 
             board.Push(result.Move);
             if (board.CanClaimThreefoldRepetition() || board.IsRepetition(2))
@@ -270,6 +322,10 @@ internal static class LocalTestingProgram
         Console.WriteLine();
         Console.WriteLine($"Final FEN: {board.Fen}");
         Console.WriteLine($"Total positions: {totalPositions}");
+        Console.WriteLine($"Total elapsed: {totalElapsed.TotalSeconds:F6}s");
+        Console.WriteLine($"Total TT probes: {totalTtProbes}");
+        Console.WriteLine($"Total TT hits: {totalTtHits}");
+        Console.WriteLine($"Total TT cutoffs: {totalTtCutoffs}");
         Console.WriteLine($"Outcome: {OutcomeLabel(board)}");
         Console.WriteLine($"Winner: {WinnerLabel(board)}");
         Console.WriteLine($"Repetition detected: {repetitionDetected}");
@@ -1039,7 +1095,8 @@ internal static class LocalTestingProgram
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v1.6 --time-limit-seconds 1.0 --max-plies 70");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --log --short-sha 1a2b3c4");
     }
 
