@@ -149,3 +149,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation intentionally stopped after 63 games; end signature absent)`
 - verdict: `Rejected. The build succeeded and no engine crash or illegal move was observed, but the evaluator was stopped after 63/100 games once rejection was already clear: max_plies_count = 25/63 (39.68%), far above the max_plies_rate < 0.05 promotion requirement. The run did not print the required done signature and therefore cannot approve the candidate.`
 - inferred_conclusion: `This blunt LMR rule increased searched nodes per move and did not solve decisiveness; it produced many max-plies games and unstable tactical outcomes despite a positive partial score. Future search-efficiency attempts should avoid broad late quiet-move reduction unless guarded by stronger tactical conditions, and should prefer safer ordering, check extensions, or mate-conversion mechanisms.`
+
+## Attempt: 2026-06-05 15:10:21 +08 - v2.1
+
+- branch: `autoresearch/Jun5a`
+- commit: `42027ea`
+- status: `rejected`
+- baseline_version: `v2.0`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`
+- candidate_version: `v2.1`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_1Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `Remembering completed root move scores between iterative-deepening passes will improve PVS root ordering and reduce wasted zero-window re-searches within the fixed 250ms budget.`
+- implementation_summary: `Cloned v2.0 into v2.1 and kept evaluation, quiescence, TT behavior, PVS, and aspiration windows unchanged, but added root-score memory from the previous completed iteration to reorder root moves in the next iteration while preserving the TT move bonus.`
+- evaluation_log_path: `autoresearch/logs/42027ea-result.csv`
+- extra_log_paths: `n/a`
+- wins: `5`
+- draws: `17`
+- losses: `10`
+- score: `13.5/32`
+- score_rate: `0.4219`
+- average_plies: `150.88`
+- average_processing_time_ms: `302.682`
+- average_positions_or_nodes: `798.55`
+- failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation halted/rejected after 32 logged games; end signature absent)`
+- verdict: `Rejected. The build succeeded and the evaluator printed the start signature, but the candidate became non-promotable once max_plies_count reached 5. The partial CSV contains 9 max_plies games in 32 logged games (28.13%), far above the max_plies_rate < 0.05 approval requirement; the run did not produce the required done signature and cannot approve.`
+- inferred_conclusion: `Root reordering based on shallow prior-iteration scores did not improve effective search efficiency against v2.0. It trailed in score and produced many long max-plies games, so future search-efficiency attempts should not let previous root scores override the baseline's static/TT ordering without a much stricter guard such as only pinning the prior PV move.`
