@@ -92,6 +92,7 @@ The project still keeps the historical search family in [`api/v1/__init__.py`](/
 - `v1.4`: `v1.3` plus endgame conversion evaluation and a tighter pruned quiescence search
 - `v1.5`: `v1.4` plus time-budgeted iterative deepening and a transposition table
 - `v1.6`: C#-specific speed-focused follow-up to `v1.5`, cross-referenced against `Chess-Coding-Adventure` to reduce hot-path search overhead
+- `v2.0`: keeps the broad `v1.6` search and evaluation shape, but moves the inner search onto an in-house board representation and in-house move generation to remove the remaining hot-path overhead from the library-backed board
 
 These are preserved as the manual/reference phase of the project. They are still callable directly from local tooling for experiments and search comparisons, but they are not currently part of the public HTTP surface.
 
@@ -104,6 +105,7 @@ The implementation path is intentionally close to Sebastian Lague's staged chess
 - `v1.4`: make shallow winning endgames more conversion-oriented while keeping quiescence from exploding on non-capture checking sequences
 - `v1.5`: shift the search budget from fixed depth to think time, using iterative deepening and hash-table reuse between iterations
 - `v1.6`: keep the `v1.5` search shape, but make each searched node materially cheaper in the C# port
+- `v2.0`: keep the same broad search ideas, but stop paying library-level board-state and legal-move overhead inside the search tree
 
 See [CHANGELOG.md](/home/benny/Desktop/_gitrepo/chess-flask/CHANGELOG.md:1) for the accepted algorithm history.
 
@@ -143,12 +145,16 @@ Once the .NET SDK is installed, the intended workflow is:
 ```bash
 dotnet build engine_csharp/ChessEngine.sln
 dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v1.6 --time-limit-seconds 1.0 --max-plies 70
-dotnet run --project engine_csharp/src/LocalTesting -- endgame-1
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 v2.0 --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v2.0 --time-limit-seconds 1.0 --max-plies 70
+dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --games 50 --time-limit-ms 250 --max-plies 200
 ```
 
 The C# workspace now exists to hold direct source rewrites of the Python `api/v1/*.py` engines and the local scenario runners. The active local runner project in this repo is `engine_csharp/src/LocalTesting`.
+
+The current accepted local `v2` baseline file is [`engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/src/Engine.Core/V2/V2_0Engine.cs:1).
 
 ## Local V1 Tests
 
@@ -266,5 +272,5 @@ That remains the preferred direction because it is reproducible, automatable, ch
 - No unified `/move` or `/chess` endpoint exists yet.
 - `v0` and Python `v1.5` are currently exposed through Flask routes.
 - Historical engines remain versioned under `api/v1/`, with `v1.5.py` also serving the public Flask route.
-- No accepted `v2+` engine implementation exists yet in this repository, but the `autoresearch` workflow and baseline metadata now do.
+- The current accepted `v2+` engine baseline is [`engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/src/Engine.Core/V2/V2_0Engine.cs:1).
 - The current Vercel duration setting is a temporary operational choice, not a statement that `30` seconds per move is the desired long-term UX target.

@@ -262,55 +262,70 @@ That does not mean `v1.6` solves every endgame conversion line yet.
 
 It means the engine is starting to buy more real search with the same clock budget, which is the prerequisite for later improvements to matter.
 
+There is now a much clearer picture of what that improvement did and did not solve.
+
+If you look at [`engine_scenarios/console_output.md`](/home/benny/Desktop/_gitrepo/chess-flask/engine_scenarios/console_output.md:55), `v1.6` was able to process depth `5` in about `2.93s` on the tactical `puzzle_1` line. That is better than the earlier versions, and it does prove that moving to C# plus a more careful search path helped. But it is still nowhere near the practical target. The real standard here is not "can it eventually reach depth 5?" The real standard is closer to "can it do roughly that much useful work in something like `100ms`?"
+
+So even after `v1.6`, the project was still very far from where it needed to be.
+
+That is also why the move to C# happened early instead of late. The point was not just to speed the engine up in the abstract. The point was to get into a development environment where [`autoresearch`](https://github.com/karpathy/autoresearch) could start testing low-hanging performance and search hypotheses without constant doubt that Python itself was the dominant ceiling. In that sense, the early migration did exactly what it was supposed to do: it created a cleaner lab for experimentation even before it created a fast enough engine.
+
+## What The First `v2.0` Actually Proved
+
+At first, that looked very promising.
+
+The original `v2.0`, recorded and approved under commit [`db423ca`](https://github.com/Shamanbenny/chess-flask/commit/db423caf1b8d3e0f89df051e0ab2777127195a77) and [`583348d`](https://github.com/Shamanbenny/chess-flask/commit/583348d4340f55faa0855e3035b63b1284b613b1), passed the evaluator on the very first experiment. That mattered for two reasons:
+
+- it showed that the [evaluator](https://github.com/Shamanbenny/chess-flask/blob/main/autoresearch/EVALUATE.md) could approve a real improvement rather than serving only as a rejection machine
+- it showed that the [`autoresearch`](https://github.com/Shamanbenny/chess-flask/tree/main/autoresearch) workflow itself could work the way this project hoped it would
+
+That was a meaningful milestone. It meant the general experiment loop was viable.
+
+So the natural next step was to keep running `autoresearch` and let the engine try to climb from there.
+
+## What Repeated Rejections Revealed
+
+That optimism did not last for long.
+
+The later attempts, also documented in [`autoresearch/ATTEMPTS.md`](https://github.com/Shamanbenny/chess-flask/blob/8fc86540289d1fb09196b755ddf379a93b45edaa/autoresearch/ATTEMPTS.md), kept getting rejected. Looking at the game results, the pattern was hard to miss: too many games were ending by `max_plies`. In practice, that meant the competing engines were often not converting advantages into checkmate within the fixed budget.
+
+That pointed to a deeper issue than "this pruning tweak was weak" or "that move-order bonus was not helpful enough."
+
+It suggested that the engine simply was not getting enough real search done per move.
+
+The evaluator was running at `250ms` per move. If the earlier console runs were any indication, that was still too little time for the engine to search and evaluate positions deeply enough to make the later search tweaks matter reliably. But increasing the evaluator's time limit was not the real answer either. That would only hide the underlying bottleneck, and it would make each experiment much more expensive. For example, if `250ms` supports `100` games in a reasonable experiment window, then raising that to `1000ms` would force a proportional cut in game count just to keep the runtime practical. That would weaken the experiment loop instead of strengthening it.
+
+So the repeated rejections did not really say "the search ideas are exhausted." They said "the engine is still paying too much just to exist at each node."
+
+## The Real Breakthrough
+
+That is what led to the next major shift.
+
+The key realization was that a custom board representation and custom move generation were not just matters of code ownership or portability. They were performance tools. A chess engine that controls its own board state, legal move generation, make/unmake flow, hashing, and attack checks can remove a large amount of general-purpose library overhead from the hot path.
+
+To test that directly, Codex was asked to build a new `v2.0` around an in-house board representation and in-house move generation while preserving the same broad underlying search algorithm as `v1.6`.
+
+The result was not a small incremental gain. It was a dramatic one.
+
+The new `v2.0` showed that the real blocker over the previous `48` hours had not primarily been the search ideas being tested by `autoresearch`. The real blocker was the amount of overhead being incurred every time the engine had to generate moves, update board state, and evaluate another position. Once that cost dropped, the engine's node throughput changed sharply.
+
+That changed the interpretation of the previous failed experiments. Those attempts were not useless. They helped expose that the project had started `autoresearch` one layer too early. The engine was being asked to self-optimize search behavior before its board representation and move-generation substrate were cheap enough for those search improvements to pay off consistently.
+
 ## The Current Development Priority
 
-The immediate goal is not to run massive automated gauntlets.
-
-The immediate goal is to manually work toward an algorithm that is strong enough to choose decent moves within roughly a `100ms` budget.
-
-With `v1.5`, that goal is now being framed in the more realistic form: not “reach a chosen fixed depth,” but “use iterative deepening to return the best move found within a chosen time limit.” That is a more honest target for engine work because it matches how practical chess engines are actually constrained.
+The immediate goal is to automatically, build through experiment loops, on the new `v2.0` baseline now that the engine can buy far more search inside the same budget.
 
 That changes the order of operations:
 
-1. Improve the search approach manually.
-2. Get time-budgeted search working reliably under fixed think-time limits.
-3. Get runtime per node down to something that is actually usable.
-4. Establish a stronger baseline engine.
-5. Only then lean harder on automated simulation and `autoresearch`-style evaluation loops.
+1. Keep the stronger `v2.0` board representation and move-generation path as the new baseline.
+2. Confirm that the engine can search enough nodes per move for the fixed-time evaluator to be meaningful. This was proven with the update made to [`engine_scenarios/console_output.md`](https://github.com/Shamanbenny/chess-flask/blob/main/engine_scenarios/console_output.md)
+3. Resume `autoresearch` from a position where algorithmic improvements have room to show up.
+4. Improve the engine bit by bit through controlled promotion/rejection instead of trying to brute-force quality with a slower substrate.
 
-Until the engine is cheap enough per move, large simulation campaigns are mostly an expensive way to confirm that the current setup is too slow.
+The important difference is that the project now has much more confidence in both parts of the loop:
 
-## Why Coding Adventure Is The Reference Path For Now
-
-For the current phase, the project will follow the broad implementation path shown in Coding Adventure's chess-bot video.
-
-The reason is straightforward:
-
-- it provides a practical staged path from naive minimax toward more usable search
-- it prioritizes obvious search-efficiency improvements first
-- it gives a clearer manual route toward a respectable baseline before automation is introduced
-
-This does not mean copying that work blindly or treating it as the final architecture. It means using it as a concrete guide to reach the next useful stage faster.
-
-The point of this phase is to reach a bot that is both:
-
-- strong enough to be worth testing seriously
-- fast enough that repeated testing is not absurdly expensive
-
-## Where `autoresearch` Fits
-
-The long-term plan still includes an `autoresearch`-style workflow for `v2+`.
-
-But that only makes sense once the engine is strong enough and fast enough that automated comparisons can run on a reasonable timescale.
-
-So `autoresearch` is not being rejected. It is being delayed until the baseline conditions are good enough:
-
-- move generation is materially faster
-- the search is no longer obviously wasteful
-- simulation can run in a practical timeframe
-- candidate-vs-baseline comparison becomes cheap enough to repeat often
-
-Only after that does automated promotion/rejection become a good use of time.
+- the `autoresearch` paradigm itself has already shown that it can approve real gains
+- the engine is now much closer to being fast enough that those gains can compound instead of disappearing into per-node overhead
 
 ## Summary
 
@@ -321,8 +336,9 @@ The project direction is intentionally conservative right now:
 - treat `1` second or less as the practical direction for real play
 - treat roughly `100ms` as the kind of move budget worth targeting for serious iteration
 - move away from treating fixed depth as the main benchmark and toward iterative deepening under fixed time limits
-- improve the engine manually before relying heavily on large simulation batches
-- use Coding Adventure's staged search improvements as the near-term guide
-- accept that shallow search sometimes needs positional conversion guidance in winning endgames before a mate sequence becomes directly visible
 - treat programming-language speed as a legitimate part of the investigation once the engine is judged by fixed time instead of fixed depth
-- begin the real `autoresearch` loop only after the baseline is fast enough to make that loop practical
+- recognize that early C# migration helped create a usable experiment environment even before it solved the core speed problem
+- treat the original `v2.0` approval as proof that the evaluator and `autoresearch` loop can work
+- treat the repeated `max_plies` rejections as evidence that the previous engine substrate was still too expensive per node
+- use the new `v2.0` board representation and move-generation path as the real baseline for future `autoresearch`
+- accept that search optimization only becomes meaningfully testable once board-state and move-generation overhead are low enough
