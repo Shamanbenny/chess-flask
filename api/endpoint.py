@@ -4,17 +4,11 @@ import time
 import chess
 from flask import Blueprint, jsonify, request
 
-from .v1 import (
-    choose_move_v1,
-    choose_move_v1_1,
-    choose_move_v1_2,
-    choose_move_v1_3,
-    choose_move_v1_4,
-    choose_move_v1_5,
-)
+from .v2 import choose_move_v2_0
 
 
 endpoint_blueprint = Blueprint("endpoint", __name__)
+ENGINE_TIME_LIMIT_SECONDS = 1.0
 
 
 def validate_board_for_move(fen: str) -> tuple[chess.Board | None, tuple[dict, int] | None]:
@@ -45,20 +39,11 @@ def generate_engine_response(version: str, fen: str) -> tuple[dict, int]:
     if error is not None:
         return error
 
-    if version.lower() in {"0", "v0"}:
+    normalized_version = version.lower()
+    if normalized_version == "v0":
         return choose_move_v0(board), 200
-    if version.lower() in {"1", "v1"}:
-        return choose_move_v1(board), 200
-    if version.lower() in {"1.1", "v1.1"}:
-        return choose_move_v1_1(board), 200
-    if version.lower() in {"1.2", "v1.2"}:
-        return choose_move_v1_2(board), 200
-    if version.lower() in {"1.3", "v1.3"}:
-        return choose_move_v1_3(board), 200
-    if version.lower() in {"1.4", "v1.4"}:
-        return choose_move_v1_4(board), 200
-    if version.lower() in {"1.5", "v1.5"}:
-        return choose_move_v1_5(board), 200
+    if normalized_version == "v2.0":
+        return choose_move_v2_0(board, time_limit_seconds=ENGINE_TIME_LIMIT_SECONDS), 200
     return {"error": f"Unsupported version '{version}'"}, 400
 
 
@@ -87,9 +72,9 @@ def chess_v0():
         return jsonify({"error": str(exc)}), 500
 
 
-@endpoint_blueprint.route("/chess_v1_5", methods=["POST"])
-def chess_v1_5():
+@endpoint_blueprint.route("/chess_v2_0", methods=["POST"])
+def chess_v2_0():
     try:
-        return handle_engine_request("v1.5")
+        return handle_engine_request("v2.0")
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
