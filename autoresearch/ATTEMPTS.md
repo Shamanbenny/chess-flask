@@ -230,3 +230,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation intentionally stopped after 19 logged games; end signature absent)`
 - verdict: `Rejected. The build succeeded and the evaluator printed the start signature, but the candidate became non-promotable once max_plies_count reached 5. The partial CSV contains 7 max_plies games in 19 logged games (36.84%), far above the max_plies_rate < 0.05 approval requirement; the run did not produce the required done signature and cannot approve.`
 - inferred_conclusion: `Pure quiescence overhead cleanup may be tactically competitive, but it does not address the current evaluator bottleneck: too many games still drift to the fixed ply cap. Future attempts should prioritize decisiveness mechanisms that convert winning positions or avoid sterile repetition, rather than relying only on small per-node speedups.`
+
+## Attempt: 2026-06-05 20:47:23 +08 - v2.1
+
+- branch: `autoresearch/Jun5b`
+- commit: `b71bea1`
+- status: `rejected`
+- baseline_version: `v2.0`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`
+- candidate_version: `v2.1`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_1Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A root-only penalty for immediately claimable draw or repeated-position moves, guarded by a positive root static score, will reduce sterile capped games by steering winning searches away from drawish root choices without changing global evaluation.`
+- implementation_summary: `Cloned v2.0 into v2.1, renamed the engine entrypoint, and added a root move penalty when the root static evaluation is at least +150 and the candidate root move immediately permits a claimable draw or second repetition. Evaluation, TT behavior, quiescence, PVS, and aspiration windows were otherwise unchanged.`
+- evaluation_log_path: `autoresearch/logs/b71bea1-result.csv`
+- extra_log_paths: `n/a`
+- wins: `5`
+- draws: `8`
+- losses: `1`
+- score: `9.0/14`
+- score_rate: `0.6429`
+- average_plies: `138.07`
+- average_processing_time_ms: `296.889`
+- average_positions_or_nodes: `872.86`
+- failure_counts: `crash=0, illegal_move=0, timeout=0, harness=1 (evaluation intentionally stopped after 14 logged games; end signature absent)`
+- verdict: `Rejected. The build succeeded and the evaluator printed the start signature, but the candidate became non-promotable once max_plies_count reached 5. The partial CSV contains 6 max_plies games in 14 logged games (42.86%), far above the max_plies_rate < 0.05 approval requirement; the run did not produce the required done signature and cannot approve.`
+- inferred_conclusion: `Root-level immediate draw/repetition avoidance can produce a strong partial score, but it does not solve the max-plies bottleneck and may simply defer sterile play into later move sequences. Future decisiveness attempts should target search guidance deeper than the root, such as endgame conversion move ordering or selective extension/pruning around king confinement, rather than only filtering immediate root draw choices.`
