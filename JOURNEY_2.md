@@ -96,6 +96,10 @@ The first structural improvement was to make a weaker Stockfish level the fixed 
 
 That choice is now reflected directly in:
 
+- [`autoresearch/PROGRAM.md`](autoresearch/PROGRAM.md)
+- [`autoresearch/EVALUATE.md`](autoresearch/EVALUATE.md)
+- [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md)
+
 The reasoning is straightforward.
 
 If each candidate is judged only against the immediately previous in-repo engine, then improvement can become too local. A version can look "better than the last one" without giving much confidence that it is better in a broader or more stable sense.
@@ -122,3 +126,19 @@ The local evaluator now supports a `--workers` flag for concurrent game processi
 That is the practical side of the story: once the engine itself became fast enough for `100ms` tests to mean something, the new bottleneck shifted toward how many full evaluations could be completed before morning.
 
 So multi-worker evaluation was not just a convenience tweak. It directly increased the throughput of the autonomous research loop.
+
+## The Surprise From Re-Running Approved Versions Against Stockfish
+
+After both changes were in place, I ran the new `stockfish-1350` evaluation against the three approved versions that mattered for the current `v2` story: `v2.0`, `v2.2`, and `v2.5`.
+
+The updated reference summary is now recorded at the end of [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md). The minimal result is:
+
+- `v2.0`: `160` wins, `94` draws, `246` losses, `score_rate=0.4140`
+- `v2.2`: `258` wins, `110` draws, `132` losses, `score_rate=0.6260`
+- `v2.5`: `239` wins, `122` draws, `139` losses, `score_rate=0.6000`
+
+This was a shock because it directly addressed the problem I was worried about earlier in this document.
+
+The earlier self-play-style approved runs were still mostly draws. Against the fixed `stockfish-1350` baseline, that changed: the games were no longer dominated by drawn outcomes. That means that, at minimum, one side of the matchup was able to convert advantageous positions into decisive wins often enough for the evaluator to produce much clearer signal.
+
+That matters for future `autoresearch` loops. It makes the results easier to interpret, reduces the risk of over-reading tiny differences inside draw-heavy logs, and gives each experiment a better chance of producing a conclusive inference instead of just another ambiguous marginal score.

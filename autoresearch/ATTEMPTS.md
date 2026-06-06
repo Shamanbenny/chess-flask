@@ -263,3 +263,22 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
 - verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4760 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, and max_plies_rate=0.0000.`
 - inferred_conclusion: `A generic doubled-pawn penalty slightly underperformed v2.5 and did not improve the passed-pawn baseline. Future pawn-structure work should be more tactical or conversion-specific, such as blockade detection, pawn-race promotion distance, or king proximity to advanced passers, rather than adding broad static structure penalties.`
+
+## Reference: 2026-06-06 - approved-log scoreboard vs stockfish-1350
+
+- status: `reference_summary`
+- evaluator_baseline: `stockfish-1350`
+- source_logs:
+  - `autoresearch/approved_logs/V2_0Engine-cbddf0e-result.csv`
+  - `autoresearch/approved_logs/V2_2Engine-765feb6-result.csv`
+  - `autoresearch/approved_logs/V2_5Engine-519f5a3-result.csv`
+- excluded_logs:
+  - `autoresearch/approved_logs/V2_2Engine-765feb6-result_old.csv`
+  - `autoresearch/approved_logs/V2_5Engine-519f5a3-result_old.csv`
+- extraction_notes: `Each listed CSV contains 500 games / 250 paired openings against stockfish-1350. Scores use engine_a_score, where engine_a is the named V2 engine. Average processing time and average positions/nodes use the named V2 engine side for each game. The V2_0 filename records cbddf0e, but the CSV rows record commit_short_sha=1234567 (Just ignore this discrepency as I hadn't gotten the sha_short at the time of running the manual evaluation).`
+- quick_scores:
+  - `V2_0Engine: file_sha=cbddf0e; csv_sha=1234567; wins=160; draws=94; losses=246; score=207.0/500; score_rate=0.4140; average_plies=85.68; average_processing_time_ms=103.566; average_positions_or_nodes=14483.78; max_plies=22; failures=0; terminations=checkmate:406, claimable_draw:64, max_plies:22, draw:8`
+  - `V2_2Engine: file_sha=765feb6; csv_sha=765feb6; wins=258; draws=110; losses=132; score=313.0/500; score_rate=0.6260; average_plies=91.82; average_processing_time_ms=103.953; average_positions_or_nodes=11931.82; max_plies=35; failures=0; terminations=checkmate:390, claimable_draw:65, max_plies:35, draw:10`
+  - `V2_5Engine: file_sha=519f5a3; csv_sha=519f5a3; wins=239; draws=122; losses=139; score=300.0/500; score_rate=0.6000; average_plies=91.72; average_processing_time_ms=104.102; average_positions_or_nodes=11603.15; max_plies=28; failures=0; terminations=checkmate:378, claimable_draw:85, max_plies:28, draw:9`
+- ranking_by_raw_score_rate: `V2_2Engine 0.6260 > V2_5Engine 0.6000 > V2_0Engine 0.4140`
+- inferred_conclusion: `For direct stockfish-1350 comparison from these approved-log CSVs, both v2.2 and v2.5 are materially ahead of v2.0, while v2.2 has the highest raw score in this specific log set. This reference is for fast future orientation only; candidate approval still follows the fixed autoresearch evaluator contract and the latest approved seed remains the section above.`
