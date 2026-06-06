@@ -8,7 +8,7 @@ A chess bot that needs more than `30` seconds to produce a single move is not pr
 
 In any timed match, that kind of response time is a liability. Even if the move quality is acceptable, the clock loss alone will eventually lose games. That makes runtime a core part of engine quality, not a side concern.
 
-This aligns with the current Vercel setup, where [`vercel.json`](/home/benny/Desktop/_gitrepo/chess-flask/vercel.json:1) uses a `30` second duration limit. That ceiling is useful right now because it prevents obviously runaway requests and still gives the current backend room to function.
+This aligns with the current Vercel setup, where [`vercel.json`](vercel.json#L1) uses a `30` second duration limit. That ceiling is useful right now because it prevents obviously runaway requests and still gives the current backend room to function.
 
 But `30` seconds is not the target.
 
@@ -16,7 +16,7 @@ The real target is much tighter: the bot should be able to make a reasonable mov
 
 ## What The Current Versions Prove
 
-The historical engine line in [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1) currently represents a manual/reference phase:
+The historical engine line in [`api/v1/__init__.py`](api/v1/__init__.py#L1) currently represents a manual/reference phase:
 
 - `v1`: minimax
 - `v1.1`: minimax with alpha-beta pruning
@@ -264,7 +264,7 @@ It means the engine is starting to buy more real search with the same clock budg
 
 There is now a much clearer picture of what that improvement did and did not solve.
 
-If you look at [`engine_scenarios/console_output.md`](/home/benny/Desktop/_gitrepo/chess-flask/engine_scenarios/console_output.md:55), `v1.6` was able to process depth `5` in about `2.93s` on the tactical `puzzle_1` line. That is better than the earlier versions, and it does prove that moving to C# plus a more careful search path helped. But it is still nowhere near the practical target. The real standard here is not "can it eventually reach depth 5?" The real standard is closer to "can it do roughly that much useful work in something like `100ms`?"
+If you look at [`engine_scenarios/console_output.md`](engine_scenarios/console_output.md#L55), `v1.6` was able to process depth `5` in about `2.93s` on the tactical `puzzle_1` line. That is better than the earlier versions, and it does prove that moving to C# plus a more careful search path helped. But it is still nowhere near the practical target. The real standard here is not "can it eventually reach depth 5?" The real standard is closer to "can it do roughly that much useful work in something like `100ms`?"
 
 So even after `v1.6`, the project was still very far from where it needed to be.
 

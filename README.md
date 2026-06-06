@@ -24,11 +24,11 @@ The important boundary is now very simple:
 ## Current Backend Shape
 
 - Runtime: Flask on Vercel serverless functions
-- Entry point: [`api/index.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/index.py:1)
-- HTTP endpoint wrapper: [`api/endpoint.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/endpoint.py:1)
-- Historical Python `v1.x` engines: [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1)
-- Current Python `v2.0` engine: [`api/v2/v2_0.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v2/v2_0.py:1)
-- Native workspace scaffold: [`engine_csharp/README.md`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/README.md:1)
+- Entry point: [`api/index.py`](api/index.py#L1)
+- HTTP endpoint wrapper: [`api/endpoint.py`](api/endpoint.py#L1)
+- Historical Python `v1.x` engines: [`api/v1/__init__.py`](api/v1/__init__.py#L1)
+- Current Python `v2.0` engine: [`api/v2/v2_0.py`](api/v2/v2_0.py#L1)
+- Native workspace scaffold: [`engine_csharp/README.md`](engine_csharp/README.md#L1)
 - Rewrite rule: all requests are routed to `api/index`
 - Function limit: Vercel `maxDuration` is currently set to `30` seconds
 - Allowed CORS origins:
@@ -83,7 +83,7 @@ curl -X POST http://localhost:3000/chess_v0 \
 
 ## Historical Engines
 
-The project still keeps the historical search family in [`api/v1/`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/):
+The project still keeps the historical search family in [`api/v1/`](api/v1/):
 
 - `v1`: minimax
 - `v1.1`: minimax with alpha-beta pruning
@@ -93,7 +93,7 @@ The project still keeps the historical search family in [`api/v1/`](/home/benny/
 - `v1.5`: `v1.4` plus time-budgeted iterative deepening and a transposition table
 - `v2.0`: keeps the broad `v1.6` search and evaluation shape, but moves the inner search onto an in-house board representation and in-house move generation to remove the remaining hot-path overhead from the library-backed board
 
-See [CHANGELOG.md](/home/benny/Desktop/_gitrepo/chess-flask/CHANGELOG.md:1) for the accepted algorithm history.
+See [CHANGELOG.md](CHANGELOG.md#L1) for the accepted algorithm history.
 
 ## Local Development
 
@@ -124,7 +124,7 @@ That direct runner exposes the same currently supported Flask route on `http://l
 
 ### Native Engine Workspace
 
-The C# workspace is scaffolded under [`engine_csharp/`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/README.md:1).
+The C# workspace is scaffolded under [`engine_csharp/`](engine_csharp/README.md#L1).
 
 Once the .NET SDK is installed, the intended workflow is:
 
@@ -197,10 +197,10 @@ For this repo, that does not mean copying the upstream training setup. It means 
 
 The workflow contract lives in:
 
-- [`autoresearch/README.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/README.md:1)
-- [`autoresearch/PROGRAM.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/PROGRAM.md:1)
-- [`autoresearch/EVALUATE.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/EVALUATE.md:1)
-- [`autoresearch/ATTEMPTS.md`](/home/benny/Desktop/_gitrepo/chess-flask/autoresearch/ATTEMPTS.md:1)
+- [`autoresearch/README.md`](autoresearch/README.md#L1)
+- [`autoresearch/PROGRAM.md`](autoresearch/PROGRAM.md#L1)
+- [`autoresearch/EVALUATE.md`](autoresearch/EVALUATE.md#L1)
+- [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md#L1)
 
 ### Current Acceptance Process
 
@@ -231,5 +231,5 @@ That remains the preferred direction because it is reproducible, automatable, ch
 - This repo currently documents the backend as it exists today.
 - No unified `/move` or `/chess` endpoint exists yet.
 - Python `v0` and `v2.0` are currently exposed through Flask routes.
-- Historical engines remain versioned under `api/v1/`, but the active Flask engine route comes from [`api/v2/v2_0.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v2/v2_0.py:1).
+- Historical engines remain versioned under `api/v1/`, but the active Flask engine route comes from [`api/v2/v2_0.py`](api/v2/v2_0.py#L1).
 - The current Vercel duration setting is a temporary operational choice, not a statement that `30` seconds per move is the desired long-term UX target.
