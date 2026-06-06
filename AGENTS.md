@@ -11,7 +11,7 @@ The key architectural rule is stable across the docs: Python owns the deployed H
 
 ## Current Source of Truth
 
-The repo docs contain some historical references that no longer match the tree exactly. In particular, `README.md` and `engine_csharp/README.md` still mention `local_v1_tests/`, but that directory is not present in the current repository. Use the live tree as the source of truth:
+The repo docs contain some historical references that no longer match the tree exactly. In particular, `engine_csharp/README.md` still mentions `local_v1_tests/`, but that directory is not present in the current repository. Use the live tree as the source of truth:
 
 - `api/`: Flask app and Python engine implementations.
 - `api/index.py`: app entrypoint, CORS setup, blueprint registration.
@@ -33,7 +33,7 @@ Think of the repo as three layers:
 The public API is intentionally narrow. The current Flask code exposes:
 
 - `POST /chess_v0`: random legal move baseline.
-- `POST /chess_v1_5`: Python `v1.5` engine.
+- `POST /chess_v2_0`: Python `v2.0` engine.
 
 The docs discuss older `v1.x` engines extensively, but most of them are historical references or local-testing targets, not active public routes.
 
@@ -77,7 +77,7 @@ Use the C# `LocalTesting` commands for serious engine validation; that is the ac
 
 There is no formal `pytest` or unit-test suite in the repo today. Validation is scenario-driven and benchmark-driven.
 
-- For Flask changes, test `POST /chess_v0` and `POST /chess_v1_5` with valid and invalid FEN payloads.
+- For Flask changes, test `POST /chess_v0` and `POST /chess_v2_0` with valid and invalid FEN payloads.
 - For engine changes, use `engine_csharp/src/LocalTesting`.
 - For reproducible tactical/endgame checks, rely on `engine_scenarios/*.json` and the expectations documented in `engine_scenarios/console_output.md`.
 
@@ -93,13 +93,14 @@ When editing docs or code, distinguish between “historical explanation” and 
 
 Important rules:
 
-- Only the latest approved engine is the baseline.
+- The fixed evaluator baseline is local `stockfish-1350`.
+- The latest approved in-repo engine is the seed for new candidate versions.
 - New work happens in a newly cloned versioned engine file.
 - The evaluator is fixed: `500` games, `100ms` per move, paired openings from `Book.txt`.
 - Approval requires a clean build, a completed evaluator run, no illegal/crash failures, and `lcb95 > 0.5`.
-- `ATTEMPTS.md` is append-only except for the “Latest Approved Baseline” section.
+- `ATTEMPTS.md` is append-only except for the “Latest Approved Engine Seed” section.
 
-As of `2026-06-05`, the latest approved baseline recorded there is `v1.6` at `engine_csharp/src/Engine.Core/V1/V1_6Engine.cs`.
+As of `2026-06-06`, the fixed evaluator baseline recorded there is `stockfish-1350`, and the latest approved in-repo engine seed is `v2.5` at `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`.
 
 ## Coding Style & Naming
 

@@ -26,8 +26,8 @@ The important boundary is now very simple:
 - Runtime: Flask on Vercel serverless functions
 - Entry point: [`api/index.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/index.py:1)
 - HTTP endpoint wrapper: [`api/endpoint.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/endpoint.py:1)
-- Historical search implementations: [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1)
-- Direct Python reference runners: [`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) and [`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1)
+- Historical Python `v1.x` engines: [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1)
+- Current Python `v2.0` engine: [`api/v2/v2_0.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v2/v2_0.py:1)
 - Native workspace scaffold: [`engine_csharp/README.md`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/README.md:1)
 - Rewrite rule: all requests are routed to `api/index`
 - Function limit: Vercel `maxDuration` is currently set to `30` seconds
@@ -35,7 +35,7 @@ The important boundary is now very simple:
   - `https://sneakyowl.net`
   - `https://www.sneakyowl.net`
 
-The HTTP surface is intentionally narrow right now. Only `v0` remains exposed as a route. The older `v1` through `v1.4` engines are still preserved in code as historical/manual search references, but they are currently used only through direct local tooling.
+The HTTP surface is intentionally narrow right now. The active routes are `v0` and `v2.0`. The older `v1` through `v1.5` Python engines are still preserved in code as historical/manual search references, but they are not part of the current public HTTP surface.
 
 The new rule for the repo is:
 
@@ -52,7 +52,7 @@ The deployed endpoints currently exposed by Flask are:
 | Endpoint | Version | Summary |
 | --- | --- | --- |
 | `POST /chess_v0` | `v0` | Random legal move baseline |
-| `POST /chess_v1_5` | `v1.5` | Python `v1.5` engine with iterative deepening and a transposition table |
+| `POST /chess_v2_0` | `v2.0` | Python `v2.0` engine with a fixed `1.0s` move budget |
 
 It expects JSON like:
 
@@ -175,19 +175,20 @@ The workflow contract lives in:
 - Preserve `v0` through `v1.6` as accepted pre-`v2` history.
 - Develop `v2+` locally, not on Vercel.
 - Clone the latest approved engine into a new candidate file and modify only that candidate.
-- Evaluate the candidate only against the latest approved baseline under the fixed `autoresearch/EVALUATE.md` match contract.
+- Evaluate the candidate only against the fixed `stockfish-1350` baseline under the fixed `autoresearch/EVALUATE.md` match contract.
 - Promote a version only if that fixed evaluator approves it.
 - Log every completed evaluation, including rejected attempts, in `autoresearch/ATTEMPTS.md`.
 - Record accepted algorithm milestones in `CHANGELOG.md`.
 
 ### Evaluation Direction
 
-The active `v2+` direction is local automated engine-vs-engine evaluation, not online bot play.
+The active `v2+` direction is local automated engine-vs-Stockfish evaluation, not online bot play.
 
 The fixed evaluator is centered on:
 
 - offline head-to-head matches
-- the latest approved engine as the sole promotion baseline
+- `stockfish-1350` as the fixed promotion baseline
+- the latest approved in-repo engine as the seed for new candidates
 - a strict per-move time budget
 - paired, repeatable results recorded under `autoresearch/logs/<short_sha>-result.csv` when `--log --short-sha <short_sha>` is used
 
@@ -197,7 +198,6 @@ That remains the preferred direction because it is reproducible, automatable, ch
 
 - This repo currently documents the backend as it exists today.
 - No unified `/move` or `/chess` endpoint exists yet.
-- `v0` and Python `v1.5` are currently exposed through Flask routes.
-- Historical engines remain versioned under `api/v1/`, with `v1.5.py` also serving the public Flask route.
-- The current accepted `v2+` engine baseline is [`engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/src/Engine.Core/V2/V2_0Engine.cs:1).
+- Python `v0` and `v2.0` are currently exposed through Flask routes.
+- Historical engines remain versioned under `api/v1/`, but the active Flask engine route comes from [`api/v2/v2_0.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v2/v2_0.py:1).
 - The current Vercel duration setting is a temporary operational choice, not a statement that `30` seconds per move is the desired long-term UX target.
