@@ -21,7 +21,9 @@ Do not rewrite or delete prior entries (Except for the `## Latest Approved Engin
 - approved_file: `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`
 - approved_commit: `eef7533`
 - approved_recorded_at: `2026-06-05`
-- notes: `Current v2.5 baseline after adding passed-pawn advancement scoring to v2.2. Evaluated candidate commit was 519f5a3 and local main contains the equivalent cherry-pick eef7533.`
+- approved_reference_score_rate_vs_stockfish_1350: `0.6000`
+- approved_reference_score_source: `autoresearch/approved_logs/V2_5Engine-519f5a3-result.csv` from the direct stockfish-1350 reference summary below
+- notes: `Current v2.5 baseline after adding passed-pawn advancement scoring to v2.2. Evaluated candidate commit was 519f5a3 and local main contains the equivalent cherry-pick eef7533. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
 
 ## Entry Template
 

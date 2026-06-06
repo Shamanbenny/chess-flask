@@ -64,8 +64,8 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
 
 The caller must provide `<short_sha>` explicitly. Do not make the runner infer git state on behalf of the experiment loop.
 
-Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop. The documented default example uses `--workers 6` as the baseline parallel evaluator configuration for a typical 6-core Linux host, but the contract is still the same fixed evaluator regardless of how the local machine schedules those paired openings.
-The in-repo approved engine recorded in `autoresearch/ATTEMPTS.md` still matters as the seed file for the next candidate, but it is no longer the evaluation opponent.
+Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop. The documented default example uses `--workers 6` as the baseline parallel evaluator configuration for a typical 6-core Linux host, but the contract remains the same regardless of how the local machine schedules those paired openings.
+The in-repo approved engine recorded in `autoresearch/ATTEMPTS.md` is the seed file for the next candidate. The evaluation opponent is the fixed `stockfish-1350` baseline defined in this file.
 
 ## Git Recording Contract
 
@@ -175,6 +175,22 @@ With `n = games / 2` opening pairs, compute:
 
 Where `t_(0.95, n-1)` is the one-sided 95% Student-t critical value with `n - 1` degrees of freedom.
 
+Also compute:
+
+- `score_rate = total_score / games`
+- `approved_seed_score_rate = the latest approved seed's recorded stockfish-1350 reference score rate from autoresearch/ATTEMPTS.md`
+
+## Promotion Calibration
+
+Use `autoresearch/ATTEMPTS.md` as the calibration anchor for this contract.
+
+Before applying the approval rule, read the `Latest Approved Engine Seed` section and extract:
+
+- the approved seed version/file
+- the approved seed's recorded `approved_reference_score_rate_vs_stockfish_1350`
+
+That recorded approved-seed score rate is the explicit raw-score bar that the candidate must beat.
+
 ## Approval Rule
 
 Approve the candidate only if all of the following are true:
@@ -182,16 +198,18 @@ Approve the candidate only if all of the following are true:
 1. The candidate builds successfully.
 2. The evaluator completes and prints both required signatures.
 3. The candidate records no crash, illegal move, or harness failure.
-4. `lcb95 > 0.5`.
-5. `max_plies_rate < 0.10`.
+4. `score_rate > approved_seed_score_rate`.
+5. `lcb95 > 0.5`.
+6. `max_plies_rate < 0.10`.
 
 Otherwise reject the candidate.
 
 Interpretation:
 
-- `0.5` is the paired no-improvement baseline.
-- `lcb95 > 0.5` means the lower 95% confidence bound still indicates the candidate outscored the fixed `stockfish-1350` baseline across paired openings.
-- `max_plies_rate < 0.10` means fewer than 5% of the games may terminate only because the fixed ply cap was reached. If more than 5% of the sample hits `max_plies`, the candidate is treated as insufficiently decisive for promotion even if its raw score is competitive.
+- `approved_seed_score_rate` is the current approved in-repo seed's recorded raw score rate against the same fixed `stockfish-1350` evaluator.
+- `score_rate > approved_seed_score_rate` means the candidate must explicitly outperform the current approved seed's stockfish-1350 benchmark, not merely clear a generic floor.
+- `lcb95 > 0.5` means the paired-opening lower 95% confidence bound still shows the candidate scoring above break-even against `stockfish-1350`, so promotion is not based only on raw aggregate score noise.
+- `max_plies_rate < 0.10` means fewer than 10% of the games may terminate only because the fixed ply cap was reached. If 10% or more of the sample hits `max_plies`, the candidate is treated as insufficiently decisive for promotion even if its raw score is competitive.
 
 ## Rejection Conditions
 
@@ -204,6 +222,7 @@ Reject the candidate if any of the following happen:
 - broken logging output
 - harness failure
 - `max_plies_rate >= 0.10`
+- `score_rate <= approved_seed_score_rate`
 - `lcb95 <= 0.5`
 
 Rejected candidates still get logged in `autoresearch/ATTEMPTS.md` with an inferred conclusion.
