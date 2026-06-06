@@ -17,13 +17,13 @@ Do not rewrite or delete prior entries (Except for the `## Latest Approved Engin
 
 ## Latest Approved Engine Seed (Adjust accordingly ONLY WHEN experiment is approved by evaluator)
 
-- approved_version: `v2.8`
-- approved_file: `engine_csharp/src/Engine.Core/V2/V2_8Engine.cs`
-- approved_commit: `90def44`
+- approved_version: `v2.9`
+- approved_file: `engine_csharp/src/Engine.Core/V2/V2_9Engine.cs`
+- approved_commit: `fcb62a2`
 - approved_recorded_at: `2026-06-06`
-- approved_reference_score_rate_vs_stockfish_1350: `0.6040`
-- approved_reference_score_source: `autoresearch/approved_logs/V2_8Engine-acdf45c-result.csv`
-- notes: `Current v2.8 baseline after adding rook open-file and semi-open-file scoring to v2.5. Evaluated candidate commit was acdf45c and local main contains the equivalent cherry-pick 90def44. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
+- approved_reference_score_rate_vs_stockfish_1350: `0.6480`
+- approved_reference_score_source: `autoresearch/approved_logs/V2_9Engine-66b524e-result.csv`
+- notes: `Current v2.9 baseline after adding a modest knight outpost bonus to v2.8. Evaluated candidate commit was 66b524e and local main contains the equivalent cherry-pick fcb62a2. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
 
 ## Entry Template
 
@@ -312,3 +312,32 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=33`
 - verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, score_rate=0.6040 exceeded the approved seed reference 0.6000, paired lcb95 was 0.5708 > 0.5, and max_plies_rate was 0.0660 < 0.10.`
 - inferred_conclusion: `Rook file activity scoring is a small but statistically reliable improvement on top of v2.5. Future work should build from v2.8 and can consider similarly targeted piece-activity terms, but the very narrow margin over v2.5 means new static evaluation terms still need full paired validation rather than relying on raw chess intuition.`
+
+## Attempt: 2026-06-06T08:37:12Z - v2.9
+
+- branch: `autoresearch/Jun6c`
+- commit: `66b524e` evaluated; `fcb62a2` cherry-picked on `main`
+- status: `approved`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v2.8`
+- seed_file: `engine_csharp/src/Engine.Core/V2/V2_8Engine.cs`
+- candidate_version: `v2.9`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_9Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A modest knight outpost bonus will improve minor-piece activity decisions on top of v2.8 without materially slowing evaluation.`
+  - `Using pawn-defended and not enemy-pawn-attacked advanced knight squares is more targeted than another broad pawn-structure bonus.`
+- implementation_summary: `Cloned v2.8 into v2.9, renamed the public type/search entrypoint, and added a 14 centipawn bonus for knights on advanced outpost ranks when defended by a friendly pawn and not attacked by an enemy pawn.`
+- evaluation_log_path: `autoresearch/logs/66b524e-result.csv` moved to `autoresearch/approved_logs/V2_9Engine-66b524e-result.csv`
+- extra_log_paths: `n/a`
+- wins: `271`
+- draws: `106`
+- losses: `123`
+- score: `324.0/500`
+- score_rate: `0.6480`
+- average_plies: `91.84`
+- average_processing_time_ms: `104.111`
+- average_positions_or_nodes: `12267.83`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=33`
+- verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, score_rate=0.6480 exceeded the approved seed reference 0.6040, paired lcb95 was 0.6178 > 0.5, and max_plies_rate was 0.0660 < 0.10.`
+- inferred_conclusion: `A small targeted knight outpost term is a statistically reliable improvement on top of v2.8 and did not reduce throughput materially. Future work should build from v2.9 and continue with similarly specific piece-activity or king-safety features rather than generic pawn penalties.`
