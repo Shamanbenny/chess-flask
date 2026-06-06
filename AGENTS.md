@@ -62,16 +62,8 @@ vercel dev
 
 C# local engine workflow:
 
-```bash
-dotnet build engine_csharp/ChessEngine.sln
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v1.6 --time-limit-seconds 1.0 --max-plies 70
-dotnet run --project engine_csharp/src/LocalTesting -- endgame-1
-dotnet run --project engine_csharp/src/LocalTesting -- endgame-2
-```
-
 Use the C# `LocalTesting` commands for serious engine validation; that is the active direction described by the repo docs.
+When you need the current exact testing or evaluation command shape, reference `README.md` first before copying command examples from older docs or memory.
 
 ## Testing and Validation
 

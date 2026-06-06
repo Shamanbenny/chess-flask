@@ -42,6 +42,7 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
   --games 500 \
   --time-limit-ms 100 \
   --max-plies 200 \
+  --workers 6 \
   --log \
   --short-sha <short_sha>
 ```
@@ -56,13 +57,14 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
   --games 500 \
   --time-limit-ms 100 \
   --max-plies 200 \
+  --workers 6 \
   --log \
   --short-sha 1a2b3c4
 ```
 
 The caller must provide `<short_sha>` explicitly. Do not make the runner infer git state on behalf of the experiment loop.
 
-Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop.
+Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop. The documented default example uses `--workers 6` as the baseline parallel evaluator configuration for a typical 6-core Linux host, but the contract is still the same fixed evaluator regardless of how the local machine schedules those paired openings.
 The in-repo approved engine recorded in `autoresearch/ATTEMPTS.md` still matters as the seed file for the next candidate, but it is no longer the evaluation opponent.
 
 ## Git Recording Contract

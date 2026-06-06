@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using System.Collections.Concurrent;
 using Chess;
 using Engine.Core;
 using Engine.Core.V1;
@@ -35,6 +36,7 @@ internal static class LocalTestingProgram
                 "endgame-2" => RunEndgame("endgame_2", args[1..]),
                 "evaluate-match" => RunEvaluateMatch(args[1..]),
                 "evaluate-stock" or "--evaluate-stock" => RunEvaluateStock(args[1..]),
+                "backend-worker-experiment" => BackendWorkerExperiment.Run(args[1..]),
                 _ => Fail($"Unknown command '{args[0]}'"),
             };
         }
@@ -353,15 +355,14 @@ internal static class LocalTestingProgram
             throw new ArgumentException("--max-plies must be at least 1.");
         }
 
-        var engineA = ResolveParticipantFromEngineFile(options.EngineAFilePath);
-        var engineB = ResolveParticipantFromEngineFile(options.EngineBFilePath);
         return RunEvaluationSeries(
-            engineA,
-            engineB,
+            CreateEngineFileParticipantFactory(options.EngineAFilePath),
+            CreateEngineFileParticipantFactory(options.EngineBFilePath),
             options.OpeningsFilePath,
             options.Games,
             options.MaxPlies,
             options.TimeLimitSeconds,
+            options.Workers,
             options.Log,
             options.ShortSha);
     }
@@ -384,25 +385,16 @@ internal static class LocalTestingProgram
             throw new ArgumentException("--max-plies must be at least 1.");
         }
 
-        EvaluationParticipant? stockfishParticipant = null;
-        try
-        {
-            var engine = ResolveParticipantFromEngineFile(options.EngineFilePath);
-            stockfishParticipant = CreateStockfishParticipant(options.StockfishPath, options.StockfishElo);
-            return RunEvaluationSeries(
-                engine,
-                stockfishParticipant,
-                options.OpeningsFilePath,
-                options.Games,
-                options.MaxPlies,
-                options.TimeLimitSeconds,
-                options.Log,
-                options.ShortSha);
-        }
-        finally
-        {
-            stockfishParticipant?.Dispose();
-        }
+        return RunEvaluationSeries(
+            CreateEngineFileParticipantFactory(options.EngineFilePath),
+            CreateStockfishParticipantFactory(options.StockfishPath, options.StockfishElo),
+            options.OpeningsFilePath,
+            options.Games,
+            options.MaxPlies,
+            options.TimeLimitSeconds,
+            options.Workers,
+            options.Log,
+            options.ShortSha);
     }
 
     private static EvaluateMatchOptions ParseEvaluateMatchOptions(string[] args)
@@ -413,6 +405,7 @@ internal static class LocalTestingProgram
         var maxPlies = DefaultEvaluationMaxPlies;
         var timeLimitSeconds = DefaultEvaluationTimeLimitSeconds;
         var openingsFilePath = FindDefaultOpeningSourceFile();
+        var workers = 1;
         var log = false;
         string? shortSha = null;
 
@@ -438,6 +431,9 @@ internal static class LocalTestingProgram
                 case "--openings-file":
                     openingsFilePath = ResolveCliPath(args[++index]);
                     break;
+                case "--workers":
+                    workers = int.Parse(args[++index]);
+                    break;
                 case "--log":
                     log = true;
                     break;
@@ -459,6 +455,11 @@ internal static class LocalTestingProgram
             throw new ArgumentException("--short-sha is required when --log is enabled.");
         }
 
+        if (workers < 1)
+        {
+            throw new ArgumentException("--workers must be at least 1.");
+        }
+
         return new EvaluateMatchOptions(
             ResolveCliPath(engineAFilePath),
             ResolveCliPath(engineBFilePath),
@@ -466,6 +467,7 @@ internal static class LocalTestingProgram
             games,
             maxPlies,
             timeLimitSeconds,
+            workers,
             log,
             shortSha);
     }
@@ -479,6 +481,7 @@ internal static class LocalTestingProgram
         var maxPlies = DefaultEvaluationMaxPlies;
         var timeLimitSeconds = DefaultEvaluationTimeLimitSeconds;
         var openingsFilePath = FindDefaultOpeningSourceFile();
+        var workers = 1;
         var log = false;
         string? shortSha = null;
 
@@ -507,6 +510,9 @@ internal static class LocalTestingProgram
                 case "--openings-file":
                     openingsFilePath = ResolveCliPath(args[++index]);
                     break;
+                case "--workers":
+                    workers = int.Parse(args[++index]);
+                    break;
                 case "--log":
                     log = true;
                     break;
@@ -528,6 +534,11 @@ internal static class LocalTestingProgram
             throw new ArgumentException("--short-sha is required when --log is enabled.");
         }
 
+        if (workers < 1)
+        {
+            throw new ArgumentException("--workers must be at least 1.");
+        }
+
         return new EvaluateStockOptions(
             ResolveCliPath(engineFilePath),
             ResolveStockfishPath(stockfishPath),
@@ -536,23 +547,27 @@ internal static class LocalTestingProgram
             games,
             maxPlies,
             timeLimitSeconds,
+            workers,
             log,
             shortSha);
     }
 
     private static int RunEvaluationSeries(
-        EvaluationParticipant engineA,
-        EvaluationParticipant engineB,
+        EvaluationParticipantFactory engineAFactory,
+        EvaluationParticipantFactory engineBFactory,
         string openingsFilePath,
         int games,
         int maxPlies,
         double timeLimitSeconds,
+        int workers,
         bool log,
         string? shortSha)
     {
         var openingFens = LoadOpeningPositions(openingsFilePath);
         var totalPairs = games / 2;
-        var aggregate = new MatchAggregate(engineA, engineB);
+        using var engineAInfo = engineAFactory.Create();
+        using var engineBInfo = engineBFactory.Create();
+        var aggregate = new MatchAggregate(engineAInfo, engineBInfo);
         var csvLogger = log
             ? EvaluationCsvLogger.Create(shortSha!)
             : null;
@@ -560,16 +575,17 @@ internal static class LocalTestingProgram
         try
         {
             Console.WriteLine("=== EVALUATION START ===");
-            Console.WriteLine($"Engine A source: {engineA.SourcePath}");
-            Console.WriteLine($"Engine A name: {engineA.EngineStem}");
-            Console.WriteLine($"Engine A details: {engineA.Details}");
-            Console.WriteLine($"Engine B source: {engineB.SourcePath}");
-            Console.WriteLine($"Engine B name: {engineB.EngineStem}");
-            Console.WriteLine($"Engine B details: {engineB.Details}");
+            Console.WriteLine($"Engine A source: {engineAInfo.SourcePath}");
+            Console.WriteLine($"Engine A name: {engineAInfo.EngineStem}");
+            Console.WriteLine($"Engine A details: {engineAInfo.Details}");
+            Console.WriteLine($"Engine B source: {engineBInfo.SourcePath}");
+            Console.WriteLine($"Engine B name: {engineBInfo.EngineStem}");
+            Console.WriteLine($"Engine B details: {engineBInfo.Details}");
             Console.WriteLine($"Games: {games}");
             Console.WriteLine($"Pairs: {totalPairs}");
             Console.WriteLine($"Time limit per move: {timeLimitSeconds * 1000.0:F1}ms");
             Console.WriteLine($"Max plies: {maxPlies}");
+            Console.WriteLine($"Workers: {workers}");
             Console.WriteLine($"Opening source file: {openingsFilePath}");
             Console.WriteLine($"Unique opening positions loaded: {openingFens.Count}");
             Console.WriteLine($"Logging enabled: {log}");
@@ -579,45 +595,63 @@ internal static class LocalTestingProgram
                 Console.WriteLine($"CSV log file: {csvLogger.FilePath}");
             }
 
-            for (var pairIndex = 0; pairIndex < totalPairs; pairIndex++)
+            var pairResults = new ConcurrentBag<PairEvaluationResult>();
+            Parallel.ForEach(
+                Enumerable.Range(0, totalPairs),
+                new ParallelOptions { MaxDegreeOfParallelism = workers },
+                pairIndex =>
+                {
+                    var openingFen = openingFens[pairIndex % openingFens.Count];
+                    var whiteGameNumber = pairIndex * 2 + 1;
+                    var blackGameNumber = pairIndex * 2 + 2;
+                    var pairNumber = pairIndex + 1;
+                    var openingIndex = pairIndex % openingFens.Count + 1;
+
+                    using var pairEngineA = engineAFactory.Create();
+                    using var pairEngineB = engineBFactory.Create();
+
+                    var gameAWhite = PlayEvaluationGame(
+                        whiteGameNumber,
+                        pairNumber,
+                        openingIndex,
+                        openingFen,
+                        pairEngineA,
+                        pairEngineB,
+                        timeLimitSeconds,
+                        maxPlies,
+                        engineAWasWhite: true);
+
+                    var gameBWhite = PlayEvaluationGame(
+                        blackGameNumber,
+                        pairNumber,
+                        openingIndex,
+                        openingFen,
+                        pairEngineB,
+                        pairEngineA,
+                        timeLimitSeconds,
+                        maxPlies,
+                        engineAWasWhite: false);
+
+                    pairResults.Add(new PairEvaluationResult(
+                        pairNumber,
+                        openingIndex,
+                        gameAWhite,
+                        gameBWhite,
+                        (ScoreForEngine(gameAWhite) + ScoreForEngine(gameBWhite)) / 2.0));
+                });
+
+            foreach (var pairResult in pairResults.OrderBy(result => result.PairNumber))
             {
-                var openingFen = openingFens[pairIndex % openingFens.Count];
-                var whiteGameNumber = pairIndex * 2 + 1;
-                var blackGameNumber = pairIndex * 2 + 2;
-                var pairNumber = pairIndex + 1;
-                var openingIndex = pairIndex % openingFens.Count + 1;
+                aggregate.Record(pairResult.FirstGame);
+                PrintGameSummary(pairResult.FirstGame);
+                csvLogger?.WriteGame(pairResult.FirstGame);
 
-                var gameAWhite = PlayEvaluationGame(
-                    whiteGameNumber,
-                    pairNumber,
-                    openingIndex,
-                    openingFen,
-                    engineA,
-                    engineB,
-                    timeLimitSeconds,
-                    maxPlies,
-                    engineAWasWhite: true);
-                aggregate.Record(gameAWhite);
-                PrintGameSummary(gameAWhite);
-                csvLogger?.WriteGame(gameAWhite);
+                aggregate.Record(pairResult.SecondGame);
+                PrintGameSummary(pairResult.SecondGame);
+                csvLogger?.WriteGame(pairResult.SecondGame);
 
-                var gameBWhite = PlayEvaluationGame(
-                    blackGameNumber,
-                    pairNumber,
-                    openingIndex,
-                    openingFen,
-                    engineB,
-                    engineA,
-                    timeLimitSeconds,
-                    maxPlies,
-                    engineAWasWhite: false);
-                aggregate.Record(gameBWhite);
-                PrintGameSummary(gameBWhite);
-                csvLogger?.WriteGame(gameBWhite);
-
-                var pairScore = aggregate.PairScores[^1];
                 Console.WriteLine(
-                    $"Pair {pairNumber}/{totalPairs}: opening_index={openingIndex} | engine_a_pair_score={pairScore:F2}");
+                    $"Pair {pairResult.PairNumber}/{totalPairs}: opening_index={pairResult.OpeningIndex} | engine_a_pair_score={pairResult.PairScore:F2}");
             }
 
             var aggregateMetrics = BuildAggregateMetrics(aggregate, totalPairs);
@@ -787,6 +821,18 @@ internal static class LocalTestingProgram
             $"uci elo={stockfish.ConfiguredElo}",
             stockfish.SearchMove,
             stockfish);
+    }
+
+    private static EvaluationParticipantFactory CreateEngineFileParticipantFactory(string engineFilePath)
+    {
+        var resolvedPath = ResolveCliPath(engineFilePath);
+        return new EvaluationParticipantFactory(() => ResolveParticipantFromEngineFile(resolvedPath));
+    }
+
+    private static EvaluationParticipantFactory CreateStockfishParticipantFactory(string stockfishPath, int stockfishElo)
+    {
+        var resolvedPath = ResolveStockfishPath(stockfishPath);
+        return new EvaluationParticipantFactory(() => CreateStockfishParticipant(resolvedPath, stockfishElo));
     }
 
     private static void PrintGameSummary(EvaluationGameResult result)
@@ -1281,8 +1327,9 @@ internal static class LocalTestingProgram
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --log --short-sha 1a2b3c4");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1800 --games 20 --time-limit-ms 100 --log --short-sha 1a2b3c4");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --workers 6 --log --short-sha 1a2b3c4");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1800 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs --games 20 --time-limit-ms 100 --workers 6 --skip-1-worker");
     }
 
     private sealed record Puzzle1Scenario(
@@ -1312,6 +1359,7 @@ internal static class LocalTestingProgram
         int Games,
         int MaxPlies,
         double TimeLimitSeconds,
+        int Workers,
         bool Log,
         string? ShortSha);
 
@@ -1323,6 +1371,7 @@ internal static class LocalTestingProgram
         int Games,
         int MaxPlies,
         double TimeLimitSeconds,
+        int Workers,
         bool Log,
         string? ShortSha);
 
@@ -1338,6 +1387,16 @@ internal static class LocalTestingProgram
             Disposable?.Dispose();
         }
     }
+
+    private sealed record EvaluationParticipantFactory(
+        Func<EvaluationParticipant> Create);
+
+    private sealed record PairEvaluationResult(
+        int PairNumber,
+        int OpeningIndex,
+        EvaluationGameResult FirstGame,
+        EvaluationGameResult SecondGame,
+        double PairScore);
 
     private sealed record AggregateMetrics(
         double EngineAAverageMoveMs,

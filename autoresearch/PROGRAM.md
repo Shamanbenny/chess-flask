@@ -95,7 +95,7 @@ Loop forever:
 7. Check that the code builds successfully.
 8. Commit the candidate.
 9. Run the fixed evaluation from `autoresearch/EVALUATE.md`.
-   The evaluation command must include `--log --short-sha <short_sha>` so the canonical per-game CSV lands under `autoresearch/logs/`.
+   The evaluation command must include `--workers 6` and `--log --short-sha <short_sha>` so the canonical per-game CSV lands under `autoresearch/logs/`.
 10. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll infrequently.
 11. Verify the evaluation output contains both required signatures:
    - `=== EVALUATION START ===`

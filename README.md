@@ -135,14 +135,46 @@ dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 
 dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v2.0 --time-limit-seconds 1.0 --max-plies 70
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --games 50 --time-limit-ms 250 --max-plies 200
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --games 50 --time-limit-ms 250 --max-plies 200 --workers 6
 export STOCKFISH_PATH=/home/your-user/tools/stockfish/stockfish-ubuntu-x86-64-avx2
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --stockfish-path "$STOCKFISH_PATH" --stockfish-elo 1350 --games 20 --time-limit-ms 100 --log --short-sha 1a2b3c4
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --stockfish-path "$STOCKFISH_PATH" --stockfish-elo 1350 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4
 ```
 
-`evaluate-stock` runs the specified C# engine file against a local Stockfish binary. The recommended workflow is to store the executable location in a `STOCKFISH_PATH` environment variable and pass it into `--stockfish-path`. `--stockfish-elo` maps to [Stockfish's UCI limited-strength](./STOCKFISH-ELO.md) setting rather than a guaranteed live rating. `--log --short-sha <sha>` writes the same evaluator CSV format used by `evaluate-match`.
+`evaluate-match` and `evaluate-stock` both support `--workers` so the evaluator can process multiple paired openings concurrently. `evaluate-stock` runs the specified C# engine file against a local Stockfish binary. The recommended workflow is to store the executable location in a `STOCKFISH_PATH` environment variable and pass it into `--stockfish-path`. `--stockfish-elo` maps to [Stockfish's UCI limited-strength](./STOCKFISH-ELO.md) setting rather than a guaranteed live rating. `--log --short-sha <sha>` writes the same evaluator CSV format used by `evaluate-match`.
 
 The C# workspace now exists to hold direct source engines and the local scenario runners. The active local runner project in this repo is `engine_csharp/src/LocalTesting`.
+
+```bash
+dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs --games 20 --time-limit-ms 100 --workers 6
+```
+
+`backend-worker-experiment` runs the same engine against itself from the same starting position in two batches: first with `1` worker, then with the worker count supplied by `--workers`. It reports per-game timing, plies, and batch-level `ms_per_ply` so you can check whether concurrent backend workers are preserving roughly the same per-ply cost within the configured tolerance.
+
+To skip the 1-worker runtime:
+
+```bash
+dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs --games 20 --time-limit-ms 100 --workers 6 --skip-1-worker
+```
+
+To derive a reasonable starting `--workers` value for a Linux host, inspect the CPU topology with:
+
+```bash
+lscpu
+```
+
+Focus on:
+
+- `Socket(s)`
+- `Core(s) per socket`
+- `Thread(s) per core`
+- `CPU(s)`
+
+Then compute:
+
+- physical cores = `Socket(s) * Core(s) per socket`
+- logical threads = `CPU(s)`
+
+For CPU-bound engine work, start by testing a worker count near the number of physical cores. Treat the logical thread count as the upper bound, not the default, because when `Thread(s) per core)` is `2`, those extra logical threads share the same physical core resources. In practice, use `lscpu` to find the machine's hardware limits, then keep the highest `--workers` value that still keeps the experiment's `ms_per_ply` within your acceptable tolerance.
 
 ## Project Versions
 
