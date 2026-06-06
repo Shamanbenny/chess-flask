@@ -229,3 +229,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
 - verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4931 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, raw score_rate=0.5080, and max_plies_rate=0.0000.`
 - inferred_conclusion: `A protected-passed-pawn bonus on top of v2.5 was directionally positive but not statistically reliable. Future pawn work should avoid simply stacking small passed-pawn bonuses and should instead target clearer pawn-race, blockade, or promotion-conversion features.`
+
+## Attempt: 2026-06-06T01:28:59Z - v2.7
+
+- branch: `autoresearch/Jun6a`
+- commit: `5188d75`
+- status: `rejected`
+- baseline_version: `v2.5`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`
+- candidate_version: `v2.7`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_7Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A small doubled-pawn penalty may improve pawn-structure decisions without stacking more passed-pawn bonuses on top of v2.5.`
+- implementation_summary: `Cloned v2.5 into v2.7, renamed the public type/search entrypoint, counted pawns per file during evaluation, and subtracted a 12 centipawn penalty for each extra same-color pawn on a file.`
+- evaluation_log_path: `autoresearch/logs/5188d75-result.csv`
+- extra_log_paths: `n/a`
+- wins: `93`
+- draws: `311`
+- losses: `96`
+- score: `248.5/500`
+- score_rate: `0.4970`
+- average_plies: `75.10`
+- average_processing_time_ms: `103.441`
+- average_positions_or_nodes: `14137.95`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
+- verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4760 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, and max_plies_rate=0.0000.`
+- inferred_conclusion: `A generic doubled-pawn penalty slightly underperformed v2.5 and did not improve the passed-pawn baseline. Future pawn-structure work should be more tactical or conversion-specific, such as blockade detection, pawn-race promotion distance, or king proximity to advanced passers, rather than adding broad static structure penalties.`
