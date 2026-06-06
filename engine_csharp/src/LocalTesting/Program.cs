@@ -594,7 +594,9 @@ internal static class LocalTestingProgram
                 Console.WriteLine($"CSV log file: {csvLogger.FilePath}");
             }
 
+            Console.Out.Flush();
             var outputLock = new object();
+            var completedPairs = 0;
             Parallel.ForEach(
                 Enumerable.Range(0, totalPairs),
                 new ParallelOptions { MaxDegreeOfParallelism = workers },
@@ -648,14 +650,18 @@ internal static class LocalTestingProgram
                         PrintGameSummary(pairResult.SecondGame);
                         csvLogger?.WriteGame(pairResult.SecondGame);
 
+                        var completed = ++completedPairs;
                         Console.WriteLine(
-                            $"Pair {pairResult.PairNumber}/{totalPairs}: opening_index={pairResult.OpeningIndex} | engine_a_pair_score={pairResult.PairScore:F2}");
+                            $"Pair {pairResult.PairNumber}/{totalPairs}: opening_index={pairResult.OpeningIndex} | engine_a_pair_score={pairResult.PairScore:F2} | completed_pairs={completed}/{totalPairs}");
+                        csvLogger?.Flush();
+                        Console.Out.Flush();
                     }
                 });
 
             var aggregateMetrics = BuildAggregateMetrics(aggregate, totalPairs);
             PrintEvaluationSummary(aggregate, aggregateMetrics);
             Console.WriteLine("=== EVALUATION DONE ===");
+            Console.Out.Flush();
             return aggregate.Failures > 0 ? 1 : 0;
         }
         finally
@@ -1501,6 +1507,12 @@ internal static class LocalTestingProgram
                 result.FailureEngineStem ?? string.Empty,
                 result.FailureMessage ?? string.Empty,
                 result.OpeningFen);
+        }
+
+        public void Flush()
+        {
+            ThrowIfDisposed();
+            _writer.Flush();
         }
 
         public void Dispose()

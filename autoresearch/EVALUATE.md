@@ -13,6 +13,7 @@ The evaluator decides whether the candidate is approved. Diagnostic information 
 ## Fixed Match Rules
 
 - Candidate opponent: local `Stockfish` configured with `UCI_LimitStrength=true` and `UCI_Elo=1350`
+- Stockfish location: assume the `STOCKFISH_PATH` environment variable is already set to the local Stockfish executable. Do not search for, install, or substitute another binary during normal evaluator runs.
 - Move time limit: `100ms` per move
 - Total games: `500`
 - Color split: `250` games with the candidate as White, `250` games with the candidate as Black
@@ -30,14 +31,17 @@ The evaluator is run through the local C# runner.
 Before running evaluation, replace:
 
 - `<candidate_engine_file>` with the newly cloned and modified engine file being tested
-- `<stockfish_path>` with the local Stockfish executable path, preferably provided through `$STOCKFISH_PATH`
+
+Assume `STOCKFISH_PATH` is already present in the environment and points to the correct local Stockfish executable.
+
+The 500-game evaluator is long-running. It must be launched in a user-visible terminal/background-terminal mechanism that the Codex UI can surface through `/ps`. Do not launch the fixed evaluator through Codex `exec_command` tool sessions, because those tool-managed sessions may not appear in `/ps` and make monitoring harder for the user.
 
 Run exactly:
 
 ```bash
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
   --engine-file <candidate_engine_file> \
-  --stockfish-path <stockfish_path> \
+  --stockfish-path "$STOCKFISH_PATH" \
   --stockfish-elo 1350 \
   --games 500 \
   --time-limit-ms 100 \

@@ -12,7 +12,7 @@ To set up a new experiment, work with the user to:
    - `autoresearch/PROGRAM.md` - this workflow contract.
    - `autoresearch/EVALUATE.md` - fixed evaluation rules. Read-only.
    - `autoresearch/ATTEMPTS.md` - previous attempts, outcomes, conclusions, and latest approved metadata.
-4. **Identify the latest approved engine seed**: read `autoresearch/ATTEMPTS.md`, find the latest **approved** in-repo engine version/file, and review recent approved and rejected conclusions before choosing a new hypothesis.
+4. **Identify the latest approved engine seed**: read `autoresearch/ATTEMPTS.md`, find the latest **approved** in-repo engine version/file, and review recent approved and rejected conclusions before choosing new hypotheses.
 5. **Create the branch**: `git checkout -b autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>` from `main`.
 6. **Clone the approved engine into a new candidate**: copy the latest approved in-repo engine file to the next versioned file name, using a minor or major bump based on change scope, and place it under the corresponding major folder (for example `V2/` or `V3/`).
 7. **Confirm and go**: confirm the Stockfish evaluator baseline, approved engine seed, candidate target name, and active hypotheses look coherent before beginning the loop.
@@ -21,13 +21,13 @@ Once setup is complete, begin experimenting.
 
 ## Experimentation
 
-Every experiment is evaluated against the fixed `stockfish-1350` opponent, not against an arbitrary older in-repo engine version.
+Every experiment is evaluated against the fixed `stockfish-1350` opponent, not against an arbitrary older in-repo engine version. Assume Stockfish is already installed and exposed through the `STOCKFISH_PATH` environment variable; do not spend experiment-loop time searching for, installing, or substituting a different Stockfish binary unless the evaluation fails specifically because that variable is missing or invalid.
 
 Before changing code:
 
 - read the most recent attempts and inferred conclusions
 - inspect the latest approved in-repo engine file itself
-- form at most `1` active hypotheses at one time
+- form at most `2` active hypotheses at one time
 
 Example hypotheses:
 
@@ -87,7 +87,7 @@ The branch holds candidate engine changes. `main` holds the canonical `autoresea
 
 Loop forever:
 1. Create and track in your todo-list feature the following steps, making sure that the last task includes a reminder to rehydrate your context where necessary, but **most importantly as a reminder to re-loop!**
-2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved in-repo engine seed, and choose `1` active hypotheses grounded in that code plus prior attempt conclusions.
+2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved in-repo engine seed, and choose at most `2` active hypotheses grounded in that code plus prior attempt conclusions.
 3. For a new experiment loop, check out `main`, make sure it is current, and create one unique branch from `main` using the `autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>` convention. For continued attempts in that same loop, return to the existing experiment branch instead of creating another branch.
 4. Look at the git state: current branch, current commit, and whether the experiment branch is positioned at the latest approved in-repo engine commit recorded in `main`.
 5. Clone the latest approved in-repo engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
@@ -96,7 +96,8 @@ Loop forever:
 8. Commit the candidate.
 9. Run the fixed evaluation from `autoresearch/EVALUATE.md`.
    The evaluation command must include `--workers 6` and `--log --short-sha <short_sha>` so the canonical per-game CSV lands under `autoresearch/logs/`.
-10. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll infrequently.
+   The evaluator must be launched in a user-visible terminal/background-terminal mechanism that the Codex UI can surface through `/ps`; do not run the long 500-game evaluator through Codex `exec_command` tool sessions.
+10. Reduce the number of "check on terminal" requests while evaluation is running. Let the evaluator run and poll only every 5 minutes!
 11. Verify the evaluation output contains both required signatures:
    - `=== EVALUATION START ===`
    - `=== EVALUATION DONE ===`
