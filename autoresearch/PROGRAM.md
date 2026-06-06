@@ -12,21 +12,21 @@ To set up a new experiment, work with the user to:
    - `autoresearch/PROGRAM.md` - this workflow contract.
    - `autoresearch/EVALUATE.md` - fixed evaluation rules. Read-only.
    - `autoresearch/ATTEMPTS.md` - previous attempts, outcomes, conclusions, and latest approved metadata.
-4. **Identify the latest approved baseline**: read `autoresearch/ATTEMPTS.md`, find the latest **approved** engine version/file, and review recent approved and rejected conclusions before choosing a new hypothesis.
+4. **Identify the latest approved engine seed**: read `autoresearch/ATTEMPTS.md`, find the latest **approved** in-repo engine version/file, and review recent approved and rejected conclusions before choosing a new hypothesis.
 5. **Create the branch**: `git checkout -b autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>` from `main`.
-6. **Clone the approved engine into a new candidate**: copy the latest approved engine file to the next versioned file name, using a minor or major bump based on change scope, and place it under the corresponding major folder (for example `V2/` or `V3/`).
-7. **Confirm and go**: confirm the baseline, candidate target name, and active hypotheses look coherent before beginning the loop.
+6. **Clone the approved engine into a new candidate**: copy the latest approved in-repo engine file to the next versioned file name, using a minor or major bump based on change scope, and place it under the corresponding major folder (for example `V2/` or `V3/`).
+7. **Confirm and go**: confirm the Stockfish evaluator baseline, approved engine seed, candidate target name, and active hypotheses look coherent before beginning the loop.
 
 Once setup is complete, begin experimenting.
 
 ## Experimentation
 
-Every experiment works against the current latest approved engine, not against an arbitrary older version.
+Every experiment is evaluated against the fixed `stockfish-1350` opponent, not against an arbitrary older in-repo engine version.
 
 Before changing code:
 
 - read the most recent attempts and inferred conclusions
-- inspect the latest approved engine file itself
+- inspect the latest approved in-repo engine file itself
 - form at most `1` active hypotheses at one time
 
 Example hypotheses:
@@ -57,7 +57,7 @@ Hypotheses should be concrete enough that the resulting code change can be descr
 
 ## Goal
 
-The goal is to produce a candidate chess engine that is measurably better than the latest approved engine under the fixed evaluation defined in `autoresearch/EVALUATE.md`.
+The goal is to produce a candidate chess engine that is measurably better than the fixed `stockfish-1350` evaluator baseline defined in `autoresearch/EVALUATE.md`.
 
 The decision is based on the fixed head-to-head evaluator (aka match simulation), not on isolated puzzle success, not on subjective code preference, and not on a single anecdotal game.
 
@@ -69,14 +69,15 @@ Every completed, halted, or failed experiment must append a structured entry to 
 
 Each entry must include enough information for future runs to answer:
 
-- what baseline was used
+- what evaluator baseline was used
+- what in-repo approved engine seed was used
 - what candidate file/version was created (E.g. `engine_csharp/src/Engine.Core/V2/V2_3Engine-<UID>.cs`)
 - what hypotheses were tested
 - what the evaluator measured
 - whether the candidate was approved or rejected
 - what conclusion can be infer from the result, so that future runs can learn from or take note of
 
-The attempts log is append-only (Append at tail end) during the run. It is the authoritative source for the latest approved baseline and for prior experiment conclusions.
+The attempts log is append-only (Append at tail end) during the run. It is the authoritative source for the latest approved in-repo engine seed and for prior experiment conclusions.
 
 ## The Experiment Loop
 
@@ -85,11 +86,11 @@ Each experiment loop starts from a dedicated branch created from `main`, for exa
 The branch holds candidate engine changes. `main` holds the canonical `autoresearch/ATTEMPTS.md` record after each evaluated outcome.
 
 Loop forever:
-1. Create and track in your todo-list feature the following steps, making sure that the last task acts as a reminder to rehydrate your context where necessary, but **most importantly as a reminder to re-loop!**
-2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved engine, and choose `1` active hypotheses grounded in the latest approved code plus prior attempt conclusions.
+1. Create and track in your todo-list feature the following steps, making sure that the last task includes a reminder to rehydrate your context where necessary, but **most importantly as a reminder to re-loop!**
+2. Read `autoresearch/ATTEMPTS.md`, identify the latest approved in-repo engine seed, and choose `1` active hypotheses grounded in that code plus prior attempt conclusions.
 3. For a new experiment loop, check out `main`, make sure it is current, and create one unique branch from `main` using the `autoresearch/<MONTH_IN_3_CHARS><DAY><LETTER>` convention. For continued attempts in that same loop, return to the existing experiment branch instead of creating another branch.
-4. Look at the git state: current branch, current commit, and whether the experiment branch is positioned at the latest approved commit recorded in `main`.
-5. Clone the latest approved engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
+4. Look at the git state: current branch, current commit, and whether the experiment branch is positioned at the latest approved in-repo engine commit recorded in `main`.
+5. Clone the latest approved in-repo engine file into the next versioned candidate file, choosing minor versus major bump based on the complexity of the change. (New versions must be ATLEAST V2+)
 6. Modify only that newly cloned candidate engine file with the improvement, optimization, or fix.
 7. Check that the code builds successfully.
 8. Commit the candidate.
@@ -109,11 +110,11 @@ Loop forever:
 15. Commit the updates on `main`, then push `main` to the remote.
 16. Return to the experiment branch to continue the loop:
    - if the candidate was approved, keep the candidate commit, advance the branch from that commit, and continue with the next candidate
-   - if the candidate was rejected, halted without approval, or failed, reset the experiment branch back to the previously approved commit, then restart the workflow from a new hypothesis (I am EXPLICITLY looking for `git reset --hard <short_sha>` should a candidate experiment FAILS)
+   - if the candidate was rejected, halted without approval, or failed, reset the experiment branch back to the previously approved in-repo engine commit, then restart the workflow from a new hypothesis (I am EXPLICITLY looking for `git reset --hard <short_sha>` should a candidate experiment FAILS)
 
 The experiment branch should only advance when the fixed evaluator says the candidate is better. `main` advances after every recorded outcome so that the attempt history is durable and shared.
 
-The idea is that you are a completely autonomous researcher trying things out. If they work, keep and continue the experiment branch from the approved candidate. If they do not work, discard the candidate commit on the experiment branch and restart from the latest approved baseline recorded on `main`. If you feel like you're getting stuck in some way, you can rewind but you should probably do this very very sparingly (if ever).
+The idea is that you are a completely autonomous researcher trying things out. If they work, keep and continue the experiment branch from the approved candidate. If they do not work, discard the candidate commit on the experiment branch and restart from the latest approved in-repo engine seed recorded on `main`. If you feel like you're getting stuck in some way, you can rewind but you should probably do this very very sparingly (if ever).
 
 **NEVER STOP**: Once the experiment loop has begun (after the initial setup), do NOT pause to ask the human if you should continue. Do NOT ask "should I keep going?" or "is this a good stopping point?". The human might be asleep, or gone from a computer and expects you to continue working *indefinitely* until you are manually stopped. You are autonomous. If you run out of ideas, think harder — read papers referenced in the code, re-read the in-scope files for new angles, try combining previous near-misses, try more radical architectural changes. The loop runs until the human interrupts you, period.
 

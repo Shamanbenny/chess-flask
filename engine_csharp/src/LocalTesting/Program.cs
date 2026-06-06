@@ -15,6 +15,7 @@ internal static class LocalTestingProgram
     private const int DefaultEvaluationGames = 500;
     private const int DefaultEvaluationMaxPlies = 200;
     private const double DefaultEvaluationTimeLimitSeconds = 0.100;
+    private const string DefaultStockfishBinary = "stockfish";
 
     public static int Run(string[] args)
     {
@@ -33,6 +34,7 @@ internal static class LocalTestingProgram
                 "endgame-1" => RunEndgame("endgame_1", args[1..]),
                 "endgame-2" => RunEndgame("endgame_2", args[1..]),
                 "evaluate-match" => RunEvaluateMatch(args[1..]),
+                "evaluate-stock" or "--evaluate-stock" => RunEvaluateStock(args[1..]),
                 _ => Fail($"Unknown command '{args[0]}'"),
             };
         }
@@ -351,84 +353,55 @@ internal static class LocalTestingProgram
             throw new ArgumentException("--max-plies must be at least 1.");
         }
 
-        var engineA = EngineVersions.ResolveTimeLimitedEngineFromFilePath(options.EngineAFilePath);
-        var engineB = EngineVersions.ResolveTimeLimitedEngineFromFilePath(options.EngineBFilePath);
-        var openingFens = LoadOpeningPositions(options.OpeningsFilePath);
-        var totalPairs = options.Games / 2;
-        var aggregate = new MatchAggregate(engineA, engineB);
-        var csvLogger = options.Log
-            ? EvaluationCsvLogger.Create(options.ShortSha!)
-            : null;
+        var engineA = ResolveParticipantFromEngineFile(options.EngineAFilePath);
+        var engineB = ResolveParticipantFromEngineFile(options.EngineBFilePath);
+        return RunEvaluationSeries(
+            engineA,
+            engineB,
+            options.OpeningsFilePath,
+            options.Games,
+            options.MaxPlies,
+            options.TimeLimitSeconds,
+            options.Log,
+            options.ShortSha);
+    }
 
+    private static int RunEvaluateStock(string[] args)
+    {
+        var options = ParseEvaluateStockOptions(args);
+        if (options.Games < 2 || options.Games % 2 != 0)
+        {
+            throw new ArgumentException("--games must be an even number greater than or equal to 2.");
+        }
+
+        if (options.TimeLimitSeconds <= 0)
+        {
+            throw new ArgumentException("--time-limit-ms must be greater than 0.");
+        }
+
+        if (options.MaxPlies < 1)
+        {
+            throw new ArgumentException("--max-plies must be at least 1.");
+        }
+
+        EvaluationParticipant? stockfishParticipant = null;
         try
         {
-            Console.WriteLine("=== EVALUATION START ===");
-            Console.WriteLine($"Engine A file: {engineA.SourcePath}");
-            Console.WriteLine($"Engine A method: {engineA.SearchMethodName}");
-            Console.WriteLine($"Engine B file: {engineB.SourcePath}");
-            Console.WriteLine($"Engine B method: {engineB.SearchMethodName}");
-            Console.WriteLine($"Games: {options.Games}");
-            Console.WriteLine($"Pairs: {totalPairs}");
-            Console.WriteLine($"Time limit per move: {options.TimeLimitSeconds * 1000.0:F1}ms");
-            Console.WriteLine($"Max plies: {options.MaxPlies}");
-            Console.WriteLine($"Opening source file: {options.OpeningsFilePath}");
-            Console.WriteLine($"Unique opening positions loaded: {openingFens.Count}");
-            Console.WriteLine($"Logging enabled: {options.Log}");
-            if (csvLogger is not null)
-            {
-                Console.WriteLine($"Logging short SHA: {options.ShortSha}");
-                Console.WriteLine($"CSV log file: {csvLogger.FilePath}");
-            }
-
-            for (var pairIndex = 0; pairIndex < totalPairs; pairIndex++)
-            {
-                var openingFen = openingFens[pairIndex % openingFens.Count];
-                var whiteGameNumber = pairIndex * 2 + 1;
-                var blackGameNumber = pairIndex * 2 + 2;
-                var pairNumber = pairIndex + 1;
-                var openingIndex = pairIndex % openingFens.Count + 1;
-
-                var gameAWhite = PlayEvaluationGame(
-                    whiteGameNumber,
-                    pairNumber,
-                    openingIndex,
-                    openingFen,
-                    engineA,
-                    engineB,
-                    options.TimeLimitSeconds,
-                    options.MaxPlies,
-                    engineAWasWhite: true);
-                aggregate.Record(gameAWhite);
-                PrintGameSummary(gameAWhite);
-                csvLogger?.WriteGame(gameAWhite);
-
-                var gameBWhite = PlayEvaluationGame(
-                    blackGameNumber,
-                    pairNumber,
-                    openingIndex,
-                    openingFen,
-                    engineB,
-                    engineA,
-                    options.TimeLimitSeconds,
-                    options.MaxPlies,
-                    engineAWasWhite: false);
-                aggregate.Record(gameBWhite);
-                PrintGameSummary(gameBWhite);
-                csvLogger?.WriteGame(gameBWhite);
-
-                var pairScore = aggregate.PairScores[^1];
-                Console.WriteLine(
-                    $"Pair {pairNumber}/{totalPairs}: opening_index={openingIndex} | engine_a_pair_score={pairScore:F2}");
-            }
-
-            var aggregateMetrics = BuildAggregateMetrics(aggregate, totalPairs);
-            PrintEvaluationSummary(aggregate, aggregateMetrics);
-            Console.WriteLine("=== EVALUATION DONE ===");
-            return aggregate.Failures > 0 ? 1 : 0;
+            var engine = ResolveParticipantFromEngineFile(options.EngineFilePath);
+            stockfishParticipant = CreateStockfishParticipant(options.StockfishPath, options.StockfishElo);
+            return RunEvaluationSeries(
+                engine,
+                stockfishParticipant,
+                options.OpeningsFilePath,
+                options.Games,
+                options.MaxPlies,
+                options.TimeLimitSeconds,
+                options.Log,
+                options.ShortSha);
         }
         finally
         {
-            csvLogger?.Dispose();
+            stockfishParticipant?.Dispose();
         }
     }
 
@@ -497,13 +470,174 @@ internal static class LocalTestingProgram
             shortSha);
     }
 
+    private static EvaluateStockOptions ParseEvaluateStockOptions(string[] args)
+    {
+        string? engineFilePath = null;
+        var stockfishPath = DefaultStockfishBinary;
+        var stockfishElo = 1320;
+        var games = DefaultEvaluationGames;
+        var maxPlies = DefaultEvaluationMaxPlies;
+        var timeLimitSeconds = DefaultEvaluationTimeLimitSeconds;
+        var openingsFilePath = FindDefaultOpeningSourceFile();
+        var log = false;
+        string? shortSha = null;
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            switch (args[index])
+            {
+                case "--engine-file":
+                    engineFilePath = args[++index];
+                    break;
+                case "--stockfish-path":
+                    stockfishPath = args[++index];
+                    break;
+                case "--stockfish-elo":
+                    stockfishElo = int.Parse(args[++index]);
+                    break;
+                case "--games":
+                    games = int.Parse(args[++index]);
+                    break;
+                case "--max-plies":
+                    maxPlies = int.Parse(args[++index]);
+                    break;
+                case "--time-limit-ms":
+                    timeLimitSeconds = double.Parse(args[++index]) / 1000.0;
+                    break;
+                case "--openings-file":
+                    openingsFilePath = ResolveCliPath(args[++index]);
+                    break;
+                case "--log":
+                    log = true;
+                    break;
+                case "--short-sha":
+                    shortSha = args[++index];
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown argument '{args[index]}'");
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(engineFilePath))
+        {
+            throw new ArgumentException("--engine-file is required.");
+        }
+
+        if (log && string.IsNullOrWhiteSpace(shortSha))
+        {
+            throw new ArgumentException("--short-sha is required when --log is enabled.");
+        }
+
+        return new EvaluateStockOptions(
+            ResolveCliPath(engineFilePath),
+            ResolveStockfishPath(stockfishPath),
+            stockfishElo,
+            openingsFilePath,
+            games,
+            maxPlies,
+            timeLimitSeconds,
+            log,
+            shortSha);
+    }
+
+    private static int RunEvaluationSeries(
+        EvaluationParticipant engineA,
+        EvaluationParticipant engineB,
+        string openingsFilePath,
+        int games,
+        int maxPlies,
+        double timeLimitSeconds,
+        bool log,
+        string? shortSha)
+    {
+        var openingFens = LoadOpeningPositions(openingsFilePath);
+        var totalPairs = games / 2;
+        var aggregate = new MatchAggregate(engineA, engineB);
+        var csvLogger = log
+            ? EvaluationCsvLogger.Create(shortSha!)
+            : null;
+
+        try
+        {
+            Console.WriteLine("=== EVALUATION START ===");
+            Console.WriteLine($"Engine A source: {engineA.SourcePath}");
+            Console.WriteLine($"Engine A name: {engineA.EngineStem}");
+            Console.WriteLine($"Engine A details: {engineA.Details}");
+            Console.WriteLine($"Engine B source: {engineB.SourcePath}");
+            Console.WriteLine($"Engine B name: {engineB.EngineStem}");
+            Console.WriteLine($"Engine B details: {engineB.Details}");
+            Console.WriteLine($"Games: {games}");
+            Console.WriteLine($"Pairs: {totalPairs}");
+            Console.WriteLine($"Time limit per move: {timeLimitSeconds * 1000.0:F1}ms");
+            Console.WriteLine($"Max plies: {maxPlies}");
+            Console.WriteLine($"Opening source file: {openingsFilePath}");
+            Console.WriteLine($"Unique opening positions loaded: {openingFens.Count}");
+            Console.WriteLine($"Logging enabled: {log}");
+            if (csvLogger is not null)
+            {
+                Console.WriteLine($"Logging short SHA: {shortSha}");
+                Console.WriteLine($"CSV log file: {csvLogger.FilePath}");
+            }
+
+            for (var pairIndex = 0; pairIndex < totalPairs; pairIndex++)
+            {
+                var openingFen = openingFens[pairIndex % openingFens.Count];
+                var whiteGameNumber = pairIndex * 2 + 1;
+                var blackGameNumber = pairIndex * 2 + 2;
+                var pairNumber = pairIndex + 1;
+                var openingIndex = pairIndex % openingFens.Count + 1;
+
+                var gameAWhite = PlayEvaluationGame(
+                    whiteGameNumber,
+                    pairNumber,
+                    openingIndex,
+                    openingFen,
+                    engineA,
+                    engineB,
+                    timeLimitSeconds,
+                    maxPlies,
+                    engineAWasWhite: true);
+                aggregate.Record(gameAWhite);
+                PrintGameSummary(gameAWhite);
+                csvLogger?.WriteGame(gameAWhite);
+
+                var gameBWhite = PlayEvaluationGame(
+                    blackGameNumber,
+                    pairNumber,
+                    openingIndex,
+                    openingFen,
+                    engineB,
+                    engineA,
+                    timeLimitSeconds,
+                    maxPlies,
+                    engineAWasWhite: false);
+                aggregate.Record(gameBWhite);
+                PrintGameSummary(gameBWhite);
+                csvLogger?.WriteGame(gameBWhite);
+
+                var pairScore = aggregate.PairScores[^1];
+                Console.WriteLine(
+                    $"Pair {pairNumber}/{totalPairs}: opening_index={openingIndex} | engine_a_pair_score={pairScore:F2}");
+            }
+
+            var aggregateMetrics = BuildAggregateMetrics(aggregate, totalPairs);
+            PrintEvaluationSummary(aggregate, aggregateMetrics);
+            Console.WriteLine("=== EVALUATION DONE ===");
+            return aggregate.Failures > 0 ? 1 : 0;
+        }
+        finally
+        {
+            csvLogger?.Dispose();
+        }
+    }
+
     private static EvaluationGameResult PlayEvaluationGame(
         int gameNumber,
         int pairNumber,
         int openingIndex,
         string openingFen,
-        EngineVersions.ResolvedEngineFile whiteEngine,
-        EngineVersions.ResolvedEngineFile blackEngine,
+        EvaluationParticipant whiteEngine,
+        EvaluationParticipant blackEngine,
         double timeLimitSeconds,
         int maxPlies,
         bool engineAWasWhite)
@@ -632,6 +766,27 @@ internal static class LocalTestingProgram
             whiteStats,
             blackStats,
             gameStopwatch.Elapsed);
+    }
+
+    private static EvaluationParticipant ResolveParticipantFromEngineFile(string engineFilePath)
+    {
+        var engine = EngineVersions.ResolveTimeLimitedEngineFromFilePath(engineFilePath);
+        return new EvaluationParticipant(
+            engine.SourcePath,
+            engine.EngineStem,
+            engine.SearchMethodName,
+            engine.SearchMove);
+    }
+
+    private static EvaluationParticipant CreateStockfishParticipant(string stockfishPath, int stockfishElo)
+    {
+        var stockfish = new StockfishEngine(stockfishPath, stockfishElo);
+        return new EvaluationParticipant(
+            stockfish.BinaryPath,
+            $"stockfish-{stockfish.ConfiguredElo}",
+            $"uci elo={stockfish.ConfiguredElo}",
+            stockfish.SearchMove,
+            stockfish);
     }
 
     private static void PrintGameSummary(EvaluationGameResult result)
@@ -857,6 +1012,18 @@ internal static class LocalTestingProgram
             : Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), path));
     }
 
+    private static string ResolveStockfishPath(string stockfishPath)
+    {
+        if (string.IsNullOrWhiteSpace(stockfishPath))
+        {
+            throw new ArgumentException("--stockfish-path must not be empty.");
+        }
+
+        return Path.IsPathRooted(stockfishPath)
+            ? Path.GetFullPath(stockfishPath)
+            : stockfishPath;
+    }
+
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -1035,6 +1202,23 @@ internal static class LocalTestingProgram
         return $"{move.OriginalPosition}{move.NewPosition}{promotion}";
     }
 
+    private static Move MoveFromUci(BoardState board, string uci)
+    {
+        if (string.IsNullOrWhiteSpace(uci))
+        {
+            throw new ArgumentException("UCI move must not be empty.", nameof(uci));
+        }
+
+        var legalMoves = board.LegalMoves();
+        var selectedMove = legalMoves.FirstOrDefault(move => MoveToUci(move) == uci);
+        if (selectedMove is not null)
+        {
+            return selectedMove;
+        }
+
+        throw new InvalidOperationException($"Stockfish returned a move that is not legal in the current position: {uci}");
+    }
+
     private static string WinnerLabel(BoardState board)
     {
         if (!board.IsCheckmate)
@@ -1098,6 +1282,7 @@ internal static class LocalTestingProgram
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --log --short-sha 1a2b3c4");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1800 --games 20 --time-limit-ms 100 --log --short-sha 1a2b3c4");
     }
 
     private sealed record Puzzle1Scenario(
@@ -1129,6 +1314,30 @@ internal static class LocalTestingProgram
         double TimeLimitSeconds,
         bool Log,
         string? ShortSha);
+
+    private sealed record EvaluateStockOptions(
+        string EngineFilePath,
+        string StockfishPath,
+        int StockfishElo,
+        string OpeningsFilePath,
+        int Games,
+        int MaxPlies,
+        double TimeLimitSeconds,
+        bool Log,
+        string? ShortSha);
+
+    private sealed record EvaluationParticipant(
+        string SourcePath,
+        string EngineStem,
+        string Details,
+        Func<BoardState, double, SearchResult> SearchMove,
+        IDisposable? Disposable = null) : IDisposable
+    {
+        public void Dispose()
+        {
+            Disposable?.Dispose();
+        }
+    }
 
     private sealed record AggregateMetrics(
         double EngineAAverageMoveMs,
@@ -1311,15 +1520,15 @@ internal static class LocalTestingProgram
     {
         private double? _pendingFirstGameScore;
 
-        public MatchAggregate(EngineVersions.ResolvedEngineFile engineA, EngineVersions.ResolvedEngineFile engineB)
+        public MatchAggregate(EvaluationParticipant engineA, EvaluationParticipant engineB)
         {
             EngineA = engineA;
             EngineB = engineB;
         }
 
-        public EngineVersions.ResolvedEngineFile EngineA { get; }
+        public EvaluationParticipant EngineA { get; }
 
-        public EngineVersions.ResolvedEngineFile EngineB { get; }
+        public EvaluationParticipant EngineB { get; }
 
         public int Games { get; private set; }
 
@@ -1405,4 +1614,247 @@ internal static class LocalTestingProgram
             }
         }
     }
+
+    private sealed class StockfishEngine : IDisposable
+    {
+        private readonly Process _process;
+        private readonly StreamWriter _input;
+        private readonly StreamReader _output;
+        private bool _disposed;
+
+        public StockfishEngine(string binaryPath, int requestedElo)
+        {
+            BinaryPath = binaryPath;
+
+            try
+            {
+                _process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = binaryPath,
+                        RedirectStandardInput = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                    }
+                };
+                _process.Start();
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"Unable to start Stockfish from '{binaryPath}'. Provide a valid binary path with --stockfish-path.",
+                    exception);
+            }
+
+            _input = _process.StandardInput;
+            _output = _process.StandardOutput;
+
+            SendCommand("uci");
+            var uciHandshake = ReadUntil(line => line == "uciok");
+            var eloOption = ParseUciEloOption(uciHandshake);
+            if (eloOption is null)
+            {
+                throw new InvalidOperationException(
+                    $"The Stockfish binary at '{binaryPath}' does not expose the UCI_Elo option needed for limited-strength evaluation.");
+            }
+
+            ConfiguredElo = Math.Clamp(requestedElo, eloOption.Value.Min, eloOption.Value.Max);
+            if (ConfiguredElo != requestedElo)
+            {
+                Console.WriteLine(
+                    $"Requested Stockfish Elo {requestedElo} is outside the supported range {eloOption.Value.Min}-{eloOption.Value.Max}; using {ConfiguredElo}.");
+            }
+
+            SendCommand("setoption name UCI_LimitStrength value true");
+            SendCommand($"setoption name UCI_Elo value {ConfiguredElo}");
+            SendCommand("isready");
+            _ = ReadUntil(line => line == "readyok");
+        }
+
+        public string BinaryPath { get; }
+
+        public int ConfiguredElo { get; }
+
+        public SearchResult SearchMove(BoardState board, double timeLimitSeconds)
+        {
+            ThrowIfDisposed();
+
+            var moveTimeMs = Math.Max(1, (int)Math.Round(timeLimitSeconds * 1000.0, MidpointRounding.AwayFromZero));
+            SendCommand($"position fen {board.Fen}");
+            SendCommand($"go movetime {moveTimeMs}");
+
+            var searchLines = ReadUntil(line => line.StartsWith("bestmove ", StringComparison.Ordinal));
+            var bestMoveLine = searchLines[^1];
+            var bestMoveUci = ParseBestMove(bestMoveLine);
+            var move = MoveFromUci(board, bestMoveUci);
+            var lastInfo = searchLines.LastOrDefault(line => line.StartsWith("info ", StringComparison.Ordinal));
+            var info = ParseSearchInfo(lastInfo);
+
+            return new SearchResult(
+                move,
+                board.GetSan(move),
+                info.ScoreCp,
+                info.Nodes > int.MaxValue ? int.MaxValue : (int)info.Nodes,
+                info.Depth,
+                null,
+                null,
+                null,
+                null,
+                null,
+                info.Nodes > int.MaxValue ? int.MaxValue : (int)info.Nodes);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_process.HasExited)
+                {
+                    SendCommand("quit");
+                    if (!_process.WaitForExit(1000))
+                    {
+                        _process.Kill(entireProcessTree: true);
+                    }
+                }
+            }
+            catch
+            {
+                if (!_process.HasExited)
+                {
+                    _process.Kill(entireProcessTree: true);
+                }
+            }
+            finally
+            {
+                _process.Dispose();
+                _disposed = true;
+            }
+        }
+
+        private void SendCommand(string command)
+        {
+            _input.WriteLine(command);
+            _input.Flush();
+        }
+
+        private List<string> ReadUntil(Func<string, bool> predicate)
+        {
+            var lines = new List<string>();
+            while (true)
+            {
+                var line = _output.ReadLine();
+                if (line is null)
+                {
+                    throw new InvalidOperationException("Stockfish terminated unexpectedly while waiting for output.");
+                }
+
+                lines.Add(line);
+                if (predicate(line))
+                {
+                    return lines;
+                }
+            }
+        }
+
+        private static (int Min, int Max)? ParseUciEloOption(IEnumerable<string> lines)
+        {
+            foreach (var line in lines)
+            {
+                if (!line.StartsWith("option name UCI_Elo type spin", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                int? min = null;
+                int? max = null;
+                for (var index = 0; index < tokens.Length - 1; index++)
+                {
+                    if (tokens[index] == "min")
+                    {
+                        min = int.Parse(tokens[index + 1], CultureInfo.InvariantCulture);
+                    }
+                    else if (tokens[index] == "max")
+                    {
+                        max = int.Parse(tokens[index + 1], CultureInfo.InvariantCulture);
+                    }
+                }
+
+                if (min is not null && max is not null)
+                {
+                    return (min.Value, max.Value);
+                }
+            }
+
+            return null;
+        }
+
+        private static string ParseBestMove(string bestMoveLine)
+        {
+            var tokens = bestMoveLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length < 2 || tokens[1] == "(none)")
+            {
+                throw new InvalidOperationException($"Stockfish did not return a usable bestmove line: {bestMoveLine}");
+            }
+
+            return tokens[1];
+        }
+
+        private static ParsedStockfishInfo ParseSearchInfo(string? infoLine)
+        {
+            if (string.IsNullOrWhiteSpace(infoLine))
+            {
+                return new ParsedStockfishInfo(0, 0, null);
+            }
+
+            var tokens = infoLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            long nodes = 0;
+            int scoreCp = 0;
+            int? depth = null;
+
+            for (var index = 0; index < tokens.Length - 1; index++)
+            {
+                switch (tokens[index])
+                {
+                    case "depth":
+                        depth = int.Parse(tokens[index + 1], CultureInfo.InvariantCulture);
+                        break;
+                    case "nodes":
+                        nodes = long.Parse(tokens[index + 1], CultureInfo.InvariantCulture);
+                        break;
+                    case "score" when index + 2 < tokens.Length:
+                        if (tokens[index + 1] == "cp")
+                        {
+                            scoreCp = int.Parse(tokens[index + 2], CultureInfo.InvariantCulture);
+                        }
+                        else if (tokens[index + 1] == "mate")
+                        {
+                            var mate = int.Parse(tokens[index + 2], CultureInfo.InvariantCulture);
+                            scoreCp = mate > 0 ? 100000 - mate : -100000 - mate;
+                        }
+                        break;
+                }
+            }
+
+            return new ParsedStockfishInfo(nodes, scoreCp, depth);
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(StockfishEngine));
+            }
+        }
+    }
+
+    private sealed record ParsedStockfishInfo(long Nodes, int ScoreCp, int? Depth);
 }

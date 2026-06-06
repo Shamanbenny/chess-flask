@@ -6,13 +6,13 @@ Do not modify this file during experiments.
 
 ## Purpose
 
-Every candidate engine is evaluated only by playing it head-to-head against the latest approved engine under fixed conditions.
+Every candidate engine is evaluated only by playing it head-to-head against a fixed `Stockfish` opponent under fixed conditions.
 
 The evaluator decides whether the candidate is approved. Diagnostic information can support the write-up, but it does not replace the approval rule.
 
 ## Fixed Match Rules
 
-- Candidate opponent: the latest approved engine recorded in `autoresearch/ATTEMPTS.md`
+- Candidate opponent: local `Stockfish` configured with `UCI_LimitStrength=true` and `UCI_Elo=1350`
 - Move time limit: `100ms` per move
 - Total games: `500`
 - Color split: `250` games with the candidate as White, `250` games with the candidate as Black
@@ -30,14 +30,15 @@ The evaluator is run through the local C# runner.
 Before running evaluation, replace:
 
 - `<candidate_engine_file>` with the newly cloned and modified engine file being tested
-- `<approved_engine_file>` with the latest approved engine file recorded in `autoresearch/ATTEMPTS.md`
+- `<stockfish_path>` with the local Stockfish executable path, preferably provided through `$STOCKFISH_PATH`
 
 Run exactly:
 
 ```bash
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
-  --engine-a-file <candidate_engine_file> \
-  --engine-b-file <approved_engine_file> \
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
+  --engine-file <candidate_engine_file> \
+  --stockfish-path <stockfish_path> \
+  --stockfish-elo 1350 \
   --games 500 \
   --time-limit-ms 100 \
   --max-plies 200 \
@@ -48,9 +49,10 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
 Example:
 
 ```bash
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
-  --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs \
-  --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs \
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
+  --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs \
+  --stockfish-path "$STOCKFISH_PATH" \
+  --stockfish-elo 1350 \
   --games 500 \
   --time-limit-ms 100 \
   --max-plies 200 \
@@ -61,6 +63,7 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match \
 The caller must provide `<short_sha>` explicitly. Do not make the runner infer git state on behalf of the experiment loop.
 
 Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop.
+The in-repo approved engine recorded in `autoresearch/ATTEMPTS.md` still matters as the seed file for the next candidate, but it is no longer the evaluation opponent.
 
 ## Git Recording Contract
 
@@ -75,7 +78,7 @@ After the evaluation is successful, halted, or failed:
 5. Push `main` to the remote.
 6. Return to the experiment branch.
 
-If the candidate was approved, keep the candidate commit and continue the experiment branch from that commit. If the candidate was rejected, halted without approval, or failed, reset the experiment branch back to the previously approved commit before starting the next hypothesis.
+If the candidate was approved, keep the candidate commit and continue the experiment branch from that commit. If the candidate was rejected, halted without approval, or failed, reset the experiment branch back to the previously approved in-repo engine commit before starting the next hypothesis.
 
 ## Required Evaluator Output
 
@@ -104,7 +107,7 @@ When an early stop is used:
 - Check out `main`, record the attempt in `autoresearch/ATTEMPTS.md` as `rejected`, commit that attempts-log update on `main`, and push `main` to the remote.
 - State that `=== EVALUATION DONE ===` was intentionally absent due to early rejection.
 - Report partial metrics from the games completed so far and identify the irreversible rejection condition.
-- Return to the experiment branch and reset back to the previously approved baseline commit as with any rejected candidate.
+- Return to the experiment branch and reset back to the previously approved in-repo engine seed commit as with any rejected candidate.
 
 ## Required Logged Artifacts
 
@@ -125,7 +128,8 @@ The Chess Engine written is allowed to produce optional additional artifacts wit
 Every completed or halted evaluation must expose at least:
 
 - candidate engine version/file
-- baseline engine version/file
+- evaluator baseline: `stockfish-1350`
+- in-repo seed engine version/file
 - total wins, draws, losses
 - total score
 - score rate
@@ -184,7 +188,7 @@ Otherwise reject the candidate.
 Interpretation:
 
 - `0.5` is the paired no-improvement baseline.
-- `lcb95 > 0.5` means the lower 95% confidence bound still indicates the candidate outscored the approved baseline across paired openings.
+- `lcb95 > 0.5` means the lower 95% confidence bound still indicates the candidate outscored the fixed `stockfish-1350` baseline across paired openings.
 - `max_plies_rate < 0.10` means fewer than 5% of the games may terminate only because the fixed ply cap was reached. If more than 5% of the sample hits `max_plies`, the candidate is treated as insufficiently decisive for promotion even if its raw score is competitive.
 
 ## Rejection Conditions

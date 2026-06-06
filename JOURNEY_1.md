@@ -1,4 +1,4 @@
-# Journey
+# Journey on Manual Iterations for Chess Engine
 
 This document captures the reasoning behind the current direction of the project. It is not a changelog. It exists to explain why the backend is shaped the way it is, why certain work is being deferred, and what standard the chess bot is actually being judged against.
 

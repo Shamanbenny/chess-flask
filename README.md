@@ -83,7 +83,7 @@ curl -X POST http://localhost:3000/chess_v0 \
 
 ## Historical Engines
 
-The project still keeps the historical search family in [`api/v1/__init__.py`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/__init__.py:1):
+The project still keeps the historical search family in [`api/v1/`](/home/benny/Desktop/_gitrepo/chess-flask/api/v1/):
 
 - `v1`: minimax
 - `v1.1`: minimax with alpha-beta pruning
@@ -91,21 +91,7 @@ The project still keeps the historical search family in [`api/v1/__init__.py`](/
 - `v1.3`: alpha-beta pruning with move ordering and quiescence-style leaf extension through captures and quiet checks
 - `v1.4`: `v1.3` plus endgame conversion evaluation and a tighter pruned quiescence search
 - `v1.5`: `v1.4` plus time-budgeted iterative deepening and a transposition table
-- `v1.6`: C#-specific speed-focused follow-up to `v1.5`, cross-referenced against `Chess-Coding-Adventure` to reduce hot-path search overhead
 - `v2.0`: keeps the broad `v1.6` search and evaluation shape, but moves the inner search onto an in-house board representation and in-house move generation to remove the remaining hot-path overhead from the library-backed board
-
-These are preserved as the manual/reference phase of the project. They are still callable directly from local tooling for experiments and search comparisons, but they are not currently part of the public HTTP surface.
-
-The implementation path is intentionally close to Sebastian Lague's staged chess-engine progression:
-
-- `v1`: establish a plain minimax baseline
-- `v1.1`: introduce alpha-beta pruning
-- `v1.2`: improve pruning efficiency with move ordering
-- `v1.3`: reduce horizon-effect mistakes by extending leaf evaluation through forcing capture and check sequences
-- `v1.4`: make shallow winning endgames more conversion-oriented while keeping quiescence from exploding on non-capture checking sequences
-- `v1.5`: shift the search budget from fixed depth to think time, using iterative deepening and hash-table reuse between iterations
-- `v1.6`: keep the `v1.5` search shape, but make each searched node materially cheaper in the C# port
-- `v2.0`: keep the same broad search ideas, but stop paying library-level board-state and legal-move overhead inside the search tree
 
 See [CHANGELOG.md](/home/benny/Desktop/_gitrepo/chess-flask/CHANGELOG.md:1) for the accepted algorithm history.
 
@@ -150,78 +136,19 @@ dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v2.0 -
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --games 50 --time-limit-ms 250 --max-plies 200
+export STOCKFISH_PATH=/home/your-user/tools/stockfish/stockfish-ubuntu-x86-64-avx2
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --stockfish-path "$STOCKFISH_PATH" --stockfish-elo 1350 --games 20 --time-limit-ms 100 --log --short-sha 1a2b3c4
 ```
 
-The C# workspace now exists to hold direct source rewrites of the Python `api/v1/*.py` engines and the local scenario runners. The active local runner project in this repo is `engine_csharp/src/LocalTesting`.
+`evaluate-stock` runs the specified C# engine file against a local Stockfish binary. The recommended workflow is to store the executable location in a `STOCKFISH_PATH` environment variable and pass it into `--stockfish-path`. `--stockfish-elo` maps to [Stockfish's UCI limited-strength](./STOCKFISH-ELO.md) setting rather than a guaranteed live rating. `--log --short-sha <sha>` writes the same evaluator CSV format used by `evaluate-match`.
 
-The current accepted local `v2` baseline file is [`engine_csharp/src/Engine.Core/V2/V2_0Engine.cs`](/home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/src/Engine.Core/V2/V2_0Engine.cs:1).
-
-## Local V1 Tests
-
-The active local workflow now lives under [`local_v1_tests/`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests).
-
-The Python `api/v1/*.py` engines remain the Flask-side historical engine implementations, and `v1.5.py` is currently used by the public `POST /chess_v1_5` route.
-
-[`local_v1_tests/puzzle_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_1.py:1) keeps the fixed tactical comparison harness.
-
-It uses the fixed FEN:
-
-```text
-8/8/6kp/3b4/1p1p4/1P1P3P/PK2N3/8 w - - 0 2
-```
-
-For each requested historical version it will:
-
-- search White's first move
-- require the intended first move `Nf4+`
-- force Black's exact reply `Kg7`
-- search White's second move
-- report chosen move, score, positions evaluated, and elapsed time
-
-Example:
-
-```bash
-python3 local_v1_tests/puzzle_1.py --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
-python3 local_v1_tests/puzzle_1.py --versions v1.5 --time-limit-seconds 1.0
-```
-
-`v1.4` exists because shallow search is often strong enough to know it is winning but not deep enough to see the mate yet. Its evaluation adds guarded endgame conversion terms in clearly winning, low-material positions so the engine prefers moves that compress the opposing king, bring its own king closer, respect dangerous advanced pawns, and avoid drifting into repetition. It also tightens quiescence so queen endgames do not burn large amounts of time chasing every quiet checking continuation.
-
-`v1.5` keeps that evaluation/search base but changes the control surface: instead of being told how deep to search, it keeps deepening until the think-time budget expires. The transposition table preserves best moves, bounds, and searched depths across those iterations so later passes can order moves better and cut repeated work.
-
-[`local_v1_tests/puzzle_2.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/puzzle_2.py:1) is a dedicated `v1.5` endgame test for the FEN:
-
-```text
-8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1
-```
-
-Run it with:
-
-```bash
-python3 local_v1_tests/puzzle_2.py --time-limit-seconds 1.0 --max-plies 70
-```
-
-The script:
-
-- checks whether White's first move matches the intended move `Kb1`
-- if `Kb1` is found, continues `v1.5` self-play for up to `70` plies
-- reports per-move completed depth and timeout status
-- reports per-move transposition-table usage including entries, probes, hits, and cutoffs
-- reports whether White managed to checkmate within the configured ply limit without drifting into repetition pressure
-
-[`local_v1_tests/endgame_1.py`](/home/benny/Desktop/_gitrepo/chess-flask/local_v1_tests/endgame_1.py:1) is a dedicated `v1.4` self-play conversion test for the winning endgame:
-
-```bash
-python3 local_v1_tests/endgame_1.py
-```
-
-It runs `v1.4` for both sides from `3r4/8/3k4/8/3K4/8/8/8 b - - 1 1` at the script's fixed `depth=4` and `max_plies=60`, and reports whether Black manages to checkmate without the game drifting into repetition pressure.
+The C# workspace now exists to hold direct source engines and the local scenario runners. The active local runner project in this repo is `engine_csharp/src/LocalTesting`.
 
 ## Project Versions
 
 The project history is intentionally split into two eras:
 
-- `v0` to `v1.4`
+- `v0` to `v1.6`
   - Manual coding / direct reference era.
   - These versions are preserved as part of the project's original implementation path.
 - `v2+`

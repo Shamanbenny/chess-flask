@@ -21,23 +21,24 @@ The original upstream repo applies that pattern to neural-network training:
 
 This repo keeps that same spirit, but changes the object being optimized.
 
-Instead of tuning `train.py` for a neural network, the agent here improves a versioned chess engine. Instead of asking whether validation bits-per-byte went down, the agent asks whether a newly cloned candidate engine actually beats the latest approved engine under a fixed head-to-head match setup.
+Instead of tuning `train.py` for a neural network, the agent here improves a versioned chess engine. Instead of asking whether validation bits-per-byte went down, the agent asks whether a newly cloned candidate engine actually beats a fixed Stockfish baseline under a fixed head-to-head match setup.
 
 ## What Is Different Here
 
 This modified paradigm is chess-specific:
 
 - The mutable unit is a newly cloned engine file, not a training script.
-- The baseline is the latest approved engine recorded in `autoresearch/ATTEMPTS.md`.
+- The evaluator opponent is fixed at local `Stockfish` with `UCI_Elo=1350`.
+- The seed engine for new candidates is still the latest approved in-repo engine recorded in `autoresearch/ATTEMPTS.md`.
 - Evaluation is fixed at engine-vs-engine play under a strict time budget, not depth chasing and not ad hoc manual judgment.
 - Promotion is based on a fixed statistical approval rule over paired games, not on a single anecdotal result.
 - Every attempt, including failures, must leave behind an inferred conclusion so later runs can build on prior work instead of repeating it blindly.
 
 The intended rhythm is:
 
-1. Read prior attempts and the latest approved engine.
+1. Read prior attempts, the fixed Stockfish evaluator baseline, and the latest approved in-repo engine seed.
 2. Form one concrete hypotheses.
-3. Clone the approved engine into a new versioned file.
+3. Clone the approved in-repo engine seed into a new versioned file.
 4. Change only that new engine.
 5. Build it.
 6. Run the fixed evaluator.
@@ -61,6 +62,6 @@ In other words, this directory is an attempt to port the upstream `autoresearch`
 
 - `PROGRAM.md`: the autonomous experiment loop and editing rules
 - `EVALUATE.md`: the fixed match contract and approval rule
-- `ATTEMPTS.md`: append-only experiment history and latest approved baseline metadata
+- `ATTEMPTS.md`: append-only experiment history, fixed evaluator metadata, and latest approved in-repo engine seed metadata
 
 `AGENTS.md` is expected to be generated later once the workflow contract is stable.
