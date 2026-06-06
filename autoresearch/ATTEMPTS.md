@@ -202,3 +202,30 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
 - verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, max_plies_rate was 0.0000, and paired lcb95 was 0.5315 > 0.5.`
 - inferred_conclusion: `Passed-pawn advancement scoring is a statistically reliable improvement over v2.2 despite slightly lower node throughput. Future work should build from v2.5 and prefer targeted pawn/conversion evaluation refinements over isolated generic bonuses.`
+
+## Attempt: 2026-06-06T00:21:40Z - v2.6
+
+- branch: `autoresearch/Jun6a`
+- commit: `a48fbf4`
+- status: `rejected`
+- baseline_version: `v2.5`
+- baseline_file: `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`
+- candidate_version: `v2.6`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_6Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `Protected passed pawns should be valued slightly more than bare passed pawns because they are harder to blockade and more likely to convert.`
+- implementation_summary: `Cloned v2.5 into v2.6, renamed the public type/search entrypoint, and added a 14 centipawn bonus when a passed pawn is defended from behind by a friendly pawn on an adjacent file.`
+- evaluation_log_path: `autoresearch/logs/a48fbf4-result.csv`
+- extra_log_paths: `n/a`
+- wins: `93`
+- draws: `322`
+- losses: `85`
+- score: `254.0/500`
+- score_rate: `0.5080`
+- average_plies: `75.00`
+- average_processing_time_ms: `103.387`
+- average_positions_or_nodes: `13999.47`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=0`
+- verdict: `Rejected under EVALUATE.md because paired lcb95 was 0.4931 <= 0.5, despite a clean build, completed evaluator signatures, failures=0, raw score_rate=0.5080, and max_plies_rate=0.0000.`
+- inferred_conclusion: `A protected-passed-pawn bonus on top of v2.5 was directionally positive but not statistically reliable. Future pawn work should avoid simply stacking small passed-pawn bonuses and should instead target clearer pawn-race, blockade, or promotion-conversion features.`
