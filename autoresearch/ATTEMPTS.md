@@ -341,3 +341,31 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=33`
 - verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, score_rate=0.6480 exceeded the approved seed reference 0.6040, paired lcb95 was 0.6178 > 0.5, and max_plies_rate was 0.0660 < 0.10.`
 - inferred_conclusion: `A small targeted knight outpost term is a statistically reliable improvement on top of v2.8 and did not reduce throughput materially. Future work should build from v2.9 and continue with similarly specific piece-activity or king-safety features rather than generic pawn penalties.`
+
+## Attempt: 2026-06-06T08:56:26Z - v2.10
+
+- branch: `autoresearch/Jun6c`
+- commit: `db46c34`
+- status: `rejected`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v2.9`
+- seed_file: `engine_csharp/src/Engine.Core/V2/V2_9Engine.cs`
+- candidate_version: `v2.10`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_10Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A small rook-on-seventh-rank activity bonus may improve conversion and attacking pressure on top of v2.9's open-file rook logic.`
+- implementation_summary: `Cloned v2.9 into v2.10, renamed the public type/search entrypoint, and added a 16 centipawn bonus for rooks on the opponent's second rank.`
+- evaluation_log_path: `autoresearch/logs/db46c34-result.csv`
+- extra_log_paths: `n/a`
+- wins: `256`
+- draws: `97`
+- losses: `147`
+- score: `304.5/500`
+- score_rate: `0.6090`
+- average_plies: `91.39`
+- average_processing_time_ms: `104.754`
+- average_positions_or_nodes: `11534.74`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=32`
+- verdict: `Rejected under EVALUATE.md because score_rate=0.6090 did not exceed the approved seed reference 0.6480, despite a clean build, completed evaluator signatures, failures=0, paired lcb95=0.5766 > 0.5, and max_plies_rate=0.0640 < 0.10.`
+- inferred_conclusion: `A generic rook-seventh-rank bonus degraded the stronger v2.9 baseline and reduced node throughput. Future rook activity work should not simply stack another static rook placement bonus on top of open-file scoring; it needs tighter conditions such as trapped king, targets on the seventh rank, or demonstrated conversion-specific compensation.`
