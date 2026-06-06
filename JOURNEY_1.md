@@ -8,7 +8,7 @@ A chess bot that needs more than `30` seconds to produce a single move is not pr
 
 In any timed match, that kind of response time is a liability. Even if the move quality is acceptable, the clock loss alone will eventually lose games. That makes runtime a core part of engine quality, not a side concern.
 
-This aligns with the current Vercel setup, where [`vercel.json`](vercel.json#L1) uses a `30` second duration limit. That ceiling is useful right now because it prevents obviously runaway requests and still gives the current backend room to function.
+This aligns with the current Vercel setup, where [`vercel.json`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/vercel.json#L1) uses a `30` second duration limit. That ceiling is useful right now because it prevents obviously runaway requests and still gives the current backend room to function.
 
 But `30` seconds is not the target.
 
@@ -16,7 +16,7 @@ The real target is much tighter: the bot should be able to make a reasonable mov
 
 ## What The Current Versions Prove
 
-The historical engine line in [`api/v1/__init__.py`](api/v1/__init__.py#L1) currently represents a manual/reference phase:
+The historical engine line in [`api/v1/__init__.py`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/api/v1/__init__.py#L1) currently represents a manual/reference phase:
 
 - `v1`: minimax
 - `v1.1`: minimax with alpha-beta pruning
@@ -264,7 +264,7 @@ It means the engine is starting to buy more real search with the same clock budg
 
 There is now a much clearer picture of what that improvement did and did not solve.
 
-If you look at [`engine_scenarios/console_output.md`](engine_scenarios/console_output.md#L55), `v1.6` was able to process depth `5` in about `2.93s` on the tactical `puzzle_1` line. That is better than the earlier versions, and it does prove that moving to C# plus a more careful search path helped. But it is still nowhere near the practical target. The real standard here is not "can it eventually reach depth 5?" The real standard is closer to "can it do roughly that much useful work in something like `100ms`?"
+If you look at [`engine_scenarios/console_output.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/engine_scenarios/console_output.md#L55), `v1.6` was able to process depth `5` in about `2.93s` on the tactical `puzzle_1` line. That is better than the earlier versions, and it does prove that moving to C# plus a more careful search path helped. But it is still nowhere near the practical target. The real standard here is not "can it eventually reach depth 5?" The real standard is closer to "can it do roughly that much useful work in something like `100ms`?"
 
 So even after `v1.6`, the project was still very far from where it needed to be.
 
@@ -276,7 +276,7 @@ At first, that looked very promising.
 
 The original `v2.0`, recorded and approved under commit [`db423ca`](https://github.com/Shamanbenny/chess-flask/commit/db423caf1b8d3e0f89df051e0ab2777127195a77) and [`583348d`](https://github.com/Shamanbenny/chess-flask/commit/583348d4340f55faa0855e3035b63b1284b613b1), passed the evaluator on the very first experiment. That mattered for two reasons:
 
-- it showed that the [evaluator](https://github.com/Shamanbenny/chess-flask/blob/main/autoresearch/EVALUATE.md) could approve a real improvement rather than serving only as a rejection machine
+- it showed that the [evaluator](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/autoresearch/EVALUATE.md#L1) could approve a real improvement rather than serving only as a rejection machine
 - it showed that the [`autoresearch`](https://github.com/Shamanbenny/chess-flask/tree/main/autoresearch) workflow itself could work the way this project hoped it would
 
 That was a meaningful milestone. It meant the general experiment loop was viable.
@@ -318,7 +318,7 @@ The immediate goal is to automatically, build through experiment loops, on the n
 That changes the order of operations:
 
 1. Keep the stronger `v2.0` board representation and move-generation path as the new baseline.
-2. Confirm that the engine can search enough nodes per move for the fixed-time evaluator to be meaningful. This was proven with the update made to [`engine_scenarios/console_output.md`](https://github.com/Shamanbenny/chess-flask/blob/main/engine_scenarios/console_output.md)
+2. Confirm that the engine can search enough nodes per move for the fixed-time evaluator to be meaningful. This was proven with the update made to [`engine_scenarios/console_output.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/engine_scenarios/console_output.md#L1)
 3. Resume `autoresearch` from a position where algorithmic improvements have room to show up.
 4. Improve the engine bit by bit through controlled promotion/rejection instead of trying to brute-force quality with a slower substrate.
 

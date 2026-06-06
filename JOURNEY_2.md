@@ -1,12 +1,12 @@
 # Journey on Autonomous Iterations for Chess Engine (via `autoresearch`)
 
-This document picks up from the point where [`JOURNEY_1.md`](JOURNEY_1.md#L1) leaves off.
+This document picks up from the point where [`JOURNEY_1.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/JOURNEY_1.md#L1) leaves off.
 
 That earlier phase was about getting the engine to a point where tighter time budgets were no longer purely aspirational. The key breakthrough was `v2.0`: once the engine could produce meaningful results inside the fixed `100ms` evaluator budget, autonomous iteration stopped being a novelty and became a practical development path.
 
 That distinction matters.
 
-Before that point, too many experiments would have risked collapsing into games dominated by the evaluator's `max_plies` cutoff rather than by actual move quality. But the first `autoresearch` runs recorded in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md#L1) already show the environment behaving more like a useful engine lab than a timing failure generator:
+Before that point, too many experiments would have risked collapsing into games dominated by the evaluator's `max_plies` cutoff rather than by actual move quality. But the first `autoresearch` runs recorded in [`autoresearch/ATTEMPTS.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/autoresearch/ATTEMPTS.md#L1) already show the environment behaving more like a useful engine lab than a timing failure generator:
 
 - `v2.2` was approved with `max_plies=0`
 - `v2.5` was approved with `max_plies=0`
@@ -18,7 +18,7 @@ So the important change after `v2.0` was not just that the engine had become "fa
 
 The first hypothesis after `v2.0` did not produce a positive result.
 
-That attempt became `v2.1`, and it was eventually manually interrupted by me and rejected in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md#L81). The relevant point is not merely that it had failed. The relevant point is why I stopped it early: this was the first time I was preparing to let the machine run autonomously overnight, and I wanted at least some sign that the loop was capable of producing visible improvement before committing an entire night of runtime to it.
+That attempt became `v2.1`, and it was eventually manually interrupted by me and rejected in [`autoresearch/ATTEMPTS.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/autoresearch/ATTEMPTS.md#L81). The relevant point is not merely that it had failed. The relevant point is why I stopped it early: this was the first time I was preparing to let the machine run autonomously overnight, and I wanted at least some sign that the loop was capable of producing visible improvement before committing an entire night of runtime to it.
 
 Once that interrupted run was logged automatically through the `autoresearch` workflow, I started the next sequence of experiments. That sequence took the engine from `v2.2` through `v2.7`, and if counted from the interrupted `v2.1` start to the `v2.7` result, it stretched across roughly seven hours of unattended runtime recorded in the attempt log:
 
@@ -35,7 +35,7 @@ That was also the point where I stopped actively tweaking the system, left the h
 When I came back the next morning, the interesting result was not just that `autoresearch` had kept running. The more important result was that the overnight loop had produced two approved versions:
 
 - `v2.2`, the first approved successor after `v2.0`
-- `v2.5`, which later became the latest approved in-repo seed in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md#L19)
+- `v2.5`, which later became the latest approved in-repo seed in [`autoresearch/ATTEMPTS.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/autoresearch/ATTEMPTS.md#L19)
 
 That was the first moment where the system had proven it could keep running without my supervision, reject weak ideas in between, and still return multiple approved engine versions by morning.
 
@@ -51,7 +51,7 @@ The original [`autoresearch`](https://github.com/karpathy/autoresearch) came fro
 - persistent attempt logging
 - automatic rejection of weak or invalid candidates
 
-That is a better description of what happened than simply saying the engine was "self-improving." It was not open-ended self-improvement. It was a constrained autonomous improvement loop built around a measurable benchmark, as defined by [`autoresearch/PROGRAM.md`](autoresearch/PROGRAM.md#L1) and [`autoresearch/EVALUATE.md`](autoresearch/EVALUATE.md#L1).
+That is a better description of what happened than simply saying the engine was "self-improving." It was not open-ended self-improvement. It was a constrained autonomous improvement loop built around a measurable benchmark, as defined by [`autoresearch/PROGRAM.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/autoresearch/PROGRAM.md#L1) and [`autoresearch/EVALUATE.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/autoresearch/EVALUATE.md#L1).
 
 The fact that the loop could keep running while I slept, reject weak ideas, and still return approved versions by morning was the proof that this workflow was real enough to keep investing in.
 
@@ -59,7 +59,7 @@ The fact that the loop could keep running while I slept, reject weak ideas, and 
 
 That said, the immediate follow-up reaction should not have been celebration alone.
 
-Looking at the approved results in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md#L107), both successful versions were still very draw-heavy:
+Looking at the approved results in [`autoresearch/ATTEMPTS.md`](https://github.com/Shamanbenny/chess-flask/blob/f3d3ef9ac59177c9a2e1389426cade1e1e45feaf/autoresearch/ATTEMPTS.md#L107), both successful versions were still very draw-heavy:
 
 - `v2.2`: `117` wins, `350` draws, `33` losses
 - `v2.5`: `118` wins, `315` draws, `67` losses
