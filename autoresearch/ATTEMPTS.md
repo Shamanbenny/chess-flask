@@ -17,13 +17,13 @@ Do not rewrite or delete prior entries (Except for the `## Latest Approved Engin
 
 ## Latest Approved Engine Seed (Adjust accordingly ONLY WHEN experiment is approved by evaluator)
 
-- approved_version: `v2.5`
-- approved_file: `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`
-- approved_commit: `eef7533`
-- approved_recorded_at: `2026-06-05`
-- approved_reference_score_rate_vs_stockfish_1350: `0.6000`
-- approved_reference_score_source: `autoresearch/approved_logs/V2_5Engine-519f5a3-result.csv` from the direct stockfish-1350 reference summary below
-- notes: `Current v2.5 baseline after adding passed-pawn advancement scoring to v2.2. Evaluated candidate commit was 519f5a3 and local main contains the equivalent cherry-pick eef7533. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
+- approved_version: `v2.8`
+- approved_file: `engine_csharp/src/Engine.Core/V2/V2_8Engine.cs`
+- approved_commit: `90def44`
+- approved_recorded_at: `2026-06-06`
+- approved_reference_score_rate_vs_stockfish_1350: `0.6040`
+- approved_reference_score_source: `autoresearch/approved_logs/V2_8Engine-acdf45c-result.csv`
+- notes: `Current v2.8 baseline after adding rook open-file and semi-open-file scoring to v2.5. Evaluated candidate commit was acdf45c and local main contains the equivalent cherry-pick 90def44. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
 
 ## Entry Template
 
@@ -284,3 +284,31 @@ Use this exact structure for each appended attempt:
   - `V2_5Engine: file_sha=519f5a3; csv_sha=519f5a3; wins=239; draws=122; losses=139; score=300.0/500; score_rate=0.6000; average_plies=91.72; average_processing_time_ms=104.102; average_positions_or_nodes=11603.15; max_plies=28; failures=0; terminations=checkmate:378, claimable_draw:85, max_plies:28, draw:9`
 - ranking_by_raw_score_rate: `V2_2Engine 0.6260 > V2_5Engine 0.6000 > V2_0Engine 0.4140`
 - inferred_conclusion: `For direct stockfish-1350 comparison from these approved-log CSVs, both v2.2 and v2.5 are materially ahead of v2.0, while v2.2 has the highest raw score in this specific log set. This reference is for fast future orientation only; candidate approval still follows the fixed autoresearch evaluator contract and the latest approved seed remains the section above.`
+
+## Attempt: 2026-06-06T07:57:17Z - v2.8
+
+- branch: `autoresearch/Jun6b`
+- commit: `acdf45c` evaluated; `90def44` cherry-picked on `main`
+- status: `approved`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v2.5`
+- seed_file: `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`
+- candidate_version: `v2.8`
+- candidate_file: `engine_csharp/src/Engine.Core/V2/V2_8Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A modest rook open-file and semi-open-file bonus will improve rook activity and conversion decisions beyond v2.5 without materially slowing evaluation.`
+- implementation_summary: `Cloned v2.5 into v2.8, renamed the public type/search entrypoint, counted pawn files during evaluation, and added 18 centipawns for rooks on open files or 9 centipawns for rooks on semi-open files.`
+- evaluation_log_path: `autoresearch/logs/acdf45c-result.csv` moved to `autoresearch/approved_logs/V2_8Engine-acdf45c-result.csv`
+- extra_log_paths: `n/a`
+- wins: `247`
+- draws: `110`
+- losses: `143`
+- score: `302.0/500`
+- score_rate: `0.6040`
+- average_plies: `91.29`
+- average_processing_time_ms: `104.166`
+- average_positions_or_nodes: `12100.18`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=33`
+- verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, score_rate=0.6040 exceeded the approved seed reference 0.6000, paired lcb95 was 0.5708 > 0.5, and max_plies_rate was 0.0660 < 0.10.`
+- inferred_conclusion: `Rook file activity scoring is a small but statistically reliable improvement on top of v2.5. Future work should build from v2.8 and can consider similarly targeted piece-activity terms, but the very narrow margin over v2.5 means new static evaluation terms still need full paired validation rather than relying on raw chess intuition.`

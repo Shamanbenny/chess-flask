@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using System.Collections.Concurrent;
 using Chess;
 using Engine.Core;
 using Engine.Core.V1;
@@ -595,7 +594,7 @@ internal static class LocalTestingProgram
                 Console.WriteLine($"CSV log file: {csvLogger.FilePath}");
             }
 
-            var pairResults = new ConcurrentBag<PairEvaluationResult>();
+            var outputLock = new object();
             Parallel.ForEach(
                 Enumerable.Range(0, totalPairs),
                 new ParallelOptions { MaxDegreeOfParallelism = workers },
@@ -632,27 +631,27 @@ internal static class LocalTestingProgram
                         maxPlies,
                         engineAWasWhite: false);
 
-                    pairResults.Add(new PairEvaluationResult(
+                    var pairResult = new PairEvaluationResult(
                         pairNumber,
                         openingIndex,
                         gameAWhite,
                         gameBWhite,
-                        (ScoreForEngine(gameAWhite) + ScoreForEngine(gameBWhite)) / 2.0));
+                        (ScoreForEngine(gameAWhite) + ScoreForEngine(gameBWhite)) / 2.0);
+
+                    lock (outputLock)
+                    {
+                        aggregate.Record(pairResult.FirstGame);
+                        PrintGameSummary(pairResult.FirstGame);
+                        csvLogger?.WriteGame(pairResult.FirstGame);
+
+                        aggregate.Record(pairResult.SecondGame);
+                        PrintGameSummary(pairResult.SecondGame);
+                        csvLogger?.WriteGame(pairResult.SecondGame);
+
+                        Console.WriteLine(
+                            $"Pair {pairResult.PairNumber}/{totalPairs}: opening_index={pairResult.OpeningIndex} | engine_a_pair_score={pairResult.PairScore:F2}");
+                    }
                 });
-
-            foreach (var pairResult in pairResults.OrderBy(result => result.PairNumber))
-            {
-                aggregate.Record(pairResult.FirstGame);
-                PrintGameSummary(pairResult.FirstGame);
-                csvLogger?.WriteGame(pairResult.FirstGame);
-
-                aggregate.Record(pairResult.SecondGame);
-                PrintGameSummary(pairResult.SecondGame);
-                csvLogger?.WriteGame(pairResult.SecondGame);
-
-                Console.WriteLine(
-                    $"Pair {pairResult.PairNumber}/{totalPairs}: opening_index={pairResult.OpeningIndex} | engine_a_pair_score={pairResult.PairScore:F2}");
-            }
 
             var aggregateMetrics = BuildAggregateMetrics(aggregate, totalPairs);
             PrintEvaluationSummary(aggregate, aggregateMetrics);
