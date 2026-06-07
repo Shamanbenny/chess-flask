@@ -9,7 +9,7 @@ from .v3.v3_0 import choose_move_v3_0
 
 
 endpoint_blueprint = Blueprint("endpoint", __name__)
-ENGINE_TIME_LIMIT_SECONDS = 1.0
+ENGINE_TIME_LIMIT_SECONDS = 2.0
 
 
 def error_response(message: str, status: int, **debug: object) -> tuple[dict, int]:
