@@ -27,7 +27,7 @@ The important boundary is now very simple:
 - Entry point: [`api/index.py`](api/index.py#L1)
 - HTTP endpoint wrapper: [`api/endpoint.py`](api/endpoint.py#L1)
 - Historical Python `v1.x` engines: [`api/v1/__init__.py`](api/v1/__init__.py#L1)
-- Current Python `v2.0` engine: [`api/v2/v2_0.py`](api/v2/v2_0.py#L1)
+- Current Python `v2.9` engine: [`api/v2/v2_9.py`](api/v2/v2_9.py#L1)
 - Native workspace scaffold: [`engine_csharp/README.md`](engine_csharp/README.md#L1)
 - Rewrite rule: all requests are routed to `api/index`
 - Function limit: Vercel `maxDuration` is currently set to `30` seconds
@@ -35,7 +35,7 @@ The important boundary is now very simple:
   - `https://sneakyowl.net`
   - `https://www.sneakyowl.net`
 
-The HTTP surface is intentionally narrow right now. The active routes are `v0` and `v2.0`. The older `v1` through `v1.5` Python engines are still preserved in code as historical/manual search references, but they are not part of the current public HTTP surface.
+The HTTP surface is intentionally narrow right now. The active routes are `v0` and `v2.9`. The older `v1` through `v1.5` Python engines and the Python `v2.0` port are still preserved in code as historical/manual search references, but they are not part of the current public HTTP surface.
 
 The new rule for the repo is:
 
@@ -52,7 +52,7 @@ The deployed endpoints currently exposed by Flask are:
 | Endpoint | Version | Summary |
 | --- | --- | --- |
 | `POST /chess_v0` | `v0` | Random legal move baseline |
-| `POST /chess_v2_0` | `v2.0` | Python `v2.0` engine with a fixed `1.0s` move budget |
+| `POST /chess_v2_9` | `v2.9` | Python `v2.9` engine with a fixed `1.0s` move budget |
 
 It expects JSON like:
 
@@ -67,11 +67,25 @@ Successful responses include:
 ```json
 {
   "move": "e4",
-  "processing_time": 0.123
+  "processing_time": 0.123,
+  "debug": {
+    "version": "v2.9",
+    "engine": "python_v2_9",
+    "selected_move_uci": "e2e4",
+    "score": 32,
+    "completed_depth": 5,
+    "moves_evaluated": 24584,
+    "nodes_searched": 39362,
+    "tt_entries": 3407,
+    "tt_probes": 6607,
+    "tt_hits": 3155,
+    "tt_cutoffs": 1240,
+    "timed_out": true
+  }
 }
 ```
 
-Moves are returned in SAN notation. Errors return JSON with an `error` field, for example invalid or missing FEN, checkmate, stalemate, or no legal moves.
+Moves are returned in SAN notation. The `debug` object is intentionally flexible and may gain or lose engine-specific fields over time. Errors return JSON with an `error` field and debug context, for example invalid or missing FEN, checkmate, stalemate, or no legal moves.
 
 ### Example
 
@@ -230,6 +244,6 @@ That remains the preferred direction because it is reproducible, automatable, ch
 
 - This repo currently documents the backend as it exists today.
 - No unified `/move` or `/chess` endpoint exists yet.
-- Python `v0` and `v2.0` are currently exposed through Flask routes.
-- Historical engines remain versioned under `api/v1/`, but the active Flask engine route comes from [`api/v2/v2_0.py`](api/v2/v2_0.py#L1).
+- Python `v0` and `v2.9` are currently exposed through Flask routes.
+- Historical engines remain versioned under `api/v1/`, and the preserved `v2.0` port remains under `api/v2/`, but the active Flask engine route comes from [`api/v2/v2_9.py`](api/v2/v2_9.py#L1).
 - The current Vercel duration setting is a temporary operational choice, not a statement that `30` seconds per move is the desired long-term UX target.
