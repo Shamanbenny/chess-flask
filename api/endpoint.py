@@ -4,7 +4,7 @@ import time
 import chess
 from flask import Blueprint, jsonify, request
 
-from .v2 import choose_move_v2_9
+from .v2 import choose_move_v2_0, choose_move_v2_9
 
 
 endpoint_blueprint = Blueprint("endpoint", __name__)
@@ -70,6 +70,8 @@ def generate_engine_response(version: str, fen: str) -> tuple[dict, int]:
 
     if normalized_version == "v0":
         return choose_move_v0(board), 200
+    if normalized_version == "v2.0":
+        return choose_move_v2_0(board, time_limit_seconds=ENGINE_TIME_LIMIT_SECONDS), 200
     if normalized_version == "v2.9":
         return choose_move_v2_9(board, time_limit_seconds=ENGINE_TIME_LIMIT_SECONDS), 200
     return error_response(f"Unsupported version '{version}'", 400, version=normalized_version)
@@ -122,3 +124,11 @@ def chess_v2_9():
         return handle_engine_request("v2.9")
     except Exception as exc:
         return unhandled_error_response("v2.9", exc)
+
+
+@endpoint_blueprint.route("/chess_v2_0", methods=["POST"])
+def chess_v2_0():
+    try:
+        return handle_engine_request("v2.0")
+    except Exception as exc:
+        return unhandled_error_response("v2.0", exc)

@@ -35,7 +35,7 @@ The important boundary is now very simple:
   - `https://sneakyowl.net`
   - `https://www.sneakyowl.net`
 
-The HTTP surface is intentionally narrow right now. The active routes are `v0` and `v2.9`. The older `v1` through `v1.5` Python engines and the Python `v2.0` port are still preserved in code as historical/manual search references, but they are not part of the current public HTTP surface.
+The HTTP surface is intentionally narrow right now. The active routes are `v0`, `v2.0`, and `v2.9`. The older `v1` through `v1.5` Python engines are still preserved in code as historical/manual search references, but they are not part of the current public HTTP surface.
 
 The new rule for the repo is:
 
@@ -52,6 +52,7 @@ The deployed endpoints currently exposed by Flask are:
 | Endpoint | Version | Summary |
 | --- | --- | --- |
 | `POST /chess_v0` | `v0` | Random legal move baseline |
+| `POST /chess_v2_0` | `v2.0` | Python `v2.0` engine with a fixed `1.0s` move budget |
 | `POST /chess_v2_9` | `v2.9` | Python `v2.9` engine with a fixed `1.0s` move budget |
 
 It expects JSON like:
@@ -244,6 +245,6 @@ That remains the preferred direction because it is reproducible, automatable, ch
 
 - This repo currently documents the backend as it exists today.
 - No unified `/move` or `/chess` endpoint exists yet.
-- Python `v0` and `v2.9` are currently exposed through Flask routes.
-- Historical engines remain versioned under `api/v1/`, and the preserved `v2.0` port remains under `api/v2/`, but the active Flask engine route comes from [`api/v2/v2_9.py`](api/v2/v2_9.py#L1).
+- Python `v0`, `v2.0`, and `v2.9` are currently exposed through Flask routes.
+- Historical engines remain versioned under `api/v1/`, while the active Flask v2 routes come from [`api/v2/v2_0.py`](api/v2/v2_0.py#L1) and [`api/v2/v2_9.py`](api/v2/v2_9.py#L1).
 - The current Vercel duration setting is a temporary operational choice, not a statement that `30` seconds per move is the desired long-term UX target.

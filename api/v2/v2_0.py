@@ -610,9 +610,22 @@ def choose_move_v2_0(board: chess.Board, time_limit_seconds: float = DEFAULT_TIM
     result = search_move_v2_0(board, time_limit_seconds=time_limit_seconds)
     return {
         "move": result["move_san"],
-        "moves_evaluated": result["moves_evaluated"],
-        "nodes_searched": result["nodes_searched"],
-        "completed_depth": result["completed_depth"],
+        "debug": {
+            "version": "v2.0",
+            "engine": "python_v2_0",
+            "selected_move_uci": result["move"].uci(),
+            "selected_move_san": result["move_san"],
+            "score": result["score"],
+            "completed_depth": result["completed_depth"],
+            "time_limit_seconds": result["time_limit_seconds"],
+            "timed_out": result["timed_out"],
+            "moves_evaluated": result["moves_evaluated"],
+            "nodes_searched": result["nodes_searched"],
+            "tt_entries": result["tt_entries"],
+            "tt_probes": result["tt_probes"],
+            "tt_hits": result["tt_hits"],
+            "tt_cutoffs": result["tt_cutoffs"],
+        },
     }
 
 
