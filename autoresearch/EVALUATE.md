@@ -17,7 +17,7 @@ The evaluator decides whether the candidate is approved. Diagnostic information 
 - Move time limit: `100ms` per move
 - Total games: `500`
 - Color split: `250` games with the candidate as White, `250` games with the candidate as Black
-- Opening policy: use the fixed curated `Book.txt` opening-book positions checked into the repo, exclude the fresh starting board, randomize the sampled positions for the run, and use the same sampled position for the immediate color-swapped paired game
+- Opening policy: start every paired game from the standard initial board. The evaluator still runs immediate color-swapped pairs: one game with the candidate as White and one game with the candidate as Black from the same starting position.
 - Draw cutoff: use a fixed `max_plies` constant enforced by the evaluator
 - Evaluation transport: direct local engine-vs-engine evaluation inside the engine workspace, not the legacy Python HTTP simulator
 - No depth argument: evaluation is time-limited, not depth-limited
@@ -55,7 +55,7 @@ Example:
 
 ```bash
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
-  --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs \
+  --engine-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs \
   --stockfish-path "$STOCKFISH_PATH" \
   --stockfish-elo 1350 \
   --games 500 \
@@ -68,7 +68,7 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
 
 The caller must provide `<short_sha>` explicitly. Do not make the runner infer git state on behalf of the experiment loop.
 
-Do not change the evaluator flags during normal experiments. The opening source defaults to `Book.txt` automatically and should not be overridden unless the workflow contract is intentionally revised outside the experiment loop. The documented default example uses `--workers 6` as the baseline parallel evaluator configuration for a typical 6-core Linux host, but the contract remains the same regardless of how the local machine schedules those paired openings.
+Do not change the evaluator flags during normal experiments. The documented default example uses `--workers 6` as the baseline parallel evaluator configuration for a typical 6-core Linux host, but the contract remains the same regardless of how the local machine schedules those paired games.
 The in-repo approved engine recorded in `autoresearch/ATTEMPTS.md` is the seed file for the next candidate. The evaluation opponent is the fixed `stockfish-1350` baseline defined in this file.
 
 ## Git Recording Contract
@@ -154,9 +154,9 @@ These additional metrics are diagnostic only.
 
 ## Approval Formula
 
-The approval decision must be based on paired opening results, not just raw aggregate score.
+The approval decision must be based on paired color-swapped results, not just raw aggregate score.
 
-For each opening pair `i`, define:
+For each paired starting-position match `i`, define:
 
 - one game with candidate as White
 - one game with candidate as Black
@@ -171,7 +171,7 @@ For pair `i`, compute the candidate paired score:
 
 `p_i = (score_as_white_i + score_as_black_i) / 2`
 
-With `n = games / 2` opening pairs, compute:
+With `n = games / 2` pairs, compute:
 
 - `mean = (1 / n) * sum(p_i)`
 - `sd = sample standard deviation of the p_i values`
@@ -212,7 +212,7 @@ Interpretation:
 
 - `approved_seed_score_rate` is the current approved in-repo seed's recorded raw score rate against the same fixed `stockfish-1350` evaluator.
 - `score_rate > approved_seed_score_rate` means the candidate must explicitly outperform the current approved seed's stockfish-1350 benchmark, not merely clear a generic floor.
-- `lcb95 > 0.5` means the paired-opening lower 95% confidence bound still shows the candidate scoring above break-even against `stockfish-1350`, so promotion is not based only on raw aggregate score noise.
+- `lcb95 > 0.5` means the paired lower 95% confidence bound still shows the candidate scoring above break-even against `stockfish-1350`, so promotion is not based only on raw aggregate score noise.
 - `max_plies_rate < 0.10` means fewer than 10% of the games may terminate only because the fixed ply cap was reached. If 10% or more of the sample hits `max_plies`, the candidate is treated as insufficiently decisive for promotion even if its raw score is competitive.
 
 ## Rejection Conditions

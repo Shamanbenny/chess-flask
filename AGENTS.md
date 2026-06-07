@@ -88,11 +88,11 @@ Important rules:
 - The fixed evaluator baseline is local `stockfish-1350`.
 - The latest approved in-repo engine is the seed for new candidate versions.
 - New work happens in a newly cloned versioned engine file.
-- The evaluator is fixed: `500` games, `100ms` per move, paired openings from `Book.txt`.
+- The current fixed evaluator contract is documented in `autoresearch/EVALUATE.md`; use that file and `autoresearch/ATTEMPTS.md` for the current command, baseline, and latest approved seed values.
 - Approval requires a clean build, a completed evaluator run, no illegal/crash failures, and `lcb95 > 0.5`.
 - `ATTEMPTS.md` is append-only except for the “Latest Approved Engine Seed” section.
 
-As of `2026-06-06`, the fixed evaluator baseline recorded there is `stockfish-1350`, and the latest approved in-repo engine seed is `v2.5` at `engine_csharp/src/Engine.Core/V2/V2_5Engine.cs`.
+For current autoresearch baseline and latest approved seed values, reference `autoresearch/ATTEMPTS.md` directly instead of copying version-specific values here.
 
 ## Coding Style & Naming
 

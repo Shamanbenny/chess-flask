@@ -54,14 +54,19 @@ The deployed endpoints currently exposed by Flask are:
 | `POST /chess_v0` | `v0` | Random legal move baseline |
 | `POST /chess_v2_0` | `v2.0` | Python `v2.0` engine with a fixed `1.0s` move budget |
 | `POST /chess_v2_9` | `v2.9` | Python `v2.9` engine with a fixed `1.0s` move budget |
+| `POST /chess_v3_0` | `v3.0` | Python V3.0 wrapper: opening-book lookup first, then V2.9 search with optional warm-instance TT reuse |
 
 It expects JSON like:
 
 ```json
 {
-  "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+  "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "game_id": "optional-stable-game-key",
+  "reset_context": false
 }
 ```
+
+For `/chess_v3_0`, pass either `game_id` or `context_id` to allow warm Vercel/Python instances to reuse a per-game transposition table across requests. This is an optimization only: cold starts or different Vercel instances may start with an empty context. Use `reset_context: true` when starting a new game with the same key.
 
 Successful responses include:
 
@@ -150,12 +155,21 @@ dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 
 dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v2.0 --time-limit-seconds 1.0 --max-plies 70
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --games 50 --time-limit-ms 250 --max-plies 200 --workers 6
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V2/V2_9Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
 export STOCKFISH_PATH=/home/your-user/tools/stockfish/stockfish-ubuntu-x86-64-avx2
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --stockfish-path "$STOCKFISH_PATH" --stockfish-elo 1350 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --stockfish-path "$STOCKFISH_PATH" --stockfish-elo 1350 --games 20 --time-limit-ms 100 --workers 6
 ```
 
-`evaluate-match` and `evaluate-stock` both support `--workers` so the evaluator can process multiple paired openings concurrently. `evaluate-stock` runs the specified C# engine file against a local Stockfish binary. The recommended workflow is to store the executable location in a `STOCKFISH_PATH` environment variable and pass it into `--stockfish-path`. `--stockfish-elo` maps to [Stockfish's UCI limited-strength](STOCKFISH-ELO.md#L1) setting rather than a guaranteed live rating. `--log --short-sha <sha>` writes the same evaluator CSV format used by `evaluate-match`.
+`evaluate-match` and `evaluate-stock` both support `--workers`. For V3.0 and newer, omit `--v2test`: evaluation starts from the standard initial board and still runs paired color-swapped games. For historical V2 comparisons only, pass `--v2test` to restore the old paired-opening workflow from `Openings.txt`.
+
+Legacy V2 opening-position examples:
+
+```bash
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_9Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6 --log --short-sha 1a2b3c4 --v2test
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V2/V2_9Engine.cs --stockfish-path "$STOCKFISH_PATH" --stockfish-elo 1350 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4 --v2test
+```
+
+`evaluate-stock` runs the specified C# engine file against a local Stockfish binary. The recommended workflow is to store the executable location in a `STOCKFISH_PATH` environment variable and pass it into `--stockfish-path`. `--stockfish-elo` maps to [Stockfish's UCI limited-strength](STOCKFISH-ELO.md#L1) setting rather than a guaranteed live rating. `--log --short-sha <sha>` writes the same evaluator CSV format used by `evaluate-match`.
 
 The C# workspace now exists to hold direct source engines and the local scenario runners. The active local runner project in this repo is `engine_csharp/src/LocalTesting`.
 

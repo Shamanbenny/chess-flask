@@ -3,6 +3,7 @@
 import math
 import time
 from dataclasses import dataclass
+from typing import Callable
 
 import chess
 
@@ -478,12 +479,15 @@ def search_move_v2_9(
     board: chess.Board,
     time_limit_seconds: float = DEFAULT_TIME_LIMIT_SECONDS,
     max_depth: int | None = None,
+    transposition_table: TranspositionTable | None = None,
+    position_key_func: Callable[[chess.Board], object] | None = None,
 ) -> dict:
     if time_limit_seconds <= 0:
         raise ValueError("time_limit_seconds must be greater than 0")
 
     deadline = time.perf_counter() + time_limit_seconds
-    transposition_table = TranspositionTable()
+    transposition_table = transposition_table or TranspositionTable()
+    position_key = position_key_func or _position_key
     current_iteration_depth = 0
     moves_evaluated = 0
     nodes_searched = 0
@@ -552,7 +556,7 @@ def search_move_v2_9(
             return quiescence(alpha, beta, search_board, ply)
 
         alpha_original = alpha
-        key = _position_key(search_board)
+        key = position_key(search_board)
         tt_probes += 1
         entry = transposition_table.probe(key)
         if entry is not None:
@@ -620,7 +624,7 @@ def search_move_v2_9(
 
         try:
             tt_probes += 1
-            root_key = _position_key(board)
+            root_key = position_key(board)
             root_entry = transposition_table.probe(root_key)
             if root_entry is not None:
                 tt_hits += 1

@@ -16,6 +16,7 @@ internal static class LocalTestingProgram
     private const int DefaultEvaluationMaxPlies = 200;
     private const double DefaultEvaluationTimeLimitSeconds = 0.100;
     private const string DefaultStockfishBinary = "stockfish";
+    private const string StartingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     public static int Run(string[] args)
     {
@@ -35,6 +36,7 @@ internal static class LocalTestingProgram
                 "endgame-2" => RunEndgame("endgame_2", args[1..]),
                 "evaluate-match" => RunEvaluateMatch(args[1..]),
                 "evaluate-stock" or "--evaluate-stock" => RunEvaluateStock(args[1..]),
+                "build-openings-lookup" => RunBuildOpeningsLookup(args[1..]),
                 "backend-worker-experiment" => BackendWorkerExperiment.Run(args[1..]),
                 _ => Fail($"Unknown command '{args[0]}'"),
             };
@@ -363,7 +365,8 @@ internal static class LocalTestingProgram
             options.TimeLimitSeconds,
             options.Workers,
             options.Log,
-            options.ShortSha);
+            options.ShortSha,
+            options.V2Test);
     }
 
     private static int RunEvaluateStock(string[] args)
@@ -393,7 +396,52 @@ internal static class LocalTestingProgram
             options.TimeLimitSeconds,
             options.Workers,
             options.Log,
-            options.ShortSha);
+            options.ShortSha,
+            options.V2Test);
+    }
+
+    private static int RunBuildOpeningsLookup(string[] args)
+    {
+        var inputPath = FindDefaultOpeningSourceFile();
+        var outputPath = Path.Combine(FindRepoRoot(), "Openings.lookup.tsv");
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            switch (args[index])
+            {
+                case "--input":
+                    inputPath = ResolveCliPath(args[++index]);
+                    break;
+                case "--output":
+                    outputPath = ResolveCliPath(args[++index]);
+                    break;
+                default:
+                    return Fail($"Unknown argument '{args[index]}'");
+            }
+        }
+
+        if (!File.Exists(inputPath))
+        {
+            throw new FileNotFoundException($"Opening source file not found: {inputPath}", inputPath);
+        }
+
+        var lookup = BuildOpeningMoveLookup(File.ReadLines(inputPath));
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory());
+
+        using var writer = new StreamWriter(outputPath);
+        writer.WriteLine("# normalized_fen\tuci_moves");
+        foreach (var entry in lookup.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+        {
+            writer.Write(entry.Key);
+            writer.Write('\t');
+            writer.WriteLine(string.Join(',', entry.Value.OrderBy(move => move, StringComparer.Ordinal)));
+        }
+
+        Console.WriteLine($"Opening lookup source: {inputPath}");
+        Console.WriteLine($"Opening lookup output: {outputPath}");
+        Console.WriteLine($"Positions written: {lookup.Count}");
+        Console.WriteLine($"Moves written: {lookup.Values.Sum(moves => moves.Count)}");
+        return 0;
     }
 
     private static EvaluateMatchOptions ParseEvaluateMatchOptions(string[] args)
@@ -407,6 +455,7 @@ internal static class LocalTestingProgram
         var workers = 1;
         var log = false;
         string? shortSha = null;
+        var v2Test = false;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -439,6 +488,9 @@ internal static class LocalTestingProgram
                 case "--short-sha":
                     shortSha = args[++index];
                     break;
+                case "--v2test":
+                    v2Test = true;
+                    break;
                 default:
                     throw new ArgumentException($"Unknown argument '{args[index]}'");
             }
@@ -468,7 +520,8 @@ internal static class LocalTestingProgram
             timeLimitSeconds,
             workers,
             log,
-            shortSha);
+            shortSha,
+            v2Test);
     }
 
     private static EvaluateStockOptions ParseEvaluateStockOptions(string[] args)
@@ -483,6 +536,7 @@ internal static class LocalTestingProgram
         var workers = 1;
         var log = false;
         string? shortSha = null;
+        var v2Test = false;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -518,6 +572,9 @@ internal static class LocalTestingProgram
                 case "--short-sha":
                     shortSha = args[++index];
                     break;
+                case "--v2test":
+                    v2Test = true;
+                    break;
                 default:
                     throw new ArgumentException($"Unknown argument '{args[index]}'");
             }
@@ -548,7 +605,8 @@ internal static class LocalTestingProgram
             timeLimitSeconds,
             workers,
             log,
-            shortSha);
+            shortSha,
+            v2Test);
     }
 
     private static int RunEvaluationSeries(
@@ -560,9 +618,12 @@ internal static class LocalTestingProgram
         double timeLimitSeconds,
         int workers,
         bool log,
-        string? shortSha)
+        string? shortSha,
+        bool useOpeningPositions)
     {
-        var openingFens = LoadOpeningPositions(openingsFilePath);
+        var openingFens = useOpeningPositions
+            ? LoadOpeningPositions(openingsFilePath)
+            : [StartingFen];
         var totalPairs = games / 2;
         using var engineAInfo = engineAFactory.Create();
         using var engineBInfo = engineBFactory.Create();
@@ -585,7 +646,8 @@ internal static class LocalTestingProgram
             Console.WriteLine($"Time limit per move: {timeLimitSeconds * 1000.0:F1}ms");
             Console.WriteLine($"Max plies: {maxPlies}");
             Console.WriteLine($"Workers: {workers}");
-            Console.WriteLine($"Opening source file: {openingsFilePath}");
+            Console.WriteLine($"Opening mode: {(useOpeningPositions ? "v2test_openings" : "starting_position")}");
+            Console.WriteLine($"Opening source file: {(useOpeningPositions ? openingsFilePath : "not used")}");
             Console.WriteLine($"Unique opening positions loaded: {openingFens.Count}");
             Console.WriteLine($"Logging enabled: {log}");
             if (csvLogger is not null)
@@ -621,6 +683,9 @@ internal static class LocalTestingProgram
                         timeLimitSeconds,
                         maxPlies,
                         engineAWasWhite: true);
+
+                    pairEngineA.ResetForNewGame();
+                    pairEngineB.ResetForNewGame();
 
                     var gameBWhite = PlayEvaluationGame(
                         blackGameNumber,
@@ -814,7 +879,8 @@ internal static class LocalTestingProgram
             engine.SourcePath,
             engine.EngineStem,
             engine.SearchMethodName,
-            engine.SearchMove);
+            engine.SearchMove,
+            engine.ResetState);
     }
 
     private static EvaluationParticipant CreateStockfishParticipant(string stockfishPath, int stockfishElo)
@@ -825,7 +891,7 @@ internal static class LocalTestingProgram
             $"stockfish-{stockfish.ConfiguredElo}",
             $"uci elo={stockfish.ConfiguredElo}",
             stockfish.SearchMove,
-            stockfish);
+            Disposable: stockfish);
     }
 
     private static EvaluationParticipantFactory CreateEngineFileParticipantFactory(string engineFilePath)
@@ -964,6 +1030,60 @@ internal static class LocalTestingProgram
         return openings;
     }
 
+    private static SortedDictionary<string, SortedSet<string>> BuildOpeningMoveLookup(IEnumerable<string> lines)
+    {
+        var lookup = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+        string? currentFen = null;
+        HashSet<string>? legalMoves = null;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            if (line.StartsWith("pos ", StringComparison.Ordinal))
+            {
+                var fen = ExpandBookFen(line["pos ".Length..].Trim());
+                _ = new BoardState(fen);
+                currentFen = OpeningBook.NormalizeFenKey(fen);
+                legalMoves = new BoardState(fen).LegalMoves().Select(MoveToUci).ToHashSet(StringComparer.Ordinal);
+                if (!lookup.ContainsKey(currentFen))
+                {
+                    lookup[currentFen] = new SortedSet<string>(StringComparer.Ordinal);
+                }
+
+                continue;
+            }
+
+            if (currentFen is null || legalMoves is null || line.StartsWith('#'))
+            {
+                continue;
+            }
+
+            var columns = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (columns.Length == 0)
+            {
+                continue;
+            }
+
+            var uci = columns[0];
+            if (legalMoves.Contains(uci))
+            {
+                lookup[currentFen].Add(uci);
+            }
+        }
+
+        foreach (var emptyKey in lookup.Where(entry => entry.Value.Count == 0).Select(entry => entry.Key).ToArray())
+        {
+            lookup.Remove(emptyKey);
+        }
+
+        return lookup;
+    }
+
     private static List<string> LoadOpeningPositionsFromFenList(IEnumerable<string> lines, string fullPath)
     {
         var openings = new List<string>();
@@ -991,7 +1111,6 @@ internal static class LocalTestingProgram
     {
         var openings = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        var freshBoardFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
         foreach (var rawLine in lines)
         {
@@ -1010,7 +1129,7 @@ internal static class LocalTestingProgram
             var fen = ExpandBookFen(fenWithoutCounters);
             _ = new BoardState(fen);
 
-            if (string.Equals(fen, freshBoardFen, StringComparison.Ordinal))
+            if (string.Equals(fen, StartingFen, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -1053,7 +1172,7 @@ internal static class LocalTestingProgram
 
     private static string FindDefaultOpeningSourceFile()
     {
-        return Path.Combine(FindRepoRoot(), "Book.txt");
+        return Path.Combine(FindRepoRoot(), "Openings.txt");
     }
 
     private static string ResolveCliPath(string path)
@@ -1083,7 +1202,7 @@ internal static class LocalTestingProgram
             var candidate = Path.Combine(current.FullName, "..", "..", "..", "..");
             candidate = Path.GetFullPath(candidate);
             if (File.Exists(Path.Combine(candidate, "README.md"))
-                && File.Exists(Path.Combine(candidate, "Book.txt"))
+                && File.Exists(Path.Combine(candidate, "Openings.txt"))
                 && Directory.Exists(Path.Combine(candidate, "engine_csharp")))
             {
                 return candidate;
@@ -1332,8 +1451,9 @@ internal static class LocalTestingProgram
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --workers 6 --log --short-sha 1a2b3c4");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1800 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --workers 6 --log --short-sha 1a2b3c4 --v2test");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1800 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4 --v2test");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- build-openings-lookup");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs --games 20 --time-limit-ms 100 --workers 6 --skip-1-worker");
     }
 
@@ -1366,7 +1486,8 @@ internal static class LocalTestingProgram
         double TimeLimitSeconds,
         int Workers,
         bool Log,
-        string? ShortSha);
+        string? ShortSha,
+        bool V2Test);
 
     private sealed record EvaluateStockOptions(
         string EngineFilePath,
@@ -1378,15 +1499,22 @@ internal static class LocalTestingProgram
         double TimeLimitSeconds,
         int Workers,
         bool Log,
-        string? ShortSha);
+        string? ShortSha,
+        bool V2Test);
 
     private sealed record EvaluationParticipant(
         string SourcePath,
         string EngineStem,
         string Details,
         Func<BoardState, double, SearchResult> SearchMove,
+        Action? ResetState = null,
         IDisposable? Disposable = null) : IDisposable
     {
+        public void ResetForNewGame()
+        {
+            ResetState?.Invoke();
+        }
+
         public void Dispose()
         {
             Disposable?.Dispose();

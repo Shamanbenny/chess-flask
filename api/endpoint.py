@@ -5,6 +5,7 @@ import chess
 from flask import Blueprint, jsonify, request
 
 from .v2 import choose_move_v2_0, choose_move_v2_9
+from .v3.v3_0 import choose_move_v3_0
 
 
 endpoint_blueprint = Blueprint("endpoint", __name__)
@@ -57,8 +58,9 @@ def choose_move_v0(board: chess.Board) -> dict:
     }
 
 
-def generate_engine_response(version: str, fen: str) -> tuple[dict, int]:
+def generate_engine_response(version: str, fen: str, payload: dict | None = None) -> tuple[dict, int]:
     normalized_version = version.lower()
+    payload = payload or {}
     board, error = validate_board_for_move(fen)
     if error is not None:
         body, status = error
@@ -74,12 +76,19 @@ def generate_engine_response(version: str, fen: str) -> tuple[dict, int]:
         return choose_move_v2_0(board, time_limit_seconds=ENGINE_TIME_LIMIT_SECONDS), 200
     if normalized_version == "v2.9":
         return choose_move_v2_9(board, time_limit_seconds=ENGINE_TIME_LIMIT_SECONDS), 200
+    if normalized_version == "v3.0":
+        return choose_move_v3_0(
+            board,
+            time_limit_seconds=ENGINE_TIME_LIMIT_SECONDS,
+            context_id=payload.get("context_id") or payload.get("game_id"),
+            reset_context=bool(payload.get("reset_context", False)),
+        ), 200
     return error_response(f"Unsupported version '{version}'", 400, version=normalized_version)
 
 
-def timed_engine_response(version: str, fen: str) -> tuple[dict, int]:
+def timed_engine_response(version: str, fen: str, payload: dict | None = None) -> tuple[dict, int]:
     start_time = time.time()
-    body, status = generate_engine_response(version, fen)
+    body, status = generate_engine_response(version, fen, payload)
     processing_time = time.time() - start_time
     body = {
         **body,
@@ -106,7 +115,7 @@ def unhandled_error_response(version: str, exc: Exception):
 
 def handle_engine_request(version: str):
     data = request.get_json() or {}
-    body, status = timed_engine_response(version, data.get("fen", ""))
+    body, status = timed_engine_response(version, data.get("fen", ""), data)
     return jsonify(body), status
 
 
@@ -132,3 +141,11 @@ def chess_v2_0():
         return handle_engine_request("v2.0")
     except Exception as exc:
         return unhandled_error_response("v2.0", exc)
+
+
+@endpoint_blueprint.route("/chess_v3_0", methods=["POST"])
+def chess_v3_0():
+    try:
+        return handle_engine_request("v3.0")
+    except Exception as exc:
+        return unhandled_error_response("v3.0", exc)

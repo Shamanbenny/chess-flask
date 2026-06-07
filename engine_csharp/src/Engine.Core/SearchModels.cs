@@ -2,6 +2,7 @@ using System.Reflection;
 using Chess;
 using Engine.Core.V1;
 using Engine.Core.V2;
+using Engine.Core.V3;
 
 namespace Engine.Core;
 
@@ -24,7 +25,8 @@ public static class EngineVersions
         string SourcePath,
         string EngineStem,
         string SearchMethodName,
-        Func<BoardState, double, SearchResult> SearchMove);
+        Func<BoardState, double, SearchResult> SearchMove,
+        Action? ResetState = null);
 
     public static SearchResult SearchMoveForVersion(
         string version,
@@ -93,13 +95,27 @@ public static class EngineVersions
                 nameof(engineFilePath));
         }
 
+        var contextFactoryName = $"CreateSearchContext{versionStem}";
+        var contextFactory = method.DeclaringType?.GetMethod(contextFactoryName, BindingFlags.Public | BindingFlags.Static);
+        object? searchContext = CreateSearchContext(contextFactory);
+
         SearchResult Search(BoardState board, double timeLimitSeconds)
         {
-            var arguments = BuildInvocationArguments(method, board, timeLimitSeconds);
+            var arguments = BuildInvocationArguments(method, board, timeLimitSeconds, searchContext);
             return (SearchResult)method.Invoke(null, arguments)!;
         }
 
-        return new ResolvedEngineFile(fullPath, engineStem, searchMethodName, Search);
+        void ResetState()
+        {
+            searchContext = CreateSearchContext(contextFactory);
+        }
+
+        return new ResolvedEngineFile(
+            fullPath,
+            engineStem,
+            searchMethodName,
+            Search,
+            contextFactory is null ? null : ResetState);
     }
 
     private static bool CanUseAsTimeLimitedSearchMethod(MethodInfo? method)
@@ -133,7 +149,27 @@ public static class EngineVersions
         return hasTimeLimitParameter;
     }
 
-    private static object?[] BuildInvocationArguments(MethodInfo method, BoardState board, double timeLimitSeconds)
+    private static object? CreateSearchContext(MethodInfo? contextFactory)
+    {
+        if (contextFactory is null)
+        {
+            return null;
+        }
+
+        if (contextFactory.GetParameters().Length != 0)
+        {
+            throw new InvalidOperationException(
+                $"Search context factory '{contextFactory.Name}' must not require parameters.");
+        }
+
+        return contextFactory.Invoke(null, null);
+    }
+
+    private static object?[] BuildInvocationArguments(
+        MethodInfo method,
+        BoardState board,
+        double timeLimitSeconds,
+        object? searchContext)
     {
         var parameters = method.GetParameters();
         var arguments = new object?[parameters.Length];
@@ -150,9 +186,26 @@ public static class EngineVersions
                 continue;
             }
 
+            if (searchContext is not null && CanAssignSearchContext(parameter, searchContext))
+            {
+                arguments[index] = searchContext;
+                continue;
+            }
+
             arguments[index] = parameter.DefaultValue;
         }
 
         return arguments;
+    }
+
+    private static bool CanAssignSearchContext(ParameterInfo parameter, object searchContext)
+    {
+        if (!parameter.ParameterType.IsInstanceOfType(searchContext))
+        {
+            return false;
+        }
+
+        return parameter.Name is not null
+            && parameter.Name.Contains("context", StringComparison.OrdinalIgnoreCase);
     }
 }
