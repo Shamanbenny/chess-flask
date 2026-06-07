@@ -17,13 +17,13 @@ Do not rewrite or delete prior entries (Except for the `## Latest Approved Engin
 
 ## Latest Approved Engine Seed (Adjust accordingly ONLY WHEN experiment is approved by evaluator)
 
-- approved_version: `v2.9`
-- approved_file: `engine_csharp/src/Engine.Core/V2/V2_9Engine.cs`
-- approved_commit: `fcb62a2`
-- approved_recorded_at: `2026-06-06`
-- approved_reference_score_rate_vs_stockfish_1350: `0.6480`
-- approved_reference_score_source: `autoresearch/approved_logs/V2_9Engine-66b524e-result.csv`
-- notes: `Current v2.9 baseline after adding a modest knight outpost bonus to v2.8. Evaluated candidate commit was 66b524e and local main contains the equivalent cherry-pick fcb62a2. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
+- approved_version: `v3.0`
+- approved_file: `engine_csharp/src/Engine.Core/V3/V3_0Engine.cs`
+- approved_commit: `5417662`
+- approved_recorded_at: `2026-06-07`
+- approved_reference_score_rate_vs_stockfish_1350: `0.6110`
+- approved_reference_score_source: `autoresearch/approved_logs/V3_0Engine-5417662-result.csv`
+- notes: `Current v3.0 baseline after adding an opening-book lookup before search and an optional per-game search context that persists the native transposition table across moves. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
 
 ## Entry Template
 
@@ -369,3 +369,32 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=32`
 - verdict: `Rejected under EVALUATE.md because score_rate=0.6090 did not exceed the approved seed reference 0.6480, despite a clean build, completed evaluator signatures, failures=0, paired lcb95=0.5766 > 0.5, and max_plies_rate=0.0640 < 0.10.`
 - inferred_conclusion: `A generic rook-seventh-rank bonus degraded the stronger v2.9 baseline and reduced node throughput. Future rook activity work should not simply stack another static rook placement bonus on top of open-file scoring; it needs tighter conditions such as trapped king, targets on the seventh rank, or demonstrated conversion-specific compensation.`
+
+## Attempt: 2026-06-07T09:53:14Z - v3.0
+
+- branch: `main`
+- commit: `5417662`
+- status: `approved`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v2.9`
+- seed_file: `engine_csharp/src/Engine.Core/V2/V2_9Engine.cs`
+- candidate_version: `v3.0`
+- candidate_file: `engine_csharp/src/Engine.Core/V3/V3_0Engine.cs`
+- version_bump: `major`
+- hypotheses:
+  - `Persisting the native transposition table across moves within a game should reuse prior search work and improve move ordering/cutoffs compared with v2.9's per-move fresh TT allocation.`
+  - `Checking a normalized FEN opening lookup before native search should avoid spending the 100ms move budget on early-book positions while preserving legal SAN output through the existing BoardState move path.`
+- implementation_summary: `Forked the v2.9 search lineage into V3_0Engine, added an optional V3_0SearchContext with a shared TtEntry array that SearchModels can keep alive for a game and reset between games, and added an OpeningBook.TryGetMove pre-search path keyed by normalized FEN for full-piece opening positions. The v3.0 native search otherwise keeps the v2.9 evaluation lineage, including rook open/semi-open file scoring and knight outpost scoring.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_0Engine-5417662-result.csv`
+- extra_log_paths: `n/a`
+- wins: `254`
+- draws: `103`
+- losses: `143`
+- score: `305.5/500`
+- score_rate: `0.6110`
+- average_plies: `100.21`
+- average_processing_time_ms: `99.666`
+- average_positions_or_nodes: `11522.13`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; total=0`
+- verdict: `Approved as the new v3.0 seed after a completed 500-game stockfish-1350 run with failures=0, score_rate=0.6110, paired mean=0.6110, paired sd=0.3055, and paired lcb95=0.5792 > 0.5. This is a major-version promotion focused on persistent per-game TT state and opening lookup behavior rather than a direct static-evaluation gain over v2.9.`
+- inferred_conclusion: `The persistent TT plus opening-lookup architecture is stable enough to become the new approved seed, but its 0.6110 stockfish-1350 score rate is lower than v2.9's 0.6480 reference result. Future v3 experiments should build on the new per-game context/book infrastructure while measuring whether TT reuse, book coverage, and any later search/evaluation changes recover or exceed the previous v2.9 strength.`
