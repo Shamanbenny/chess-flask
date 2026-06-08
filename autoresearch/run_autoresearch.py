@@ -972,7 +972,7 @@ def finalize_attempt_commit(
 ) -> None:
     approved_reference_source: str | None = None
     if status == "approved" and approved_log_path is not None and approved_log_path.exists():
-        target = approved_log_path.with_name(f"{commit_sha}-result.csv")
+        target = approved_log_path.with_name(f"{candidate.stem}-{commit_sha}-result.csv")
         approved_log_path.rename(target)
         approved_reference_source = str(target.relative_to(REPO_ROOT))
 
