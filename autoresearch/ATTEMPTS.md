@@ -398,3 +398,31 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; total=0`
 - verdict: `Approved as the new v3.0 seed after a completed 500-game stockfish-1350 run with failures=0, score_rate=0.6110, paired mean=0.6110, paired sd=0.3055, and paired lcb95=0.5792 > 0.5. This is a major-version promotion focused on persistent per-game TT state and opening lookup behavior rather than a direct static-evaluation gain over v2.9.`
 - inferred_conclusion: `The persistent TT plus opening-lookup architecture is stable enough to become the new approved seed, but its 0.6110 stockfish-1350 score rate is lower than v2.9's 0.6480 reference result. Future v3 experiments should build on the new per-game context/book infrastructure while measuring whether TT reuse, book coverage, and any later search/evaluation changes recover or exceed the previous v2.9 strength.`
+
+## Attempt: 2026-06-08T04:41:43Z - v3.1
+
+- branch: `autoresearch/Jun8a`
+- commit: `fa524d8`
+- status: `rejected`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.0`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_0Engine.cs`
+- candidate_version: `v3.1`
+- candidate_file: `engine_csharp/src/Engine.Core/V3/V3_1Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A targeted king-shelter term that rewards a real pawn shield in front of a home-rank king and penalizes open or semi-open nearby files will improve middlegame king safety and move choice on top of v3.0.`
+- implementation_summary: `Cloned v3.0 into v3.1, renamed the public type and search-context entrypoints, and added a middlegame-scaled king-shelter evaluation bonus that inspects the pawn shield directly in front of a back-rank king and penalizes missing shelter on nearby open or semi-open files.`
+- evaluation_log_path: `autoresearch/logs/fa524d8-result.csv`
+- extra_log_paths: `/tmp/autoresearch-fa524d8-eval.log`
+- wins: `140`
+- draws: `56`
+- losses: `129`
+- score: `188.0/325`
+- score_rate: `0.5785`
+- average_plies: `98.73`
+- average_processing_time_ms: `99.904`
+- average_positions_or_nodes: `7514.65`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=1 incomplete evaluator termination; max_plies=22`
+- verdict: `Rejected under EVALUATE.md because the candidate never produced the required === EVALUATION DONE === signature across two detached 500-game evaluator launches, so the fixed evaluation did not complete cleanly enough for promotion. The partial canonical CSV shows score_rate=0.5785, paired lcb95≈0.5314, and max_plies_rate=0.0677 through 325 recorded games, but those partial metrics do not override the failed evaluator-completion contract.`
+- inferred_conclusion: `This king-shelter term did not show a clear partial edge over the v3.0 approval bar before the repeated evaluator termination, and it also reduced average node throughput materially versus the v3.0 approved reference. Future v3 work should prefer simpler targeted activity or search-control changes over additional king-safety evaluation unless the mechanism is both cheap per node and robust under the full evaluator contract.`
