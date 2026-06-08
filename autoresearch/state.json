@@ -24,7 +24,7 @@
     "approved_reference_score_source": "autoresearch/approved_logs/62e5166-result.csv",
     "notes": "Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result."
   },
-  "next_candidate_version": "v3.9",
+  "next_candidate_version": "v3.10",
   "agent": {
     "max_hypotheses_per_experiment": 2
   }

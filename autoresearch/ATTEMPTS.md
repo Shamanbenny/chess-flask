@@ -458,3 +458,24 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `n/a`
 - average_positions_or_nodes: `n/a`
 - inferred_conclusion: `This attempt produced no strength signal because the killer-move and quiet-history ordering changes failed at build time before evaluation. Future search-control experiments should keep the move-ordering surface narrow, verify all new helper signatures and call sites against the board API before return, and prefer compile-checked incremental additions over broader heuristic rewiring.`
+
+## Attempt: 2026-06-08T18:25:38Z - v3.9
+
+- status: `rejected`
+- commit: `<n/a>`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.6`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_6Engine.cs`
+- candidate_version: `v3.9`
+- version_bump: `minor`
+- hypotheses:
+  - `Internal iterative deepening at deeper non-check nodes with no transposition-table move will seed a useful hash move for v3.6's existing PVS ordering, improving cutoffs at 100ms without adding evaluation cost.`
+- implementation_summary: `Cloned v3.6 into v3.9 and added a contained internal-iterative-deepening fallback in negamax so deeper non-check nodes without a TT move first run a reduced-depth probe to populate and reuse a transposition-table move for the main ordered search.`
+- evaluation_log_path: `<n/a>`
+- wins/draws/losses: `329/76/95`
+- score: `367.0`
+- score_rate: `0.7340`
+- average_plies: `87.7500`
+- average_processing_time_ms: `98.1286`
+- average_positions_or_nodes: `10684.7203`
+- inferred_conclusion: `Internal iterative deepening as a TT-move seeding fallback was effectively neutral on top of v3.6: it preserved stability and a strong paired lower bound, but slightly underperformed the approved seed on score_rate while also trimming nodes a bit. Future v3 search-control experiments should avoid spending extra work on generic reduced-depth bootstrap probes unless they produce a clearer move-ordering gain, and should instead target higher-leverage ordering or pruning changes that more directly improve root move selection within the same 100ms budget.`
