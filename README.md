@@ -2,7 +2,7 @@
 
 This repository serves chess moves through a Dockerized C#/.NET 8 web backend and acts as a local research workspace for improving the C# chess engine.
 
-The backend accepts a chess board state as a FEN string and returns a SAN move plus timing/debug metadata. It is intended to work alongside the frontend on `sneakyowl.net`; that frontend is out of scope here.
+The backend accepts a chess board state as a FEN string and returns a SAN move plus timing/debug metadata. It is intended to work alongside the frontend on [`sneakyowl.net`](https://www.sneakyowl.net/chess); that frontend is out of scope here.
 
 ## Historical Python Engine Reference
 
@@ -10,7 +10,7 @@ If you are looking for the earlier `chess-flask` era of this repository, includi
 
 - Historical repo state: <https://github.com/Shamanbenny/autoresearch-chess/blob/4b3a3a13a811314241e50b7dd9f7880e4f14da92/README.md>
 
-That commit is the important entry point for the older Flask/Python architecture and the manual engine progression that no longer exists in the live tree.
+That commit is the important entry point for the older Flask/Python architecture and the manual engine progression that no longer exists in the live tree. Regardless, shoutout to [Sebastian Lague](https://www.youtube.com/@SebastianLague)'s video on [Coding Adventure: Chess](https://www.youtube.com/watch?v=U4ogK0MIzqk) for inspiring me to start on my own coding adventure in the world of Chess Engine!
 
 ## Architecture
 
@@ -132,6 +132,13 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a
 For Stockfish evaluation, set `STOCKFISH_PATH` and use the evaluator contract in `autoresearch/README.md`.
 
 ## Autoresearch
+
+The repository also includes a chess-specific `autoresearch` paradigm inspired by Andrej Karpathy's [`karpathy/autoresearch`](https://github.com/karpathy/autoresearch), taking what was meant for a neural network autonomous training & improvement workflow to feature: 
+
+- **Constrained Sandbox Environment** for Codex to implement code changes
+- **Fixed Local Evaluator** handled by higher-layer Python Script to **keep-or-reject** experiment based on **Strict and Consistent Evaluation Contract**
+- **Reduces Token Usage** by unnecessarily spawning Codex on Root Project Directory, but rather a **minimal sandbox environment**
+- **Consistent Agentic Workflow** that does not rely on *Codex's mood on whether he wants to "stay" or "stop work"* when faced with 500 games of Chess Evaluation...
 
 `autoresearch/` defines the `v2+` experimentation contract. Read these before autonomous engine-iteration work:
 
