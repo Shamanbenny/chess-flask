@@ -20,4 +20,5 @@ __pycache__/
 
 # Misc
 autoresearch/logs/
+autoresearch/console-logs/
 autoresearch-sandbox/

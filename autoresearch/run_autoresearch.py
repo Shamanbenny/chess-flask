@@ -18,6 +18,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from contextlib import closing
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -25,7 +26,9 @@ STATE_PATH = REPO_ROOT / "autoresearch" / "state.json"
 ATTEMPTS_PATH = REPO_ROOT / "autoresearch" / "ATTEMPTS.md"
 CHANGELOG_PATH = REPO_ROOT / "CHANGELOG.json"
 SANDBOX_ROOT = REPO_ROOT / "autoresearch-sandbox"
+TEXT_LOG_DIR = REPO_ROOT / "autoresearch" / "console-logs"
 ENGINE_VERSION_RE = re.compile(r"^v(?P<major>\d+)\.(?P<minor>\d+)$", re.IGNORECASE)
+CURRENT_TEXT_LOG: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -59,28 +62,50 @@ class EvaluationMetrics:
     games: int
 
 
+def log_phase(message: str) -> None:
+    stamp = dt.datetime.now().strftime("%H:%M:%S")
+    emit_console(f"[autoresearch {stamp}] {message}\n", flush=True)
+
+
+def emit_console(message: str, *, stream: Any = sys.stdout, flush: bool = False) -> None:
+    stream.write(message)
+    if flush:
+        stream.flush()
+    if CURRENT_TEXT_LOG is not None:
+        with CURRENT_TEXT_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(message)
+            if flush:
+                handle.flush()
+
+
 def main() -> int:
     args = parse_args()
     if args.major and not args.prompt:
         raise SystemExit("A major improvement requires additional information about what to modify, so --prompt is required.")
 
+    start_text_log()
     state = load_state()
     if not args.dry_run:
         ensure_clean_worktree()
 
     user_input = args.prompt or ""
     candidate = next_candidate(state, args.version, args.major)
+    log_phase(f"Preparing sandbox for {candidate.version} from seed {state['latest_approved']['version']}.")
     prepare_sandbox(state, candidate, user_input)
+    log_phase(f"Sandbox ready at {candidate.sandbox_dir.relative_to(REPO_ROOT)}.")
 
     if args.dry_run:
-        print(f"Dry run complete. Sandbox: {candidate.sandbox_dir.relative_to(REPO_ROOT)}")
-        print(f"Candidate: {candidate.version} -> {candidate.engine_file.relative_to(REPO_ROOT)}")
+        emit_console(f"Dry run complete. Sandbox: {candidate.sandbox_dir.relative_to(REPO_ROOT)}\n")
+        emit_console(f"Candidate: {candidate.version} -> {candidate.engine_file.relative_to(REPO_ROOT)}\n")
         return 0
 
     while True:
+        log_phase(f"Starting attempt for {candidate.version}.")
         codex_session = run_codex_implementation(candidate)
+        log_phase(f"Copying {candidate.sandbox_engine_file.name} back into the repository.")
         copy_candidate_to_repo(candidate)
         attempt_id = make_attempt_id(candidate)
+        log_phase(f"Running solution build for {candidate.version} (attempt {attempt_id}).")
         build_ok = run_build()
 
         metrics: EvaluationMetrics | None = None
@@ -90,8 +115,10 @@ def main() -> int:
         approved_log_path: Path | None = None
 
         if build_ok:
+            log_phase("Build succeeded. Starting evaluator run.")
             evaluator_ok = run_evaluator(candidate, state, attempt_id, args.smoke_games)
             if evaluator_ok and log_path.exists():
+                log_phase(f"Evaluator finished. Parsing results from {log_path.relative_to(REPO_ROOT)}.")
                 metrics = parse_evaluation_csv(log_path, state)
                 status, verdict_reason = decide_candidate(metrics, state)
                 if args.smoke_games is not None:
@@ -103,11 +130,17 @@ def main() -> int:
                     approved_log_path = move_approved_log(candidate, log_path, attempt_id)
             else:
                 verdict_reason = "Evaluator failed or did not produce the canonical CSV."
+                log_phase(verdict_reason)
+        else:
+            log_phase("Build failed. Skipping evaluator.")
 
         evaluation_summary = build_evaluation_summary(candidate, status, verdict_reason, metrics, state)
+        log_phase("Sending evaluation summary back into the existing Codex session.")
         run_codex_result_update(candidate, codex_session, evaluation_summary)
+        log_phase("Reading structured sandbox result from RETURN.json.")
         attempt_note = read_return_json(candidate)
 
+        log_phase(f"Persisting attempt outcome: {status}.")
         update_state_and_attempts(
             state,
             candidate,
@@ -124,6 +157,7 @@ def main() -> int:
         commit_sha = commit_attempt(candidate, status)
         if commit_sha:
             finalize_attempt_commit(candidate, status, commit_sha, approved_log_path)
+            log_phase(f"Recorded git commit {commit_sha} for {candidate.version}.")
 
         choice = prompt_continue(status, candidate, verdict_reason)
         if choice == "stop":
@@ -132,7 +166,9 @@ def main() -> int:
         state = load_state()
         user_input = args.prompt or ""
         candidate = next_candidate(state, args.version, args.major)
+        log_phase(f"Preparing sandbox for next candidate {candidate.version}.")
         prepare_sandbox(state, candidate, user_input)
+        log_phase(f"Sandbox ready at {candidate.sandbox_dir.relative_to(REPO_ROOT)}.")
         if args.once:
             return 0
 
@@ -150,6 +186,14 @@ def parse_args() -> argparse.Namespace:
         help="Run a non-approving evaluator smoke test with this game count.",
     )
     return parser.parse_args()
+
+
+def start_text_log() -> None:
+    global CURRENT_TEXT_LOG
+    TEXT_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    CURRENT_TEXT_LOG = TEXT_LOG_DIR / f"{stamp}-log.txt"
+    emit_console(f"[autoresearch {dt.datetime.now().strftime('%H:%M:%S')}] Mirroring console output to {CURRENT_TEXT_LOG.relative_to(REPO_ROOT)}.\n", flush=True)
 
 
 def load_state() -> dict[str, Any]:
@@ -403,14 +447,19 @@ def run_codex_implementation(candidate: Candidate) -> CodexSession:
     except ImportError as exc:
         raise SystemExit("Install autoresearch/requirements.txt before running Codex.") from exc
 
+    log_phase(f"Creating new Codex manager for sandbox {candidate.sandbox_dir.name}.")
     manager = Codex()
     previous_cwd = Path.cwd()
     os.chdir(candidate.sandbox_dir)
     try:
+        log_phase("Opening new Codex session.")
         codex = manager.__enter__()
+        log_phase("Creating workspace-write Codex thread.")
         thread = codex.thread_start(sandbox=Sandbox.workspace_write)
+        log_phase("Waiting for Codex to finish the initial implementation pass.")
         result = thread.run("Start by looking at `PROGRAM.md`, and let's kick off the experiment loop!")
         final_response = result.final_response
+        log_phase("Codex finished the initial implementation pass.")
     finally:
         os.chdir(previous_cwd)
 
@@ -422,14 +471,17 @@ def run_codex_result_update(candidate: Candidate, session: CodexSession, evaluat
     previous_cwd = Path.cwd()
     os.chdir(candidate.sandbox_dir)
     try:
+        log_phase("Waiting for Codex to process the evaluation follow-up prompt.")
         result = session.thread.run(
             f"Here's your evaluation result for {candidate.version} Engine.\n\n"
             f"{evaluation_summary}\n\n"
             "Reminder: update `RETURN.json` with your inferred conclusion, and thank you for your help!"
         )
         final_response = result.final_response
+        log_phase("Codex finished the evaluation follow-up prompt.")
     finally:
         os.chdir(previous_cwd)
+        log_phase("Closing Codex session.")
         session.manager.__exit__(None, None, None)
 
     (candidate.sandbox_dir / "CODEX_EVALUATION_RESULT.md").write_text(final_response, encoding="utf-8")
@@ -458,7 +510,7 @@ def run_evaluator(
 ) -> bool:
     stockfish_path = os.environ.get("STOCKFISH_PATH")
     if not stockfish_path:
-        print("STOCKFISH_PATH is required for evaluation.", file=sys.stderr)
+        emit_console("STOCKFISH_PATH is required for evaluation.\n", stream=sys.stderr, flush=True)
         return False
 
     evaluator = state["evaluator"]
@@ -900,7 +952,11 @@ def commit_attempt(candidate: Candidate, status: str) -> str | None:
     message = f"{'Approve' if status == 'approved' else 'Reject'} {candidate.version.upper()} via autoresearch"
     result = run(["git", "commit", "-m", message], check=False)
     if result.returncode != 0:
-        print(f"No commit created for {candidate.version}; git commit returned {result.returncode}.", file=sys.stderr)
+        emit_console(
+            f"No commit created for {candidate.version}; git commit returned {result.returncode}.\n",
+            stream=sys.stderr,
+            flush=True,
+        )
         return None
     sha = run(["git", "rev-parse", "--short", "HEAD"], check=True, capture=True)
     return sha.stdout.strip()
@@ -983,7 +1039,7 @@ def prompt_continue(status: str, candidate: Candidate, verdict: str) -> str:
 
 def run_kdialog(message: str) -> str:
     if shutil.which("kdialog") is None or shutil.which("timeout") is None:
-        print("KDialog or timeout is unavailable; continuing automatically.")
+        emit_console("KDialog or timeout is unavailable; continuing automatically.\n", flush=True)
         return "continue"
     command = [
         "timeout",
@@ -1002,7 +1058,7 @@ def run_kdialog(message: str) -> str:
     ]
     result = run(command, check=False, capture=True)
     if result.returncode == 124:
-        print("No KDialog response within 60 seconds; continuing automatically.")
+        emit_console("No KDialog response within 60 seconds; continuing automatically.\n", flush=True)
         return "continue"
     if result.returncode != 0:
         return "stop"
@@ -1016,6 +1072,27 @@ def run(
     check: bool = False,
     capture: bool = False,
 ) -> subprocess.CompletedProcess[str]:
+    if not capture:
+        with closing(
+            subprocess.Popen(
+                command,
+                cwd=cwd,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+        ) as process:
+            streamed_output: list[str] = []
+            assert process.stdout is not None
+            for line in process.stdout:
+                streamed_output.append(line)
+                emit_console(line, flush=False)
+            returncode = process.wait()
+        stdout = "".join(streamed_output)
+        if check and returncode != 0:
+            raise SystemExit(f"Command failed: {' '.join(command)}\n{stdout}")
+        return subprocess.CompletedProcess(command, returncode, stdout, None)
+
     result = subprocess.run(
         command,
         cwd=cwd,
