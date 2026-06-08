@@ -23,6 +23,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATE_PATH = REPO_ROOT / "autoresearch" / "state.json"
 ATTEMPTS_PATH = REPO_ROOT / "autoresearch" / "ATTEMPTS.md"
+CHANGELOG_PATH = REPO_ROOT / "CHANGELOG.json"
 SANDBOX_ROOT = REPO_ROOT / "autoresearch-sandbox"
 ENGINE_VERSION_RE = re.compile(r"^v(?P<major>\d+)\.(?P<minor>\d+)$", re.IGNORECASE)
 
@@ -691,6 +692,14 @@ def update_state_and_attempts(
             "notes": attempt_note["implementation_summary"],
         }
         update_latest_approved_markdown(state["latest_approved"])
+        upsert_changelog_version(
+            candidate,
+            status,
+            attempt_note,
+            metrics,
+            approved_log_path,
+            commit="<pending>",
+        )
     state["next_candidate_version"] = bump_minor(candidate.version)
     append_attempt_markdown(attempt)
 
@@ -773,6 +782,90 @@ def update_latest_approved_markdown(latest: dict[str, Any]) -> None:
     ATTEMPTS_PATH.write_text(text[:start] + replacement.rstrip() + "\n" + text[next_heading:], encoding="utf-8")
 
 
+def upsert_changelog_version(
+    candidate: Candidate,
+    status: str,
+    attempt_note: dict[str, Any],
+    metrics: EvaluationMetrics,
+    approved_log_path: Path | None,
+    commit: str,
+) -> None:
+    changelog = load_changelog()
+    versions = changelog.setdefault("versions", [])
+    if not isinstance(versions, list):
+        raise SystemExit("CHANGELOG.json must contain a versions array.")
+
+    version_entry = {
+        "version": candidate.version,
+        "api_version": candidate.version.replace(".", "_"),
+        "engine_file": str(candidate.engine_file.relative_to(REPO_ROOT)),
+        "served": False,
+        "status": status,
+        "commit": commit,
+        "hypotheses": attempt_note["hypotheses"],
+        "summary": attempt_note["implementation_summary"],
+        "implementation_summary": attempt_note["implementation_summary"],
+        "evaluation_log_path": (
+            str(approved_log_path.relative_to(REPO_ROOT))
+            if approved_log_path is not None
+            else "<pending>"
+        ),
+        "stockfish_1350": {
+            "games": metrics.games,
+            "wins": metrics.wins,
+            "draws": metrics.draws,
+            "losses": metrics.losses,
+            "score": round(metrics.score, 1),
+            "score_rate": round(metrics.score_rate, 4),
+            "text": stockfish_score_text(candidate.version, metrics),
+        },
+        "limitations": [],
+    }
+
+    existing_index = next(
+        (index for index, item in enumerate(versions) if item.get("version") == candidate.version),
+        None,
+    )
+    if existing_index is None:
+        versions.append(version_entry)
+    else:
+        existing = versions[existing_index]
+        if isinstance(existing, dict) and "served" in existing:
+            version_entry["served"] = bool(existing["served"])
+        versions[existing_index] = version_entry
+
+    versions.sort(key=lambda item: parse_version(str(item["version"])))
+    write_changelog(changelog)
+
+
+def stockfish_score_text(version: str, metrics: EvaluationMetrics) -> str:
+    return (
+        f"C# {version} scored {metrics.score:.1f}/{metrics.games} against Stockfish (1350 Elo): "
+        f"{metrics.wins} wins, {metrics.draws} draws, {metrics.losses} losses, "
+        f"score rate {metrics.score_rate:.4f}."
+    )
+
+
+def load_changelog() -> dict[str, Any]:
+    if not CHANGELOG_PATH.exists():
+        return {
+            "schema_version": 1,
+            "generated_from": "autoresearch/ATTEMPTS.md and autoresearch/approved_logs",
+            "stockfish_baseline": {
+                "name": "Stockfish",
+                "elo": 1350,
+            },
+            "versions": [],
+        }
+
+    with CHANGELOG_PATH.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def write_changelog(changelog: dict[str, Any]) -> None:
+    CHANGELOG_PATH.write_text(json.dumps(changelog, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+
+
 def current_branch() -> str:
     result = run(["git", "branch", "--show-current"], check=True, capture=True)
     return result.stdout.strip()
@@ -800,7 +893,7 @@ def cleanup_rejected_candidate(candidate: Candidate, status: str) -> None:
 
 
 def commit_attempt(candidate: Candidate, status: str) -> str | None:
-    run(["git", "add", "autoresearch/state.json", "autoresearch/ATTEMPTS.md"], check=True)
+    run(["git", "add", "autoresearch/state.json", "autoresearch/ATTEMPTS.md", "CHANGELOG.json"], check=True)
     if status == "approved":
         run(["git", "add", str(candidate.engine_file.relative_to(REPO_ROOT)), "autoresearch/approved_logs"], check=True)
     run(["git", "add", "-u", "engine_csharp/src/Engine.Core"], check=True)
@@ -829,8 +922,9 @@ def finalize_attempt_commit(
     replace_latest_attempt_placeholders(recorded_commit, approved_reference_source)
     if approved_reference_source is not None:
         replace_latest_approved_placeholders(commit_sha, approved_reference_source)
+        replace_latest_changelog_placeholders(commit_sha, approved_reference_source)
 
-    run(["git", "add", "autoresearch/state.json", "autoresearch/ATTEMPTS.md"], check=True)
+    run(["git", "add", "autoresearch/state.json", "autoresearch/ATTEMPTS.md", "CHANGELOG.json"], check=True)
     if approved_reference_source is not None:
         run(["git", "add", "autoresearch/approved_logs"], check=True)
     run(["git", "commit", "--amend", "--no-edit"], check=True)
@@ -858,6 +952,23 @@ def replace_latest_approved_placeholders(commit_sha: str, approved_reference_sou
     state["latest_approved"]["approved_reference_score_source"] = approved_reference_source
     persist_state(state)
     update_latest_approved_markdown(state["latest_approved"])
+
+
+def replace_latest_changelog_placeholders(commit_sha: str, approved_reference_source: str) -> None:
+    changelog = load_changelog()
+    versions = changelog.get("versions")
+    if not isinstance(versions, list):
+        return
+
+    for item in versions:
+        if not isinstance(item, dict):
+            continue
+        if item.get("commit") != "<pending>":
+            continue
+        item["commit"] = commit_sha
+        item["evaluation_log_path"] = approved_reference_source
+
+    write_changelog(changelog)
 
 
 def prompt_continue(status: str, candidate: Candidate, verdict: str) -> str:

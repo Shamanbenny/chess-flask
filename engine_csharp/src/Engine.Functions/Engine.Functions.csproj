@@ -13,5 +13,6 @@
 
   <ItemGroup>
     <None Include="..\..\..\Openings.lookup.tsv" Link="Openings.lookup.tsv" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\CHANGELOG.json" Link="CHANGELOG.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

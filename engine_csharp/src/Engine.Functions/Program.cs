@@ -20,6 +20,25 @@ app.MapGet("/", () => Results.Text("Why are you here? 0.0", "text/plain"));
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
+app.MapGet("/api/chess/metadata", async () =>
+{
+    var path = FindChangelogPath();
+    if (!File.Exists(path))
+    {
+        return Results.Json(
+            new
+            {
+                schema_version = 1,
+                error = "CHANGELOG.json not found",
+                versions = Array.Empty<object>(),
+            },
+            statusCode: StatusCodes.Status500InternalServerError);
+    }
+
+    var json = await File.ReadAllTextAsync(path);
+    return Results.Text(json, "application/json");
+});
+
 app.MapPost("/api/chess/{version}", async (string version, HttpContext context, ChessMoveHandler handler) =>
 {
     var request = await ReadRequest(context);
@@ -45,6 +64,33 @@ static string ListenUrl()
     }
 
     return $"http://0.0.0.0:{port}";
+}
+
+static string FindChangelogPath()
+{
+    const string fileName = "CHANGELOG.json";
+    var outputPath = Path.Combine(AppContext.BaseDirectory, fileName);
+    if (File.Exists(outputPath))
+    {
+        return outputPath;
+    }
+
+    var current = new DirectoryInfo(AppContext.BaseDirectory);
+    while (current is not null)
+    {
+        var candidate = Path.GetFullPath(Path.Combine(current.FullName, "..", "..", "..", ".."));
+        var changelogPath = Path.Combine(candidate, fileName);
+        if (File.Exists(changelogPath)
+            && File.Exists(Path.Combine(candidate, "README.md"))
+            && Directory.Exists(Path.Combine(candidate, "engine_csharp")))
+        {
+            return changelogPath;
+        }
+
+        current = current.Parent;
+    }
+
+    return Path.Combine(Directory.GetCurrentDirectory(), fileName);
 }
 
 static async Task<ParsedChessRequest> ReadRequest(HttpContext context)

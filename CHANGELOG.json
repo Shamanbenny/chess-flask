@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "generated_from": "autoresearch/ATTEMPTS.md and autoresearch/approved_logs",
+  "stockfish_baseline": {
+    "name": "Stockfish",
+    "elo": 1350
+  },
+  "versions": [
+    {
+      "version": "v2.0",
+      "api_version": "v2_0",
+      "engine_file": "engine_csharp/src/Engine.Core/V2/V2_0Engine.cs",
+      "served": true,
+      "status": "approved",
+      "hypotheses": [
+        "Move the accepted v1.6 search structure onto a lower-cost native board representation so later C# search and evaluation experiments are meaningful under fixed time budgets."
+      ],
+      "implementation_summary": "Native-board C# v2 baseline with iterative deepening, negamax alpha-beta, quiescence search, and transposition-table reuse.",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 160,
+        "draws": 94,
+        "losses": 246,
+        "score": 207.0,
+        "score_rate": 0.414,
+        "text": "C# v2.0 scored 207.0/500 against Stockfish (1350 Elo): 160 wins, 94 draws, 246 losses, score rate 0.4140."
+      },
+      "limitations": [],
+      "summary": "Native-board C# v2 baseline with iterative deepening, negamax alpha-beta, quiescence search, and transposition-table reuse."
+    },
+    {
+      "version": "v2.2",
+      "api_version": "v2_2",
+      "engine_file": "engine_csharp/src/Engine.Core/V2/V2_2Engine.cs",
+      "served": false,
+      "status": "approved",
+      "hypotheses": [
+        "A compact piece-square positional evaluation term will improve direct move choice at 100ms per move more reliably than search-only ordering tweaks."
+      ],
+      "implementation_summary": "Cloned v2.0 into v2.2 and added static piece-square tables for pawns, knights, bishops, rooks, queens, and phase-blended kings.",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 258,
+        "draws": 110,
+        "losses": 132,
+        "score": 313.0,
+        "score_rate": 0.626,
+        "text": "C# v2.2 scored 313.0/500 against Stockfish (1350 Elo): 258 wins, 110 draws, 132 losses, score rate 0.6260."
+      },
+      "limitations": [],
+      "summary": "Cloned v2.0 into v2.2 and added static piece-square tables for pawns, knights, bishops, rooks, queens, and phase-blended kings."
+    },
+    {
+      "version": "v2.5",
+      "api_version": "v2_5",
+      "engine_file": "engine_csharp/src/Engine.Core/V2/V2_5Engine.cs",
+      "served": false,
+      "status": "approved",
+      "hypotheses": [
+        "A modest passed-pawn advancement bonus will improve conversion and pawn-structure decisions beyond v2.2's indirect endgame pawn-danger term."
+      ],
+      "implementation_summary": "Cloned v2.2 into v2.5 and added rank-scaled passed-pawn bonuses for pawns with no opposing pawn ahead on the same or adjacent files.",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 239,
+        "draws": 122,
+        "losses": 139,
+        "score": 300.0,
+        "score_rate": 0.6,
+        "text": "C# v2.5 scored 300.0/500 against Stockfish (1350 Elo): 239 wins, 122 draws, 139 losses, score rate 0.6000."
+      },
+      "limitations": [],
+      "summary": "Cloned v2.2 into v2.5 and added rank-scaled passed-pawn bonuses for pawns with no opposing pawn ahead on the same or adjacent files."
+    },
+    {
+      "version": "v2.8",
+      "api_version": "v2_8",
+      "engine_file": "engine_csharp/src/Engine.Core/V2/V2_8Engine.cs",
+      "served": false,
+      "status": "approved",
+      "hypotheses": [
+        "A modest rook open-file and semi-open-file bonus will improve rook activity and conversion decisions beyond v2.5 without materially slowing evaluation."
+      ],
+      "implementation_summary": "Cloned v2.5 into v2.8, counted pawn files during evaluation, and added rook open-file and semi-open-file bonuses.",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 247,
+        "draws": 110,
+        "losses": 143,
+        "score": 302.0,
+        "score_rate": 0.604,
+        "text": "C# v2.8 scored 302.0/500 against Stockfish (1350 Elo): 247 wins, 110 draws, 143 losses, score rate 0.6040."
+      },
+      "limitations": [],
+      "summary": "Cloned v2.5 into v2.8, counted pawn files during evaluation, and added rook open-file and semi-open-file bonuses."
+    },
+    {
+      "version": "v2.9",
+      "api_version": "v2_9",
+      "engine_file": "engine_csharp/src/Engine.Core/V2/V2_9Engine.cs",
+      "served": true,
+      "status": "approved",
+      "hypotheses": [
+        "A modest knight outpost bonus will improve minor-piece activity decisions on top of v2.8 without materially slowing evaluation.",
+        "Using pawn-defended and not enemy-pawn-attacked advanced knight squares is more targeted than another broad pawn-structure bonus."
+      ],
+      "implementation_summary": "Cloned v2.8 into v2.9 and added a knight outpost bonus for advanced, pawn-defended squares not attacked by enemy pawns.",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 271,
+        "draws": 106,
+        "losses": 123,
+        "score": 324.0,
+        "score_rate": 0.648,
+        "text": "C# v2.9 scored 324.0/500 against Stockfish (1350 Elo): 271 wins, 106 draws, 123 losses, score rate 0.6480."
+      },
+      "limitations": [],
+      "summary": "Cloned v2.8 into v2.9 and added a knight outpost bonus for advanced, pawn-defended squares not attacked by enemy pawns."
+    },
+    {
+      "version": "v3.0",
+      "api_version": "v3_0",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_0Engine.cs",
+      "served": true,
+      "status": "approved",
+      "hypotheses": [
+        "Persisting the native transposition table across moves within a game should reuse prior search work and improve move ordering/cutoffs compared with v2.9's per-move fresh TT allocation.",
+        "Checking a normalized FEN opening lookup before native search should avoid spending the 100ms move budget on early-book positions while preserving legal SAN output through the existing BoardState move path."
+      ],
+      "implementation_summary": "Forked v2.9 into V3_0Engine with optional per-game search context and opening-book lookup before the native search path.",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 254,
+        "draws": 103,
+        "losses": 143,
+        "score": 305.5,
+        "score_rate": 0.611,
+        "text": "C# v3.0 scored 305.5/500 against Stockfish (1350 Elo): 254 wins, 103 draws, 143 losses, score rate 0.6110."
+      },
+      "limitations": [
+        "Context reuse depends on the same warm server instance receiving future requests, so cold starts or different instances may begin with an empty cache."
+      ],
+      "summary": "Forked v2.9 into V3_0Engine with optional per-game search context and opening-book lookup before the native search path."
+    },
+    {
+      "version": "v3.4",
+      "api_version": "v3_4",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_4Engine.cs",
+      "served": true,
+      "status": "approved",
+      "hypotheses": [
+        "Making draw/repetition contempt material-aware will improve score by letting materially worse positions prefer repetition or 50-move draw chances instead of steering away from saves.",
+        "Keeping the existing draw-avoidance penalties for equal-or-better positions should preserve v3.0's decisiveness while reducing avoidable losses."
+      ],
+      "implementation_summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties.",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 277,
+        "draws": 92,
+        "losses": 131,
+        "score": 323.0,
+        "score_rate": 0.646,
+        "text": "C# v3.4 scored 323.0/500 against Stockfish (1350 Elo): 277 wins, 92 draws, 131 losses, score rate 0.6460."
+      },
+      "limitations": [
+        "Context reuse depends on the same warm server instance receiving future requests, so cold starts or different instances may begin with an empty cache."
+      ],
+      "summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties."
+    }
+  ]
+}

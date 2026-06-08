@@ -1,8 +1,9 @@
 using System.Diagnostics;
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Chess;
 using Engine.Core;
-using Engine.Core.V2;
-using Engine.Core.V3;
 using Microsoft.Extensions.Logging;
 
 namespace Engine.Functions;
@@ -10,10 +11,12 @@ namespace Engine.Functions;
 public sealed class ChessMoveHandler
 {
     private const double DefaultTimeLimitSeconds = 1.0;
+    private const string ChangelogFileName = "CHANGELOG.json";
     private static readonly TimeSpan ContextTtl = TimeSpan.FromMinutes(30);
 
     private static readonly object ContextLock = new();
     private static readonly Dictionary<string, CachedSearchContext> Contexts = [];
+    private static readonly Lazy<IReadOnlyDictionary<string, ResolvedServedEngine>> ServedEngines = new(LoadServedEngines);
 
     private readonly ILogger<ChessMoveHandler> _logger;
 
@@ -96,15 +99,9 @@ public sealed class ChessMoveHandler
             return ErrorBody("No legal moves available", 400, version, ("fen", payload.Fen), ("legal_move_count", 0));
         }
 
-        var result = version switch
-        {
-            "v0" => ChooseRandomMove(board, legalMoves),
-            "v2.0" => V2_0Engine.SearchMoveV2_0(board, TimeLimitSeconds()),
-            "v2.9" => V2_9Engine.SearchMoveV2_9(board, TimeLimitSeconds()),
-            "v3.0" => V3_0Engine.SearchMoveV3_0(board, TimeLimitSeconds(), searchContext: V3_0Context(version, payload)),
-            "v3.4" => V3_4Engine.SearchMoveV3_4(board, TimeLimitSeconds(), searchContext: V3_4Context(version, payload)),
-            _ => null,
-        };
+        var result = version == "v0"
+            ? ChooseRandomMove(board, legalMoves)
+            : SearchServedEngine(version, board, payload);
 
         if (result is null)
         {
@@ -118,6 +115,22 @@ public sealed class ChessMoveHandler
     {
         var move = legalMoves[Random.Shared.Next(legalMoves.Count)];
         return new SearchResult(move, board.GetSan(move), 0, legalMoves.Count);
+    }
+
+    private static SearchResult? SearchServedEngine(string version, BoardState board, ChessRequest payload)
+    {
+        if (!ServedEngines.Value.TryGetValue(version, out var engine))
+        {
+            return null;
+        }
+
+        var arguments = BuildSearchArguments(
+            engine.SearchMethod,
+            board,
+            TimeLimitSeconds(),
+            ContextFor(version, payload, engine.ContextFactory));
+
+        return (SearchResult)engine.SearchMethod.Invoke(null, arguments)!;
     }
 
     private static Dictionary<string, object?> SuccessBody(string version, SearchResult result)
@@ -193,31 +206,13 @@ public sealed class ChessMoveHandler
         return normalized.StartsWith('v') ? normalized : $"v{normalized}";
     }
 
-    private static V3_0Engine.V3_0SearchContext? V3_0Context(string version, ChessRequest payload)
+    private static object? ContextFor(string version, ChessRequest payload, MethodInfo? factory)
     {
-        return ContextFor(
-            version,
-            payload,
-            V3_0Engine.CreateSearchContextV3_0,
-            value => value as V3_0Engine.V3_0SearchContext);
-    }
+        if (factory is null)
+        {
+            return null;
+        }
 
-    private static V3_4Engine.V3_4SearchContext? V3_4Context(string version, ChessRequest payload)
-    {
-        return ContextFor(
-            version,
-            payload,
-            V3_4Engine.CreateSearchContextV3_4,
-            value => value as V3_4Engine.V3_4SearchContext);
-    }
-
-    private static TContext? ContextFor<TContext>(
-        string version,
-        ChessRequest payload,
-        Func<TContext> factory,
-        Func<object, TContext?> cast)
-        where TContext : class
-    {
         var contextId = payload.ContextId ?? payload.GameId;
         if (string.IsNullOrWhiteSpace(contextId))
         {
@@ -234,13 +229,14 @@ public sealed class ChessMoveHandler
                 Contexts.Remove(key);
             }
 
-            if (Contexts.TryGetValue(key, out var cached) && cast(cached.Context) is { } typed)
+            if (Contexts.TryGetValue(key, out var cached))
             {
                 Contexts[key] = cached with { LastSeen = now };
-                return typed;
+                return cached.Context;
             }
 
-            var created = factory();
+            var created = factory.Invoke(null, null)
+                ?? throw new InvalidOperationException($"Context factory '{factory.Name}' returned null.");
             Contexts[key] = new CachedSearchContext(created, now);
             return created;
         }
@@ -265,7 +261,197 @@ public sealed class ChessMoveHandler
         return $"{move.OriginalPosition}{move.NewPosition}{promotion}";
     }
 
+    private static IReadOnlyDictionary<string, ResolvedServedEngine> LoadServedEngines()
+    {
+        // Serving contract:
+        // - CHANGELOG.json is the route registry for V2+ engines. Autoresearch can mark a
+        //   newly approved compiled engine with "served": true and no Engine.Functions switch
+        //   edit is needed.
+        // - This still only selects among engines compiled into Engine.Core at deploy time.
+        //   CHANGELOG.json cannot load source code that was not included in the built assembly.
+        // - The convention is vX.Y -> VX_YEngine.SearchMoveVX_Y, with an optional
+        //   CreateSearchContextVX_Y factory for per-game warm-instance context reuse.
+        // - v0 remains special-cased because it is a random legal-move baseline, not a
+        //   versioned C# engine file.
+        var changelogPath = FindChangelogPath();
+        if (!File.Exists(changelogPath))
+        {
+            return new Dictionary<string, ResolvedServedEngine>(StringComparer.Ordinal);
+        }
+
+        var changelog = JsonSerializer.Deserialize<Changelog>(
+            File.ReadAllText(changelogPath),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (changelog?.Versions is null)
+        {
+            return new Dictionary<string, ResolvedServedEngine>(StringComparer.Ordinal);
+        }
+
+        var registry = new Dictionary<string, ResolvedServedEngine>(StringComparer.Ordinal);
+        foreach (var version in changelog.Versions.Where(item => item.Served))
+        {
+            var normalizedVersion = NormalizeVersion(version.Version);
+            if (normalizedVersion == "v0")
+            {
+                continue;
+            }
+
+            registry[normalizedVersion] = ResolveServedEngine(version, normalizedVersion);
+        }
+
+        return registry;
+    }
+
+    private static ResolvedServedEngine ResolveServedEngine(ChangelogVersion version, string normalizedVersion)
+    {
+        var versionStem = EngineStemFromMetadata(version, normalizedVersion);
+        var searchMethodName = $"SearchMove{versionStem}";
+        var searchMethod = typeof(EngineVersions).Assembly
+            .GetTypes()
+            .Select(type => type.GetMethod(searchMethodName, BindingFlags.Public | BindingFlags.Static))
+            .FirstOrDefault(CanUseAsTimeLimitedSearchMethod)
+            ?? throw new InvalidOperationException(
+                $"CHANGELOG.json marks {normalizedVersion} as served, but no compiled search method named '{searchMethodName}' was found. " +
+                "The source file must be committed, included in Engine.Core, and deployed after compilation.");
+
+        var contextFactoryName = $"CreateSearchContext{versionStem}";
+        var contextFactory = searchMethod.DeclaringType?.GetMethod(contextFactoryName, BindingFlags.Public | BindingFlags.Static);
+        if (contextFactory is not null && contextFactory.GetParameters().Length != 0)
+        {
+            throw new InvalidOperationException(
+                $"Context factory '{contextFactory.Name}' must not require parameters.");
+        }
+
+        return new ResolvedServedEngine(searchMethod, contextFactory);
+    }
+
+    private static string EngineStemFromMetadata(ChangelogVersion version, string normalizedVersion)
+    {
+        if (!string.IsNullOrWhiteSpace(version.EngineFile))
+        {
+            var stem = Path.GetFileNameWithoutExtension(version.EngineFile);
+            if (stem.EndsWith("Engine", StringComparison.Ordinal))
+            {
+                return stem[..^"Engine".Length];
+            }
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            normalizedVersion,
+            @"^v(?<major>\d+)\.(?<minor>\d+)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            throw new InvalidOperationException($"Unsupported served engine version format: {normalizedVersion}");
+        }
+
+        return $"V{match.Groups["major"].Value}_{match.Groups["minor"].Value}";
+    }
+
+    private static bool CanUseAsTimeLimitedSearchMethod(MethodInfo? method)
+    {
+        if (method is null || method.ReturnType != typeof(SearchResult))
+        {
+            return false;
+        }
+
+        var parameters = method.GetParameters();
+        if (parameters.Length == 0 || parameters[0].ParameterType != typeof(BoardState))
+        {
+            return false;
+        }
+
+        var hasTimeLimitParameter = false;
+        foreach (var parameter in parameters[1..])
+        {
+            if (parameter.ParameterType == typeof(double) || parameter.ParameterType == typeof(double?))
+            {
+                hasTimeLimitParameter = true;
+                continue;
+            }
+
+            if (!parameter.HasDefaultValue)
+            {
+                return false;
+            }
+        }
+
+        return hasTimeLimitParameter;
+    }
+
+    private static object?[] BuildSearchArguments(
+        MethodInfo method,
+        BoardState board,
+        double timeLimitSeconds,
+        object? searchContext)
+    {
+        var parameters = method.GetParameters();
+        var arguments = new object?[parameters.Length];
+        arguments[0] = board;
+
+        var assignedTimeLimit = false;
+        for (var index = 1; index < parameters.Length; index++)
+        {
+            var parameter = parameters[index];
+            if (!assignedTimeLimit && (parameter.ParameterType == typeof(double) || parameter.ParameterType == typeof(double?)))
+            {
+                arguments[index] = timeLimitSeconds;
+                assignedTimeLimit = true;
+                continue;
+            }
+
+            if (searchContext is not null
+                && parameter.ParameterType.IsInstanceOfType(searchContext)
+                && parameter.Name is not null
+                && parameter.Name.Contains("context", StringComparison.OrdinalIgnoreCase))
+            {
+                arguments[index] = searchContext;
+                continue;
+            }
+
+            arguments[index] = parameter.DefaultValue;
+        }
+
+        return arguments;
+    }
+
+    private static string FindChangelogPath()
+    {
+        var outputPath = Path.Combine(AppContext.BaseDirectory, ChangelogFileName);
+        if (File.Exists(outputPath))
+        {
+            return outputPath;
+        }
+
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.GetFullPath(Path.Combine(current.FullName, "..", "..", "..", ".."));
+            var changelogPath = Path.Combine(candidate, ChangelogFileName);
+            if (File.Exists(changelogPath)
+                && File.Exists(Path.Combine(candidate, "README.md"))
+                && Directory.Exists(Path.Combine(candidate, "engine_csharp")))
+            {
+                return changelogPath;
+            }
+
+            current = current.Parent;
+        }
+
+        return Path.Combine(Directory.GetCurrentDirectory(), ChangelogFileName);
+    }
+
     private sealed record CachedSearchContext(object Context, DateTimeOffset LastSeen);
+
+    private sealed record ResolvedServedEngine(MethodInfo SearchMethod, MethodInfo? ContextFactory);
+
+    private sealed record Changelog(
+        [property: JsonPropertyName("versions")] ChangelogVersion[]? Versions);
+
+    private sealed record ChangelogVersion(
+        [property: JsonPropertyName("version")] string Version,
+        [property: JsonPropertyName("engine_file")] string? EngineFile,
+        [property: JsonPropertyName("served")] bool Served);
 }
 
 public sealed record ChessResponse(int StatusCode, Dictionary<string, object?> Body);

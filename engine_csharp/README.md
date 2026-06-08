@@ -15,10 +15,28 @@ The public backend is C# end to end. `Engine.Functions` accepts HTTP requests, v
 Supported public route shape:
 
 ```text
+GET /api/chess/metadata
 POST /api/chess/{version}
 ```
 
-Supported versions are `v0`, `v2.0`, `v2.9`, `v3.0`, and `v3.4`.
+`v0` is a special random legal-move baseline. V2+ engine serving is driven by
+the root `CHANGELOG.json` file:
+
+- `GET /api/chess/metadata` returns `CHANGELOG.json` for the frontend.
+- `POST /api/chess/{version}` normalizes route versions such as `v3_4` to
+  `v3.4`, checks for a matching `CHANGELOG.json` entry with `"served": true`,
+  and resolves the compiled engine by convention.
+- The convention is `vX.Y` -> `Engine.Core.VX.VX_YEngine.SearchMoveVX_Y(...)`.
+- If the engine type also exposes `CreateSearchContextVX_Y()`, `Engine.Functions`
+  keeps a per-game context keyed by `game_id` or `context_id` for warm-instance
+  transposition-table reuse.
+
+This means autoresearch can approve a new C# engine file and set its
+`CHANGELOG.json` entry to `"served": true` without editing the
+`Engine.Functions` dispatch switch. The caveat is compile/deploy time: the new
+source file still has to be committed, compiled into `Engine.Core`, and deployed.
+`CHANGELOG.json` selects among compiled engines; it cannot load a source file
+that is absent from the deployed assembly.
 
 ## Commands
 

@@ -93,6 +93,8 @@ python autoresearch/run_autoresearch.py --dry-run --prompt "Try a small containe
   next candidate version, and agent configuration.
 - `ATTEMPTS.md`: human-readable attempt history. The orchestrator appends this
   after evaluation and the second Codex prompt.
+- `../CHANGELOG.json`: V2+ engine metadata contract for the HTTP metadata
+  endpoint and frontend. Approved candidates are appended here automatically.
 - `requirements.txt`: Python dependency list for the Codex SDK.
 - `approved_logs/`: tracked CSV logs for approved engines.
 - `logs/`: temporary evaluator logs for active or rejected runs.
@@ -228,8 +230,37 @@ canonical merged CSV as the contract output. All per-worker CSV files will be
 deleted after merging to reduce clutter (The canonical file stays untouched).
 
 Approved logs are moved to `autoresearch/approved_logs/` and recorded in
-`state.json` and `ATTEMPTS.md`. Rejected candidate files are removed from the
-tracked engine tree and remain only in the ignored sandbox.
+`state.json`, `ATTEMPTS.md`, and `CHANGELOG.json`. Rejected candidate files are
+removed from the tracked engine tree and remain only in the ignored sandbox.
+
+## Frontend Metadata Contract
+
+`CHANGELOG.json` replaces the old markdown changelog as the machine-readable
+source of version metadata for V2+ C# engines. The web backend serves this file
+from:
+
+```text
+GET /api/chess/metadata
+```
+
+Each version entry should include:
+
+- `version`: display version such as `v3.4`
+- `api_version`: route token such as `v3_4`
+- `engine_file`: source file under `engine_csharp/src/Engine.Core/`
+- `served`: whether `Engine.Functions` currently exposes this version
+- `summary`: frontend display summary copied from `implementation_summary`
+- `implementation_summary`: raw autoresearch implementation summary from `RETURN.json`
+- `hypotheses`: the experiment hypotheses used for the version
+- `stockfish_1350.text`: standardized display text for the frontend
+- `limitations`: frontend-facing limitations, defaulting to an empty list
+
+When a candidate is approved, `run_autoresearch.py` appends or updates its
+`CHANGELOG.json` entry using the same `RETURN.json` and evaluator data already
+used for `ATTEMPTS.md`. The `summary` and `implementation_summary` fields both
+come from `RETURN.json`'s `implementation_summary` value. New approved candidates are written with
+`"served": false` by default. Change this to `true` only when the HTTP serving
+switch and endpoint documentation have also been updated for that version.
 
 ## Approval Rule
 

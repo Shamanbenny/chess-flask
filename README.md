@@ -28,13 +28,56 @@ The web service exposes one versioned endpoint:
 
 | Endpoint | Summary |
 | --- | --- |
+| `GET /api/chess/metadata` | Engine metadata used by the frontend to render served versions and version information |
 | `POST /api/chess/v0` | Random legal move baseline |
-| `POST /api/chess/v2.0` | C# `V2_0Engine` |
-| `POST /api/chess/v2.9` | C# `V2_9Engine` |
-| `POST /api/chess/v3.0` | C# `V3_0Engine` with opening book and optional warm-instance search context |
-| `POST /api/chess/v3.4` | C# `V3_4Engine` with opening book and optional warm-instance search context |
+| `POST /api/chess/{version}` | Any compiled V2+ C# engine marked with `"served": true` in `CHANGELOG.json`, plus the special `v0` random baseline |
 
 Route versions also accept underscores, for example `/api/chess/v3_4`.
+
+`GET /api/chess/metadata` returns `CHANGELOG.json` as JSON. That file is the
+frontend contract for V2+ C# engine metadata. Each entry records whether the
+engine is currently served, its route version, summary, hypotheses,
+limitations, engine file path, and standardized Stockfish 1350 score text. The
+`summary` field is copied from autoresearch's `implementation_summary`. A
+version can exist in `engine_csharp/src/Engine.Core/` with `"served": false`;
+only compiled versions intended for public route dispatch should be marked
+served.
+
+For V2+ engines, `Engine.Functions` does not use a hard-coded version switch.
+It reads served entries from `CHANGELOG.json` and resolves the compiled engine by
+convention: `vX.Y` maps to `Engine.Core.VX.VX_YEngine.SearchMoveVX_Y(...)`, with
+optional `CreateSearchContextVX_Y()` for warm-instance context reuse. A
+`CHANGELOG.json` edit therefore becomes active after the commit is built and
+deployed, provided the engine source file is included in `Engine.Core`.
+
+Example metadata response:
+
+```json
+{
+  "schema_version": 1,
+  "stockfish_baseline": {
+    "name": "Stockfish",
+    "elo": 1350
+  },
+  "versions": [
+    {
+      "version": "v3.4",
+      "api_version": "v3_4",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_4Engine.cs",
+      "served": true,
+      "summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties.",
+      "implementation_summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties.",
+      "hypotheses": [
+        "Making draw/repetition contempt material-aware will improve score by letting materially worse positions prefer repetition or 50-move draw chances instead of steering away from saves."
+      ],
+      "stockfish_1350": {
+        "text": "C# v3.4 scored 323.0/500 against Stockfish (1350 Elo): 277 wins, 92 draws, 131 losses, score rate 0.6460."
+      },
+      "limitations": []
+    }
+  ]
+}
+```
 
 Request body:
 
@@ -94,6 +137,8 @@ dotnet run --project engine_csharp/src/Engine.Functions
 Example request:
 
 ```bash
+curl http://localhost:8080/api/chess/metadata
+
 curl -X POST http://localhost:8080/api/chess/v3.4 \
   -H "Content-Type: application/json" \
   -d '{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}'
@@ -146,5 +191,11 @@ The repository also includes a chess-specific `autoresearch` paradigm inspired b
 - `autoresearch/ATTEMPTS.md`
 
 The fixed evaluator baseline is local `stockfish-1350`. The current evaluator command and approval rule are documented in `autoresearch/README.md`; latest approved seed metadata lives in `autoresearch/state.json` and the append-only history in `autoresearch/ATTEMPTS.md`.
+
+Approved V2+ frontend-facing metadata lives in `CHANGELOG.json`. When
+`autoresearch/run_autoresearch.py` approves a candidate, it appends or updates
+that file with `summary`/`implementation_summary`, hypotheses, standardized
+Stockfish score text, and empty limitations by default. New approved candidates are recorded with
+`"served": false` until the HTTP API is explicitly wired to expose that version.
 
 Approval requires a clean build, a completed evaluator run, no illegal/crash failures, and `lcb95 > 0.5`.

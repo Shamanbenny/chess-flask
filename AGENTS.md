@@ -19,6 +19,7 @@ Use the live tree as the source of truth:
 - `engine_csharp/src/Engine.Functions/CorsHeadersMiddleware.cs`: CORS headers for the public frontend origins.
 - `Dockerfile`: .NET 8 multi-stage image for Render Web Services.
 - `render.yaml`: Render web service blueprint.
+- `CHANGELOG.json`: V2+ engine metadata served by `GET /api/chess/metadata` for the frontend.
 - `engine_csharp/src/Engine.Core/`: C# engine core and versioned engine files.
 - `engine_csharp/src/LocalTesting/Program.cs`: local scenario runner and evaluator.
 - `engine_scenarios/`: puzzle/endgame scenario JSON plus reference images and sample output.
@@ -36,8 +37,20 @@ Think of the repo as three layers:
 
 The public API is intentionally narrow:
 
+- `GET /api/chess/metadata`
 - `POST /api/chess/{version}`
-- Supported versions: `v0`, `v2.0`, `v2.9`, `v3.0`, and `v3.4`.
+- Supported versions: `v0` plus compiled V2+ engines marked with `"served": true` in `CHANGELOG.json`.
+
+`CHANGELOG.json` can contain V2+ engine files that are not served. Treat its
+`served` flag as the frontend-facing route availability contract; do not infer
+route availability from the presence of an engine file alone.
+
+When a user asks to expose or serve a chess engine version, update both sides of
+the contract in the same change: confirm the engine file follows the compiled
+reflection convention and set that version's `CHANGELOG.json` entry to
+`"served": true`. `Engine.Functions` resolves V2+ served engines by convention
+at runtime after deployment; no per-version switch edit should be needed. If the
+engine file exists but should not be publicly routed yet, leave `"served": false`.
 
 The strategic target is useful move generation in about `1s`, and ideally much faster for local iteration.
 
@@ -79,6 +92,7 @@ When you need the current exact testing or evaluation command shape, reference `
 There is no formal unit-test suite in the repo today. Validation is scenario-driven and benchmark-driven.
 
 - For serving changes, test `POST /api/chess/{version}` with valid and invalid FEN payloads.
+- For metadata changes, test `GET /api/chess/metadata` and confirm served versions match `Engine.Functions`.
 - For engine changes, use `engine_csharp/src/LocalTesting`.
 - For reproducible tactical/endgame checks, rely on `engine_scenarios/*.json` and the expectations documented in `engine_scenarios/console_output.md`.
 
@@ -99,6 +113,7 @@ Important rules:
 - The current fixed evaluator contract is documented in `autoresearch/README.md`; use that file, `autoresearch/state.json`, and `autoresearch/ATTEMPTS.md` for the current command, baseline, and latest approved seed values.
 - Approval requires a clean build, a completed evaluator run, no illegal/crash failures, and `lcb95 > 0.5`.
 - `ATTEMPTS.md` is append-only except for the “Latest Approved Engine Seed” section.
+- Approved candidates are also appended to `CHANGELOG.json` with `served: false` by default.
 
 For current autoresearch baseline and latest approved seed values, reference `autoresearch/ATTEMPTS.md` directly.
 
