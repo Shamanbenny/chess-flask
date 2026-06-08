@@ -426,3 +426,31 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=1 incomplete evaluator termination; max_plies=22`
 - verdict: `Rejected under EVALUATE.md because the candidate never produced the required === EVALUATION DONE === signature across two detached 500-game evaluator launches, so the fixed evaluation did not complete cleanly enough for promotion. The partial canonical CSV shows score_rate=0.5785, paired lcb95≈0.5314, and max_plies_rate=0.0677 through 325 recorded games, but those partial metrics do not override the failed evaluator-completion contract.`
 - inferred_conclusion: `This king-shelter term did not show a clear partial edge over the v3.0 approval bar before the repeated evaluator termination, and it also reduced average node throughput materially versus the v3.0 approved reference. Future v3 work should prefer simpler targeted activity or search-control changes over additional king-safety evaluation unless the mechanism is both cheap per node and robust under the full evaluator contract.`
+
+## Attempt: 2026-06-08T04:44:58Z - v3.2
+
+- branch: `autoresearch/Jun8a`
+- commit: `bf93677`
+- status: `rejected`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.0`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_0Engine.cs`
+- candidate_version: `v3.2`
+- candidate_file: `engine_csharp/src/Engine.Core/V3/V3_2Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A generation-aware transposition-table replacement policy will preserve fresher entries in the persistent v3 table and improve move quality at 100ms without adding much per-node cost.`
+- implementation_summary: `Added v3.2 as a focused transposition-table experiment that changes TT storage to prefer same-generation updates instead of blindly replacing persistent entries.`
+- evaluation_log_path: `autoresearch/logs/bf93677-result.csv`
+- extra_log_paths: `n/a`
+- wins: `245`
+- draws: `91`
+- losses: `164`
+- score: `290.5/500`
+- score_rate: `0.5810`
+- average_plies: `98.59`
+- average_processing_time_ms: `100.874`
+- average_positions_or_nodes: `8166.80`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=38`
+- verdict: `Rejected under EVALUATE.md because score_rate=0.5810 did not exceed the approved seed reference 0.6110, despite a clean 500-game evaluator completion, failures=0, paired lcb95=0.5488 > 0.5, and max_plies_rate=0.0760 < 0.10.`
+- inferred_conclusion: `The TT generation replacement policy produced a stable full run and remained above break-even versus stockfish-1350, but it was still weaker than the approved v3.0 seed and searched fewer positions on average. Future v3 work should treat TT replacement tuning as insufficient on its own and focus on changes that recover throughput or improve move quality more directly.`
