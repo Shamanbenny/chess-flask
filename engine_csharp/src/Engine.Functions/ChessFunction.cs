@@ -9,7 +9,7 @@ namespace Engine.Functions;
 
 public sealed class ChessMoveHandler
 {
-    private const double DefaultTimeLimitSeconds = 2.0;
+    private const double DefaultTimeLimitSeconds = 1.0;
     private static readonly TimeSpan ContextTtl = TimeSpan.FromMinutes(30);
 
     private static readonly object ContextLock = new();
