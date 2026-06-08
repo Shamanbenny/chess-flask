@@ -374,7 +374,7 @@ Use this exact structure for each appended attempt:
 
 - branch: `main`
 - commit: `5417662`
-- status: `approved`
+- status: `explicitly approved by user`
 - evaluator_baseline: `stockfish-1350`
 - seed_version: `v2.9`
 - seed_file: `engine_csharp/src/Engine.Core/V2/V2_9Engine.cs`
