@@ -146,7 +146,7 @@
       "version": "v3.4",
       "api_version": "v3_4",
       "engine_file": "engine_csharp/src/Engine.Core/V3/V3_4Engine.cs",
-      "served": true,
+      "served": false,
       "status": "approved",
       "hypotheses": [
         "Making draw/repetition contempt material-aware will improve score by letting materially worse positions prefer repetition or 50-move draw chances instead of steering away from saves.",
@@ -196,7 +196,7 @@
       "version": "v3.6",
       "api_version": "v3_6",
       "engine_file": "engine_csharp/src/Engine.Core/V3/V3_6Engine.cs",
-      "served": false,
+      "served": true,
       "status": "approved",
       "commit": "62e5166",
       "hypotheses": [
