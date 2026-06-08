@@ -454,3 +454,32 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=38`
 - verdict: `Rejected under EVALUATE.md because score_rate=0.5810 did not exceed the approved seed reference 0.6110, despite a clean 500-game evaluator completion, failures=0, paired lcb95=0.5488 > 0.5, and max_plies_rate=0.0760 < 0.10.`
 - inferred_conclusion: `The TT generation replacement policy produced a stable full run and remained above break-even versus stockfish-1350, but it was still weaker than the approved v3.0 seed and searched fewer positions on average. Future v3 work should treat TT replacement tuning as insufficient on its own and focus on changes that recover throughput or improve move quality more directly.`
+
+## Attempt: 2026-06-08T06:00:46Z - v3.3
+
+- branch: `autoresearch/Jun8b`
+- commit: `941c911`
+- status: `rejected`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.0`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_0Engine.cs`
+- candidate_version: `v3.3`
+- candidate_file: `engine_csharp/src/Engine.Core/V3/V3_3Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `A cheap bishop safe-mobility term will improve minor-piece activity decisions on top of v3.0 without the high per-node cost seen in the rejected v3.1 king-shelter scan.`
+  - `Rewarding bounded diagonal reach to non-edge squares that are not controlled by enemy pawns is more targeted than retrying a generic bishop-pair bonus or another broad static piece-placement term.`
+- implementation_summary: `Cloned v3.0 into v3.3, renamed the public type and search-context entrypoints, and added a capped bishop safe-mobility evaluation bonus that counts diagonal reachable non-edge squares not attacked by enemy pawns.`
+- evaluation_log_path: `autoresearch/logs/941c911-result.csv`
+- extra_log_paths: `/tmp/autoresearch-941c911-eval.log; diagnostic only: autoresearch/logs/941diag-result.csv from a 2-game startup check`
+- wins: `251`
+- draws: `103`
+- losses: `146`
+- score: `302.5/500`
+- score_rate: `0.6050`
+- average_plies: `100.47`
+- average_processing_time_ms: `99.615`
+- average_positions_or_nodes: `11980.85`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=49`
+- verdict: `Rejected under EVALUATE.md because score_rate=0.6050 did not exceed the approved seed reference 0.6110, despite a clean build, completed evaluator signatures, failures=0, paired lcb95=0.5729 > 0.5, and max_plies_rate=0.0980 < 0.10.`
+- inferred_conclusion: `The bounded bishop safe-mobility term recovered some throughput versus the approved v3.0 reference (11980.85 vs 11522.13 average positions/nodes) and remained statistically above break-even, but it weakened raw score slightly and pushed max_plies close to the rejection threshold. Future v3 evaluation work should not add bishop mobility in this form; stronger candidates likely need either better opening/context use or a move-quality change that reduces long capped games while beating the 0.6110 v3.0 score-rate bar.`
