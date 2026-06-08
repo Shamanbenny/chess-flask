@@ -17,13 +17,13 @@ Do not rewrite or delete prior entries (Except for the `## Latest Approved Engin
 
 ## Latest Approved Engine Seed (Adjust accordingly ONLY WHEN experiment is approved by evaluator)
 
-- approved_version: `v3.0`
-- approved_file: `engine_csharp/src/Engine.Core/V3/V3_0Engine.cs`
-- approved_commit: `5417662`
-- approved_recorded_at: `2026-06-07`
-- approved_reference_score_rate_vs_stockfish_1350: `0.6110`
-- approved_reference_score_source: `autoresearch/approved_logs/V3_0Engine-5417662-result.csv`
-- notes: `Current v3.0 baseline after adding an opening-book lookup before search and an optional per-game search context that persists the native transposition table across moves. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
+- approved_version: `v3.4`
+- approved_file: `engine_csharp/src/Engine.Core/V3/V3_4Engine.cs`
+- approved_commit: `e45c109`
+- approved_recorded_at: `2026-06-08`
+- approved_reference_score_rate_vs_stockfish_1350: `0.6460`
+- approved_reference_score_source: `autoresearch/approved_logs/V3_4Engine-0398feb-result.csv`
+- notes: `Current v3.4 baseline after making draw/repetition contempt material-aware: equal-or-better positions still avoid draw mechanisms, while materially worse positions can prefer repetition or 50-move draw chances. New candidates must beat the approved seed's recorded stockfish-1350 reference score rate.`
 
 ## Entry Template
 
@@ -483,3 +483,32 @@ Use this exact structure for each appended attempt:
 - failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=49`
 - verdict: `Rejected under EVALUATE.md because score_rate=0.6050 did not exceed the approved seed reference 0.6110, despite a clean build, completed evaluator signatures, failures=0, paired lcb95=0.5729 > 0.5, and max_plies_rate=0.0980 < 0.10.`
 - inferred_conclusion: `The bounded bishop safe-mobility term recovered some throughput versus the approved v3.0 reference (11980.85 vs 11522.13 average positions/nodes) and remained statistically above break-even, but it weakened raw score slightly and pushed max_plies close to the rejection threshold. Future v3 evaluation work should not add bishop mobility in this form; stronger candidates likely need either better opening/context use or a move-quality change that reduces long capped games while beating the 0.6110 v3.0 score-rate bar.`
+
+## Attempt: 2026-06-08T06:21:42Z - v3.4
+
+- branch: `autoresearch/Jun8b`
+- commit: `0398feb` evaluated; `e45c109` cherry-picked on `main`
+- status: `approved`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.0`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_0Engine.cs`
+- candidate_version: `v3.4`
+- candidate_file: `engine_csharp/src/Engine.Core/V3/V3_4Engine.cs`
+- version_bump: `minor`
+- hypotheses:
+  - `Making draw/repetition contempt material-aware will improve score by letting materially worse positions prefer repetition or 50-move draw chances instead of steering away from saves.`
+  - `Keeping the existing draw-avoidance penalties for equal-or-better positions should preserve v3.0's decisiveness while reducing avoidable losses.`
+- implementation_summary: `Cloned v3.0 into v3.4, renamed the public type and search-context entrypoints, and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain the existing repetition and draw penalties.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_4Engine-0398feb-result.csv`
+- extra_log_paths: `/tmp/autoresearch-0398feb-eval.log`
+- wins: `277`
+- draws: `92`
+- losses: `131`
+- score: `323.0/500`
+- score_rate: `0.6460`
+- average_plies: `97.87`
+- average_processing_time_ms: `99.675`
+- average_positions_or_nodes: `11335.12`
+- failure_counts: `crash=0; illegal_move=0; timeout=0; harness=0; max_plies=43`
+- verdict: `Approved under EVALUATE.md because the build succeeded, the evaluator printed both required signatures, failures were 0, score_rate=0.6460 exceeded the approved seed reference 0.6110, paired lcb95=0.6150 > 0.5, and max_plies_rate=0.0860 < 0.10.`
+- inferred_conclusion: `The prior v3.0 draw/repetition contempt was too aggressive when materially worse. Making draw-saving material-aware produced a large raw-score improvement, fewer losses, and stayed under the max-plies threshold despite more willingness to save bad positions. Future v3 work should build from v3.4 and preserve material-aware draw behavior; further improvements should target opening/context use or similarly cheap policies that improve conversion without increasing max_plies_rate beyond 0.10.`
