@@ -43,9 +43,9 @@ public static class V3_4Engine
             throw new ArgumentOutOfRangeException(nameof(timeLimitSeconds), "timeLimitSeconds must be greater than 0");
         }
 
-        if (OpeningBook.TryGetMove(board, out var openingMove))
+        if (OpeningBook.TryGetMove(board, out var openingMove, out var openingBookDebug))
         {
-            return openingMove;
+            return openingMove with { OpeningBookDebug = openingBookDebug };
         }
 
         var native = NativeBoard.FromFen(board.Fen);

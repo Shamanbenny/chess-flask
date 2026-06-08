@@ -99,16 +99,16 @@ public sealed class ChessMoveHandler
             return ErrorBody("No legal moves available", 400, version, ("fen", payload.Fen), ("legal_move_count", 0));
         }
 
-        var result = version == "v0"
-            ? ChooseRandomMove(board, legalMoves)
+        var searchOutcome = version == "v0"
+            ? new ServedSearchOutcome(ChooseRandomMove(board, legalMoves), null)
             : SearchServedEngine(version, board, payload);
 
-        if (result is null)
+        if (searchOutcome is null)
         {
             return ErrorBody($"Unsupported version '{version}'", 400, version);
         }
 
-        return SuccessBody(version, result);
+        return SuccessBody(version, searchOutcome.Result, searchOutcome.TtContextDebug);
     }
 
     private static SearchResult ChooseRandomMove(BoardState board, IReadOnlyList<Move> legalMoves)
@@ -117,23 +117,35 @@ public sealed class ChessMoveHandler
         return new SearchResult(move, board.GetSan(move), 0, legalMoves.Count);
     }
 
-    private static SearchResult? SearchServedEngine(string version, BoardState board, ChessRequest payload)
+    private static ServedSearchOutcome? SearchServedEngine(string version, BoardState board, ChessRequest payload)
     {
         if (!ServedEngines.Value.TryGetValue(version, out var engine))
         {
             return null;
         }
 
+        var contextResolution = ContextFor(version, payload, engine.ContextFactory);
         var arguments = BuildSearchArguments(
             engine.SearchMethod,
             board,
             TimeLimitSeconds(),
-            ContextFor(version, payload, engine.ContextFactory));
+            contextResolution.Context);
 
-        return (SearchResult)engine.SearchMethod.Invoke(null, arguments)!;
+        var result = (SearchResult)engine.SearchMethod.Invoke(null, arguments)!;
+        if (result.OpeningBookDebug is null && version.StartsWith("v3.", StringComparison.Ordinal))
+        {
+            OpeningBook.TryGetMove(board, out _, out var openingBookDebug);
+            result = result with { OpeningBookDebug = openingBookDebug };
+        }
+
+        FinalizeContextDebug(contextResolution, result);
+        return new ServedSearchOutcome(result, contextResolution.Debug);
     }
 
-    private static Dictionary<string, object?> SuccessBody(string version, SearchResult result)
+    private static Dictionary<string, object?> SuccessBody(
+        string version,
+        SearchResult result,
+        Dictionary<string, object?>? ttContextDebug)
     {
         var selectedMoveUci = MoveToUci(result.Move);
         var debug = new Dictionary<string, object?>
@@ -152,6 +164,8 @@ public sealed class ChessMoveHandler
         AddIfPresent(debug, "tt_hits", result.TtHits);
         AddIfPresent(debug, "tt_cutoffs", result.TtCutoffs);
         AddIfPresent(debug, "nodes_searched", result.NodesSearched);
+        AddIfPresent(debug, "opening_book", result.OpeningBookDebug);
+        AddIfPresent(debug, "tt_context", ttContextDebug);
 
         return new Dictionary<string, object?>
         {
@@ -166,6 +180,28 @@ public sealed class ChessMoveHandler
         if (value.HasValue)
         {
             target[key] = value.Value;
+        }
+    }
+
+    private static void AddIfPresent(
+        Dictionary<string, object?> target,
+        string key,
+        IReadOnlyDictionary<string, object?>? value)
+    {
+        if (value is not null)
+        {
+            target[key] = value;
+        }
+    }
+
+    private static void AddIfPresent(
+        Dictionary<string, object?> target,
+        string key,
+        Dictionary<string, object?>? value)
+    {
+        if (value is not null)
+        {
+            target[key] = value;
         }
     }
 
@@ -206,51 +242,105 @@ public sealed class ChessMoveHandler
         return normalized.StartsWith('v') ? normalized : $"v{normalized}";
     }
 
-    private static object? ContextFor(string version, ChessRequest payload, MethodInfo? factory)
+    private static ContextResolution ContextFor(string version, ChessRequest payload, MethodInfo? factory)
     {
         if (factory is null)
         {
-            return null;
+            return new ContextResolution(null, null, null);
         }
 
+        var debug = new Dictionary<string, object?>
+        {
+            ["enabled"] = true,
+            ["reset_requested"] = payload.ResetContext,
+        };
         var contextId = payload.ContextId ?? payload.GameId;
         if (string.IsNullOrWhiteSpace(contextId))
         {
-            return null;
+            debug["enabled"] = false;
+            debug["skipped_reason"] = "missing_context_id";
+            return new ContextResolution(null, null, debug);
         }
 
+        debug["context_id"] = contextId;
         var key = $"{version}:{contextId}";
         var now = DateTimeOffset.UtcNow;
         lock (ContextLock)
         {
-            PruneExpiredContexts(now);
+            var evictedContextCount = PruneExpiredContexts(now);
+            debug["evicted_context_count"] = evictedContextCount;
+
+            var contextReset = false;
             if (payload.ResetContext)
             {
-                Contexts.Remove(key);
+                contextReset = Contexts.Remove(key);
             }
+            debug["context_reset"] = contextReset;
 
             if (Contexts.TryGetValue(key, out var cached))
             {
+                debug["context_found"] = true;
+                debug["context_created"] = false;
+                debug["search_count_before"] = cached.SearchCount;
+                debug["cache_size_after"] = Contexts.Count;
                 Contexts[key] = cached with { LastSeen = now };
-                return cached.Context;
+                return new ContextResolution(key, cached.Context, debug);
             }
 
             var created = factory.Invoke(null, null)
                 ?? throw new InvalidOperationException($"Context factory '{factory.Name}' returned null.");
-            Contexts[key] = new CachedSearchContext(created, now);
-            return created;
+            Contexts[key] = new CachedSearchContext(created, now, 0);
+            debug["context_found"] = false;
+            debug["context_created"] = true;
+            debug["search_count_before"] = 0;
+            debug["cache_size_after"] = Contexts.Count;
+            return new ContextResolution(key, created, debug);
         }
     }
 
-    private static void PruneExpiredContexts(DateTimeOffset now)
+    private static void FinalizeContextDebug(ContextResolution resolution, SearchResult result)
     {
+        if (resolution.Key is null || resolution.Debug is null)
+        {
+            return;
+        }
+
+        lock (ContextLock)
+        {
+            if (!Contexts.TryGetValue(resolution.Key, out var cached))
+            {
+                return;
+            }
+
+            var updated = cached with
+            {
+                LastSeen = DateTimeOffset.UtcNow,
+                SearchCount = cached.SearchCount + 1,
+            };
+            Contexts[resolution.Key] = updated;
+            resolution.Debug["search_count_after"] = updated.SearchCount;
+            resolution.Debug["cache_size_after"] = Contexts.Count;
+
+            if (result.TtEntries.HasValue)
+            {
+                resolution.Debug["tt_entries_after"] = result.TtEntries.Value;
+            }
+        }
+    }
+
+    private static int PruneExpiredContexts(DateTimeOffset now)
+    {
+        var removedCount = 0;
         foreach (var staleKey in Contexts
             .Where(pair => now - pair.Value.LastSeen > ContextTtl)
             .Select(pair => pair.Key)
             .ToArray())
         {
             Contexts.Remove(staleKey);
+            removedCount += 1;
         }
+
+        return removedCount;
     }
 
     private static string MoveToUci(Move move)
@@ -441,9 +531,18 @@ public sealed class ChessMoveHandler
         return Path.Combine(Directory.GetCurrentDirectory(), ChangelogFileName);
     }
 
-    private sealed record CachedSearchContext(object Context, DateTimeOffset LastSeen);
+    private sealed record CachedSearchContext(object Context, DateTimeOffset LastSeen, int SearchCount);
+
+    private sealed record ContextResolution(
+        string? Key,
+        object? Context,
+        Dictionary<string, object?>? Debug);
 
     private sealed record ResolvedServedEngine(MethodInfo SearchMethod, MethodInfo? ContextFactory);
+
+    private sealed record ServedSearchOutcome(
+        SearchResult Result,
+        Dictionary<string, object?>? TtContextDebug);
 
     private sealed record Changelog(
         [property: JsonPropertyName("versions")] ChangelogVersion[]? Versions);

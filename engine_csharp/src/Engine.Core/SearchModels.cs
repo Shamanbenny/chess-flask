@@ -17,7 +17,8 @@ public sealed record SearchResult(
     int? TtProbes = null,
     int? TtHits = null,
     int? TtCutoffs = null,
-    int? NodesSearched = null);
+    int? NodesSearched = null,
+    IReadOnlyDictionary<string, object?>? OpeningBookDebug = null);
 
 public static class EngineVersions
 {

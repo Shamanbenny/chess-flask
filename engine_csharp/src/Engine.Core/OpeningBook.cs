@@ -6,19 +6,50 @@ public static class OpeningBook
 {
     private const string LookupFileName = "Openings.lookup.tsv";
     private const int StartingPieceCount = 32;
+    private static readonly Lazy<string> LookupPath = new(FindLookupPath);
     private static readonly Lazy<Dictionary<string, string[]>> Lookup = new(LoadLookup);
 
     public static bool TryGetMove(BoardState board, out SearchResult result)
     {
+        return TryGetMove(board, out result, out _);
+    }
+
+    public static bool TryGetMove(
+        BoardState board,
+        out SearchResult result,
+        out IReadOnlyDictionary<string, object?> debugDetails)
+    {
         result = null!;
-        if (!HasAllStartingPieces(board))
+        var pieceCount = CountPieces(board);
+        var key = NormalizeFenKey(board.Fen);
+        var lookup = Lookup.Value;
+        var diagnostics = new Dictionary<string, object?>
         {
+            ["enabled"] = true,
+            ["lookup_file"] = LookupPath.Value,
+            ["lookup_position_count"] = lookup.Count,
+            ["fen_key"] = key,
+            ["position_piece_count"] = pieceCount,
+            ["requires_full_starting_piece_count"] = StartingPieceCount,
+        };
+
+        if (pieceCount != StartingPieceCount)
+        {
+            diagnostics["matched_position"] = false;
+            diagnostics["candidate_move_count"] = 0;
+            diagnostics["legal_candidate_move_count"] = 0;
+            diagnostics["skipped_reason"] = "position_is_not_in_starting_setup";
+            debugDetails = diagnostics;
             return false;
         }
 
-        var key = NormalizeFenKey(board.Fen);
-        if (!Lookup.Value.TryGetValue(key, out var candidateMoves) || candidateMoves.Length == 0)
+        if (!lookup.TryGetValue(key, out var candidateMoves) || candidateMoves.Length == 0)
         {
+            diagnostics["matched_position"] = false;
+            diagnostics["candidate_move_count"] = 0;
+            diagnostics["legal_candidate_move_count"] = 0;
+            diagnostics["skipped_reason"] = "position_not_found_in_lookup";
+            debugDetails = diagnostics;
             return false;
         }
 
@@ -28,13 +59,19 @@ public static class OpeningBook
             .Where(legalByUci.ContainsKey)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        diagnostics["matched_position"] = true;
+        diagnostics["candidate_move_count"] = candidateMoves.Length;
+        diagnostics["legal_candidate_move_count"] = legalCandidates.Length;
         if (legalCandidates.Length == 0)
         {
+            diagnostics["skipped_reason"] = "book_moves_not_legal_in_current_position";
+            debugDetails = diagnostics;
             return false;
         }
 
         var selectedUci = legalCandidates[Random.Shared.Next(legalCandidates.Length)];
         var selectedMove = legalByUci[selectedUci];
+        diagnostics["selected_move_uci"] = selectedUci;
         result = new SearchResult(
             selectedMove,
             board.GetSan(selectedMove),
@@ -42,7 +79,9 @@ public static class OpeningBook
             0,
             CompletedDepth: 0,
             TimedOut: false,
-            NodesSearched: 0);
+            NodesSearched: 0,
+            OpeningBookDebug: diagnostics);
+        debugDetails = diagnostics;
         return true;
     }
 
@@ -59,7 +98,7 @@ public static class OpeningBook
 
     private static Dictionary<string, string[]> LoadLookup()
     {
-        var path = FindLookupPath();
+        var path = LookupPath.Value;
         if (!File.Exists(path))
         {
             return new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -95,9 +134,13 @@ public static class OpeningBook
 
     private static bool HasAllStartingPieces(BoardState board)
     {
+        return CountPieces(board) == StartingPieceCount;
+    }
+
+    private static int CountPieces(BoardState board)
+    {
         var placement = board.Fen.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
-        var pieceCount = placement.Count(char.IsLetter);
-        return pieceCount == StartingPieceCount;
+        return placement.Count(char.IsLetter);
     }
 
     private static string MoveToUci(Move move)
