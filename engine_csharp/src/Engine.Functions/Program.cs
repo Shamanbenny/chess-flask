@@ -16,6 +16,8 @@ var app = builder.Build();
 
 app.UseCorsHeaders();
 
+app.MapGet("/", () => Results.Text("Why are you here? 0.0", "text/plain"));
+
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
 app.MapPost("/api/chess/{version}", async (string version, HttpContext context, ChessMoveHandler handler) =>
