@@ -1,7 +1,6 @@
 .vercel
 *.log
-*.pyc
-__pycache__
+local.settings.json
 
 # Environments 
 .env 

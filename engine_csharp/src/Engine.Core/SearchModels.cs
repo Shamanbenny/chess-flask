@@ -45,6 +45,9 @@ public static class EngineVersions
             "1.5" or "v1.5" => HistoricalEngines.SearchMoveV1_5(board, timeLimitSeconds ?? 1.0),
             "1.6" or "v1.6" => HistoricalEngines.SearchMoveV1_6(board, timeLimitSeconds ?? 1.0),
             "2.0" or "v2.0" => V2_0Engine.SearchMoveV2_0(board, timeLimitSeconds ?? 1.0),
+            "2.9" or "v2.9" => V2_9Engine.SearchMoveV2_9(board, timeLimitSeconds ?? 1.0),
+            "3.0" or "v3.0" => V3_0Engine.SearchMoveV3_0(board, timeLimitSeconds ?? 1.0),
+            "3.4" or "v3.4" => V3_4Engine.SearchMoveV3_4(board, timeLimitSeconds ?? 1.0),
             _ => throw new ArgumentException($"Unsupported engine version '{version}'", nameof(version)),
         };
     }

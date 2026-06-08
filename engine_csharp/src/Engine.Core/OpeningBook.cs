@@ -59,7 +59,7 @@ public static class OpeningBook
 
     private static Dictionary<string, string[]> LoadLookup()
     {
-        var path = Path.Combine(FindRepoRoot(), LookupFileName);
+        var path = FindLookupPath();
         if (!File.Exists(path))
         {
             return new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -108,21 +108,29 @@ public static class OpeningBook
         return $"{move.OriginalPosition}{move.NewPosition}{promotion}";
     }
 
-    private static string FindRepoRoot()
+    private static string FindLookupPath()
     {
+        var outputPath = Path.Combine(AppContext.BaseDirectory, LookupFileName);
+        if (File.Exists(outputPath))
+        {
+            return outputPath;
+        }
+
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
             var candidate = Path.GetFullPath(Path.Combine(current.FullName, "..", "..", "..", ".."));
-            if (File.Exists(Path.Combine(candidate, "README.md"))
+            var lookupPath = Path.Combine(candidate, LookupFileName);
+            if (File.Exists(lookupPath)
+                && File.Exists(Path.Combine(candidate, "README.md"))
                 && Directory.Exists(Path.Combine(candidate, "engine_csharp")))
             {
-                return candidate;
+                return lookupPath;
             }
 
             current = current.Parent;
         }
 
-        return Directory.GetCurrentDirectory();
+        return Path.Combine(Directory.GetCurrentDirectory(), LookupFileName);
     }
 }

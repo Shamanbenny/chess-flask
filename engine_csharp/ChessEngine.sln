@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Engine.Core", "src/Engine.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalTesting", "src/LocalTesting/LocalTesting.csproj", "{52590B5A-B2A7-4A55-9CFC-57D9B2A15E2E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Engine.Functions", "src/Engine.Functions/Engine.Functions.csproj", "{FD742E79-E036-4758-90CA-6398B54200DD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{52590B5A-B2A7-4A55-9CFC-57D9B2A15E2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52590B5A-B2A7-4A55-9CFC-57D9B2A15E2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{52590B5A-B2A7-4A55-9CFC-57D9B2A15E2E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD742E79-E036-4758-90CA-6398B54200DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD742E79-E036-4758-90CA-6398B54200DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD742E79-E036-4758-90CA-6398B54200DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD742E79-E036-4758-90CA-6398B54200DD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
