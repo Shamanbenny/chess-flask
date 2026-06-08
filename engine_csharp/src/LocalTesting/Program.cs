@@ -570,8 +570,11 @@ internal static class LocalTestingProgram
         using var engineAInfo = engineAFactory.Create();
         using var engineBInfo = engineBFactory.Create();
         var aggregate = new MatchAggregate(engineAInfo, engineBInfo);
-        var csvLogger = log
-            ? EvaluationCsvLogger.Create(shortSha!)
+        var csvCoordinator = log
+            ? EvaluationCsvLogCoordinator.Create(shortSha!)
+            : null;
+        using var workerLoggers = csvCoordinator is not null
+            ? new ThreadLocal<EvaluationCsvLogger?>(() => csvCoordinator.CreateWorkerLogger(), trackAllValues: true)
             : null;
 
         try
@@ -592,10 +595,10 @@ internal static class LocalTestingProgram
             Console.WriteLine("Opening source file: not used");
             Console.WriteLine($"Unique opening positions loaded: {openingFens.Length}");
             Console.WriteLine($"Logging enabled: {log}");
-            if (csvLogger is not null)
+            if (csvCoordinator is not null)
             {
                 Console.WriteLine($"Logging short SHA: {shortSha}");
-                Console.WriteLine($"CSV log file: {csvLogger.FilePath}");
+                Console.WriteLine($"CSV log file: {csvCoordinator.FinalFilePath}");
             }
 
             Console.Out.Flush();
@@ -611,6 +614,7 @@ internal static class LocalTestingProgram
                     var blackGameNumber = pairIndex * 2 + 2;
                     var pairNumber = pairIndex + 1;
                     var openingIndex = pairIndex % openingFens.Length + 1;
+                    var workerLogger = workerLoggers?.Value;
 
                     using var pairEngineA = engineAFactory.Create();
                     using var pairEngineB = engineBFactory.Create();
@@ -651,18 +655,19 @@ internal static class LocalTestingProgram
                     {
                         aggregate.Record(pairResult.FirstGame);
                         PrintGameSummary(pairResult.FirstGame);
-                        csvLogger?.WriteGame(pairResult.FirstGame);
 
                         aggregate.Record(pairResult.SecondGame);
                         PrintGameSummary(pairResult.SecondGame);
-                        csvLogger?.WriteGame(pairResult.SecondGame);
 
                         var completed = ++completedPairs;
                         Console.WriteLine(
                             $"Pair {pairResult.PairNumber}/{totalPairs}: opening_index={pairResult.OpeningIndex} | engine_a_pair_score={pairResult.PairScore:F2} | completed_pairs={completed}/{totalPairs}");
-                        csvLogger?.Flush();
                         Console.Out.Flush();
                     }
+
+                    workerLogger?.WriteGame(pairResult.FirstGame);
+                    workerLogger?.WriteGame(pairResult.SecondGame);
+                    workerLogger?.Flush();
                 });
 
             var aggregateMetrics = BuildAggregateMetrics(aggregate, totalPairs);
@@ -673,7 +678,15 @@ internal static class LocalTestingProgram
         }
         finally
         {
-            csvLogger?.Dispose();
+            if (workerLoggers is not null)
+            {
+                foreach (var logger in workerLoggers.Values)
+                {
+                    logger?.Dispose();
+                }
+            }
+
+            csvCoordinator?.MergeWorkerLogs();
         }
     }
 
@@ -1410,6 +1423,117 @@ internal static class LocalTestingProgram
         EngineGameStats BlackStats,
         TimeSpan Elapsed);
 
+    private sealed class EvaluationCsvLogCoordinator
+    {
+        private readonly object _workerIdLock = new();
+        private readonly List<string> _workerFilePaths = [];
+        private int _nextWorkerId;
+
+        private EvaluationCsvLogCoordinator(string logsDirectory, string commitShortSha)
+        {
+            LogsDirectory = logsDirectory;
+            CommitShortSha = commitShortSha;
+            FinalFilePath = Path.Combine(logsDirectory, $"{commitShortSha}-result.csv");
+        }
+
+        public string LogsDirectory { get; }
+
+        public string CommitShortSha { get; }
+
+        public string FinalFilePath { get; }
+
+        public static EvaluationCsvLogCoordinator Create(string commitShortSha)
+        {
+            var logsDirectory = Path.Combine(FindRepoRoot(), "autoresearch", "logs");
+            Directory.CreateDirectory(logsDirectory);
+
+            foreach (var stalePath in Directory.EnumerateFiles(logsDirectory, $"{commitShortSha}-result*.csv"))
+            {
+                File.Delete(stalePath);
+            }
+
+            return new EvaluationCsvLogCoordinator(logsDirectory, commitShortSha);
+        }
+
+        public EvaluationCsvLogger CreateWorkerLogger()
+        {
+            int workerId;
+            string filePath;
+
+            lock (_workerIdLock)
+            {
+                workerId = ++_nextWorkerId;
+                filePath = Path.Combine(LogsDirectory, $"{CommitShortSha}-result-{workerId}.csv");
+                _workerFilePaths.Add(filePath);
+            }
+
+            return EvaluationCsvLogger.CreateWorkerFile(filePath, CommitShortSha);
+        }
+
+        public void MergeWorkerLogs()
+        {
+            if (_workerFilePaths.Count == 0)
+            {
+                return;
+            }
+
+            var mergedRows = new List<MergedCsvRow>();
+            string? header = null;
+            foreach (var workerFilePath in _workerFilePaths.OrderBy(path => path, StringComparer.Ordinal))
+            {
+                if (!File.Exists(workerFilePath))
+                {
+                    continue;
+                }
+
+                using var reader = new StreamReader(workerFilePath);
+                var workerHeader = reader.ReadLine();
+                if (string.IsNullOrWhiteSpace(workerHeader))
+                {
+                    continue;
+                }
+
+                header ??= workerHeader;
+                string? line;
+                while ((line = reader.ReadLine()) is not null)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+
+                    var fields = ParseCsvLine(line);
+                    if (fields.Count < 2 || !int.TryParse(fields[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var gameNumber))
+                    {
+                        throw new InvalidOperationException($"Unable to parse evaluation CSV row from {workerFilePath}: {line}");
+                    }
+
+                    mergedRows.Add(new MergedCsvRow(gameNumber, line));
+                }
+            }
+
+            if (header is null)
+            {
+                return;
+            }
+
+            using var writer = new StreamWriter(FinalFilePath, append: false);
+            writer.WriteLine(header);
+            foreach (var row in mergedRows.OrderBy(row => row.GameNumber))
+            {
+                writer.WriteLine(row.Line);
+            }
+
+            foreach (var workerFilePath in _workerFilePaths)
+            {
+                if (File.Exists(workerFilePath))
+                {
+                    File.Delete(workerFilePath);
+                }
+            }
+        }
+    }
+
     private sealed class EvaluationCsvLogger : IDisposable
     {
         private readonly StreamWriter _writer;
@@ -1426,12 +1550,8 @@ internal static class LocalTestingProgram
 
         public string CommitShortSha { get; }
 
-        public static EvaluationCsvLogger Create(string commitShortSha)
+        public static EvaluationCsvLogger CreateWorkerFile(string filePath, string commitShortSha)
         {
-            var logsDirectory = Path.Combine(FindRepoRoot(), "autoresearch", "logs");
-            Directory.CreateDirectory(logsDirectory);
-
-            var filePath = Path.Combine(logsDirectory, $"{commitShortSha}-result.csv");
             var writer = new StreamWriter(filePath, append: false);
             var logger = new EvaluationCsvLogger(filePath, writer, commitShortSha);
             logger.WriteHeader();
@@ -1549,6 +1669,59 @@ internal static class LocalTestingProgram
                 throw new ObjectDisposedException(nameof(EvaluationCsvLogger));
             }
         }
+    }
+
+    private sealed record MergedCsvRow(int GameNumber, string Line);
+
+    private static List<string> ParseCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var inQuotes = false;
+
+        for (var index = 0; index < line.Length; index++)
+        {
+            var character = line[index];
+            if (inQuotes)
+            {
+                if (character == '"')
+                {
+                    if (index + 1 < line.Length && line[index + 1] == '"')
+                    {
+                        current.Append('"');
+                        index++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+                else
+                {
+                    current.Append(character);
+                }
+
+                continue;
+            }
+
+            if (character == ',')
+            {
+                fields.Add(current.ToString());
+                current.Clear();
+                continue;
+            }
+
+            if (character == '"')
+            {
+                inQuotes = true;
+                continue;
+            }
+
+            current.Append(character);
+        }
+
+        fields.Add(current.ToString());
+        return fields;
     }
 
     private sealed class MatchAggregate

@@ -4,6 +4,14 @@ This repository serves chess moves through a Dockerized C#/.NET 8 web backend an
 
 The backend accepts a chess board state as a FEN string and returns a SAN move plus timing/debug metadata. It is intended to work alongside the frontend on `sneakyowl.net`; that frontend is out of scope here.
 
+## Historical Python Engine Reference
+
+If you are looking for the earlier `chess-flask` era of this repository, including the historical Python code where the chess engine was manually evolved from `V1.0` through `V1.6`, use this commit as the reference point:
+
+- Historical repo state: <https://github.com/Shamanbenny/autoresearch-chess/blob/4b3a3a13a811314241e50b7dd9f7880e4f14da92/README.md>
+
+That commit is the important entry point for the older Flask/Python architecture and the manual engine progression that no longer exists in the live tree.
+
 ## Architecture
 
 - `engine_csharp/src/Engine.Functions/`: ASP.NET Core HTTP API packaged for Docker/Render.

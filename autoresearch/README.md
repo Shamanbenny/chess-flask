@@ -214,6 +214,19 @@ The evaluator must produce a canonical CSV at:
 autoresearch/logs/<attempt_id>-result.csv
 ```
 
+When `--workers` is greater than `1`, `LocalTesting` now writes temporary
+per-worker CSV files during the run:
+
+```text
+autoresearch/logs/<attempt_id>-result-<worker_id>.csv
+```
+
+After all workers finish, the main `LocalTesting` process merges those files
+into the canonical `autoresearch/logs/<attempt_id>-result.csv`. Downstream
+autoresearch parsing and approval logic must continue to treat only the
+canonical merged CSV as the contract output. All per-worker CSV files will be 
+deleted after merging to reduce clutter (The canonical file stays untouched).
+
 Approved logs are moved to `autoresearch/approved_logs/` and recorded in
 `state.json` and `ATTEMPTS.md`. Rejected candidate files are removed from the
 tracked engine tree and remain only in the ignored sandbox.
