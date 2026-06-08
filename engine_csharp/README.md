@@ -1,16 +1,16 @@
 # C# Engine Workspace
 
-This directory contains the deployed Azure Functions backend, the reusable engine core, and local engine validation tools.
+This directory contains the Dockerized web backend, the reusable engine core, and local engine validation tools.
 
 ## Projects
 
-- `src/Engine.Functions`: .NET 8 isolated Azure Functions HTTP API.
+- `src/Engine.Functions`: .NET 8 ASP.NET Core HTTP API packaged by the root Dockerfile.
 - `src/Engine.Core`: shared board/search infrastructure plus versioned engine files.
 - `src/LocalTesting`: scenario runner, benchmarks, and evaluator commands.
 
 ## Serving Intent
 
-The public backend is now C# end to end. `Engine.Functions` accepts HTTP requests, validates FEN input, dispatches to exact compiled engines in `Engine.Core`, and returns SAN moves with timing/debug metadata.
+The public backend is C# end to end. `Engine.Functions` accepts HTTP requests, validates FEN input, dispatches to exact compiled engines in `Engine.Core`, and returns SAN moves with timing/debug metadata.
 
 Supported public route shape:
 
@@ -24,8 +24,9 @@ Supported versions are `v0`, `v2.0`, `v2.9`, `v3.0`, and `v3.4`.
 
 ```bash
 dotnet build engine_csharp/ChessEngine.sln
-cd engine_csharp/src/Engine.Functions
-func start
+dotnet run --project engine_csharp/src/Engine.Functions
+docker build -t autoresearch-chess-api .
+docker run --rm -p 8080:8080 -e PORT=8080 autoresearch-chess-api
 ```
 
 Local engine validation:

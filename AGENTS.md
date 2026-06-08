@@ -4,7 +4,7 @@
 
 This repository has two jobs:
 
-1. Serve chess moves through a C# Azure Functions backend.
+1. Serve chess moves through a Dockerized C#/.NET 8 web backend.
 2. Act as a local research workspace for improving the C# chess engine.
 
 The key architectural rule is now simple: C# owns both the deployed HTTP surface and engine-performance experimentation.
@@ -13,8 +13,12 @@ The key architectural rule is now simple: C# owns both the deployed HTTP surface
 
 Use the live tree as the source of truth:
 
-- `engine_csharp/src/Engine.Functions/`: Azure Functions HTTP API.
-- `engine_csharp/src/Engine.Functions/ChessFunction.cs`: request validation, route handling, CORS headers, timing, context caching, and engine dispatch.
+- `engine_csharp/src/Engine.Functions/`: ASP.NET Core HTTP API packaged for Docker/Render.
+- `engine_csharp/src/Engine.Functions/Program.cs`: ASP.NET route mapping, JSON request parsing, Render `PORT` binding, and health check.
+- `engine_csharp/src/Engine.Functions/ChessFunction.cs`: request validation, timing, context caching, and engine dispatch.
+- `engine_csharp/src/Engine.Functions/CorsHeadersMiddleware.cs`: CORS headers for the public frontend origins.
+- `Dockerfile`: .NET 8 multi-stage image for Render Web Services.
+- `render.yaml`: Render web service blueprint.
 - `engine_csharp/src/Engine.Core/`: C# engine core and versioned engine files.
 - `engine_csharp/src/LocalTesting/Program.cs`: local scenario runner and evaluator.
 - `engine_scenarios/`: puzzle/endgame scenario JSON plus reference images and sample output.
@@ -26,7 +30,7 @@ Historical docs may still mention Flask, Vercel, Python, or deleted `api/` files
 
 Think of the repo as three layers:
 
-- Serving layer: Azure Functions routes accept a FEN and return a SAN move plus timing metadata.
+- Serving layer: ASP.NET routes accept a FEN and return a SAN move plus timing metadata.
 - Engine layer: `Engine.Core` contains board/search infrastructure and one engine file per version lineage.
 - Research layer: `LocalTesting` and `autoresearch/` exist to improve search speed and engine quality under fixed time budgets.
 
@@ -45,11 +49,17 @@ Build:
 dotnet build engine_csharp/ChessEngine.sln
 ```
 
-Run the Azure Functions API locally:
+Run the API locally:
 
 ```bash
-cd engine_csharp/src/Engine.Functions
-func start
+dotnet run --project engine_csharp/src/Engine.Functions
+```
+
+Build and run the Docker image:
+
+```bash
+docker build -t autoresearch-chess-api .
+docker run --rm -p 8080:8080 -e PORT=8080 autoresearch-chess-api
 ```
 
 C# local engine workflow:
@@ -100,7 +110,7 @@ For current autoresearch baseline and latest approved seed values, reference `au
 
 ## Commit & PR Expectations
 
-Recent commits use short imperative subjects such as `Add autoresearch paradigm to repo` and `Adjust time limit seconds for Version 1.5`. The first word must be a present tense verb, similar to how you would ask someone to "do something". Keep commits scoped to one area: Azure Functions surface, engine core, evaluator workflow, or documentation. On more complex commits, use `;` to define a second scoped area, for example `Update README.md; Refactor codebase for Azure Functions`.
+Recent commits use short imperative subjects such as `Add autoresearch paradigm to repo` and `Adjust time limit seconds for Version 1.5`. The first word must be a present tense verb, similar to how you would ask someone to "do something". Keep commits scoped to one area: web serving surface, engine core, evaluator workflow, or documentation. On more complex commits, use `;` to define a second scoped area, for example `Update README.md; Refactor codebase for Render`.
 
 Pull requests should state:
 

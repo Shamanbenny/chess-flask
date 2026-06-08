@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: autoresearch-chess-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENGINE_TIME_LIMIT_SECONDS
+        value: "2.0"

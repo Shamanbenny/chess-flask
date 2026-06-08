@@ -1,12 +1,12 @@
-# Chess Azure Functions Backend
+# Chess Render Docker Backend
 
-This repository serves chess moves through a C# Azure Functions backend and acts as a local research workspace for improving the C# chess engine.
+This repository serves chess moves through a Dockerized C#/.NET 8 web backend and acts as a local research workspace for improving the C# chess engine.
 
 The backend accepts a chess board state as a FEN string and returns a SAN move plus timing/debug metadata. It is intended to work alongside the frontend on `sneakyowl.net`; that frontend is out of scope here.
 
 ## Architecture
 
-- `engine_csharp/src/Engine.Functions/`: Azure Functions HTTP API.
+- `engine_csharp/src/Engine.Functions/`: ASP.NET Core HTTP API packaged for Docker/Render.
 - `engine_csharp/src/Engine.Core/`: shared board/search infrastructure and versioned engines.
 - `engine_csharp/src/LocalTesting/`: local scenario runner, benchmarks, and evaluator workflow.
 - `engine_scenarios/`: puzzle/endgame scenario JSON plus reference images and sample output.
@@ -16,7 +16,7 @@ The public serving path is now C# end to end. Engine changes can be made directl
 
 ## API
 
-The Azure Function exposes one versioned endpoint:
+The web service exposes one versioned endpoint:
 
 | Endpoint | Summary |
 | --- | --- |
@@ -38,7 +38,7 @@ Request body:
 }
 ```
 
-For `v3.0` and `v3.4`, pass either `game_id` or `context_id` to allow warm Azure Functions instances to reuse a per-game transposition table across requests. This is an optimization only: cold starts, scale-out, or instance recycling may start with an empty context. Use `reset_context: true` when starting a new game with the same key.
+For `v3.0` and `v3.4`, pass either `game_id` or `context_id` to allow warm service instances to reuse a per-game transposition table across requests. This is an optimization only: cold starts, scale-out, or instance recycling may start with an empty context. Use `reset_context: true` when starting a new game with the same key.
 
 Successful responses include:
 
@@ -69,7 +69,7 @@ The server-controlled move budget is read from `ENGINE_TIME_LIMIT_SECONDS` and d
 
 ## Local Development
 
-Install the .NET 8 SDK and Azure Functions Core Tools v4.
+Install the .NET 8 SDK.
 
 Build everything:
 
@@ -77,19 +77,25 @@ Build everything:
 dotnet build engine_csharp/ChessEngine.sln
 ```
 
-Run the Azure Functions API locally:
+Run the API locally:
 
 ```bash
-cd engine_csharp/src/Engine.Functions
-func start
+dotnet run --project engine_csharp/src/Engine.Functions
 ```
 
 Example request:
 
 ```bash
-curl -X POST http://localhost:7071/api/chess/v3.4 \
+curl -X POST http://localhost:8080/api/chess/v3.4 \
   -H "Content-Type: application/json" \
   -d '{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}'
+```
+
+Build and run the Docker image locally:
+
+```bash
+docker build -t autoresearch-chess-api .
+docker run --rm -p 8080:8080 -e PORT=8080 autoresearch-chess-api
 ```
 
 Allowed browser origins are:
@@ -99,9 +105,9 @@ Allowed browser origins are:
 
 ## Deployment Notes
 
-Deploy `engine_csharp/src/Engine.Functions` as a .NET 8 isolated Azure Functions app. `Openings.lookup.tsv` is copied into the function output during build so opening-book lookup works in published deployments.
+Deploy as a Render Web Service with the Docker runtime. The root `Dockerfile` publishes `engine_csharp/src/Engine.Functions`, and `render.yaml` configures the Dockerfile path, build context, health check, and default engine time budget.
 
-Configure `ENGINE_TIME_LIMIT_SECONDS` in Azure App Settings when the default `2.0` second budget should change.
+Render supplies `PORT`; the app binds to `0.0.0.0:$PORT` and falls back to `8080` for local runs. Configure `ENGINE_TIME_LIMIT_SECONDS` in Render environment variables when the default `2.0` second budget should change.
 
 ## Native Engine Workflow
 

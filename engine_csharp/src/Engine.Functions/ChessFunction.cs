@@ -1,59 +1,42 @@
 using System.Diagnostics;
-using System.Net;
-using System.Text.Json;
 using Chess;
 using Engine.Core;
 using Engine.Core.V2;
 using Engine.Core.V3;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Engine.Functions;
 
-public sealed class ChessFunction
+public sealed class ChessMoveHandler
 {
     private const double DefaultTimeLimitSeconds = 2.0;
     private static readonly TimeSpan ContextTtl = TimeSpan.FromMinutes(30);
-    private static readonly HashSet<string> AllowedOrigins = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "https://sneakyowl.net",
-        "https://www.sneakyowl.net",
-    };
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        WriteIndented = false,
-    };
 
     private static readonly object ContextLock = new();
     private static readonly Dictionary<string, CachedSearchContext> Contexts = [];
 
-    private readonly ILogger<ChessFunction> _logger;
+    private readonly ILogger<ChessMoveHandler> _logger;
 
-    public ChessFunction(ILogger<ChessFunction> logger)
+    public ChessMoveHandler(ILogger<ChessMoveHandler> logger)
     {
         _logger = logger;
     }
 
-    [Function("ChessMove")]
-    public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "chess/{version}")] HttpRequestData request,
-        string version)
+    public static ChessResponse InvalidJsonResponse(string version, string exception)
     {
-        if (string.Equals(request.Method, "OPTIONS", StringComparison.OrdinalIgnoreCase))
-        {
-            return await JsonResponse(request, HttpStatusCode.NoContent, new { });
-        }
+        var normalizedVersion = NormalizeVersion(version);
+        return new ChessResponse(
+            StatusCodes.Status400BadRequest,
+            ErrorBody("Invalid JSON body", 400, normalizedVersion, ("exception", exception)));
+    }
 
+    public ChessResponse Generate(string version, ChessRequest payload)
+    {
         var start = Stopwatch.GetTimestamp();
         var normalizedVersion = NormalizeVersion(version);
 
         try
         {
-            var payload = await ReadPayload(request);
             var body = GenerateEngineResponse(normalizedVersion, payload);
             var processingTime = Stopwatch.GetElapsedTime(start).TotalSeconds;
             body["processing_time"] = processingTime;
@@ -63,22 +46,14 @@ public sealed class ChessFunction
                 debug["processing_time"] = processingTime;
             }
 
-            var status = body.ContainsKey("error") ? HttpStatusCode.BadRequest : HttpStatusCode.OK;
-            return await JsonResponse(request, status, body);
-        }
-        catch (JsonException exc)
-        {
-            return await JsonResponse(
-                request,
-                HttpStatusCode.BadRequest,
-                ErrorBody("Invalid JSON body", 400, normalizedVersion, ("exception", exc.Message)));
+            var status = body.ContainsKey("error") ? StatusCodes.Status400BadRequest : StatusCodes.Status200OK;
+            return new ChessResponse(status, body);
         }
         catch (Exception exc)
         {
             _logger.LogError(exc, "Unhandled engine error for version {Version}", normalizedVersion);
-            return await JsonResponse(
-                request,
-                HttpStatusCode.InternalServerError,
+            return new ChessResponse(
+                StatusCodes.Status500InternalServerError,
                 ErrorBody(
                     exc.Message,
                     500,
@@ -206,48 +181,6 @@ public sealed class ChessFunction
         };
     }
 
-    private static async Task<ChessRequest> ReadPayload(HttpRequestData request)
-    {
-        using var reader = new StreamReader(request.Body);
-        var body = await reader.ReadToEndAsync();
-        if (string.IsNullOrWhiteSpace(body))
-        {
-            return new ChessRequest();
-        }
-
-        return JsonSerializer.Deserialize<ChessRequest>(body, JsonOptions) ?? new ChessRequest();
-    }
-
-    private static async Task<HttpResponseData> JsonResponse(HttpRequestData request, HttpStatusCode status, object body)
-    {
-        var response = request.CreateResponse(status);
-        AddCorsHeaders(request, response);
-
-        if (status == HttpStatusCode.NoContent)
-        {
-            return response;
-        }
-
-        response.Headers.Add("Content-Type", "application/json");
-        await response.WriteStringAsync(JsonSerializer.Serialize(body, JsonOptions));
-        return response;
-    }
-
-    private static void AddCorsHeaders(HttpRequestData request, HttpResponseData response)
-    {
-        var origin = request.Headers.TryGetValues("Origin", out var origins)
-            ? origins.FirstOrDefault()
-            : null;
-        if (origin is not null && AllowedOrigins.Contains(origin))
-        {
-            response.Headers.Add("Access-Control-Allow-Origin", origin);
-            response.Headers.Add("Access-Control-Allow-Credentials", "false");
-        }
-
-        response.Headers.Add("Access-Control-Allow-Methods", "POST, OPTIONS");
-        response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
-    }
-
     private static double TimeLimitSeconds()
     {
         var raw = Environment.GetEnvironmentVariable("ENGINE_TIME_LIMIT_SECONDS");
@@ -334,6 +267,8 @@ public sealed class ChessFunction
 
     private sealed record CachedSearchContext(object Context, DateTimeOffset LastSeen);
 }
+
+public sealed record ChessResponse(int StatusCode, Dictionary<string, object?> Body);
 
 public sealed class ChessRequest
 {
