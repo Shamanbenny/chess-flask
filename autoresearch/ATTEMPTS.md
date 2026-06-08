@@ -436,3 +436,25 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `n/a`
 - average_positions_or_nodes: `n/a`
 - inferred_conclusion: `This attempt failed before evaluation because the move-ordering refactor introduced a build-breaking API mismatch in the sandbox candidate, so it provides no strength signal against v3.6. Future search-control experiments should keep the change surface equally narrow but verify helper accessibility and static-versus-instance call boundaries before handing control back to the orchestrator.`
+
+## Attempt: 2026-06-08T18:09:45Z - v3.8
+
+- status: `rejected`
+- commit: `<n/a>`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.6`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_6Engine.cs`
+- candidate_version: `v3.8`
+- version_bump: `minor`
+- hypotheses:
+  - `Persistent killer-move ordering for quiet beta cutoffs will improve v3.6's PVS and aspiration-window searches at 100ms by getting strong refutations to the front faster in later sibling nodes.`
+  - `A side-aware quiet-history table keyed by from/to squares will reinforce repeatedly successful quiet cutoffs across positions without changing evaluation cost, giving better move ordering than transposition-table moves alone.`
+- implementation_summary: `Cloned v3.6 into v3.8 and added persistent primary/secondary killer moves plus a side-aware quiet-history table to the search context, then used those heuristics to score quiet move ordering and reward quiet beta cutoffs at the root and recursive negamax nodes while keeping the change self-contained in the engine file.`
+- evaluation_log_path: `<n/a>`
+- wins/draws/losses: `n/a/n/a/n/a`
+- score: `n/a`
+- score_rate: `n/a`
+- average_plies: `n/a`
+- average_processing_time_ms: `n/a`
+- average_positions_or_nodes: `n/a`
+- inferred_conclusion: `This attempt produced no strength signal because the killer-move and quiet-history ordering changes failed at build time before evaluation. Future search-control experiments should keep the move-ordering surface narrow, verify all new helper signatures and call sites against the board API before return, and prefer compile-checked incremental additions over broader heuristic rewiring.`
