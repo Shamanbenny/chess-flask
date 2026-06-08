@@ -36,7 +36,7 @@ internal static class BackendWorkerExperiment
     public static int Run(string[] args)
     {
         var options = ParseOptions(args);
-        var engine = EngineVersions.ResolveTimeLimitedEngineFromFilePath(options.EngineFilePath);
+        var engine = EngineFileSupport.ResolveV3PlusEngine(options.EngineFilePath);
 
         Console.WriteLine("=== BACKEND WORKER EXPERIMENT ===");
         Console.WriteLine($"Engine source: {engine.SourcePath}");
@@ -428,13 +428,13 @@ internal static class BackendWorkerExperiment
         int Failures);
 }
 
-// dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs --games 20 --time-limit-ms 100 --workers 6
+// dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --games 20 --time-limit-ms 100 --workers 6
 
 /*
 === BACKEND WORKER EXPERIMENT ===
-Engine source: /home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/src/Engine.Core/V2/V2_5Engine.cs
-Engine name: V2_5Engine
-Search method: SearchMoveV2_5
+Engine source: /home/benny/Desktop/_gitrepo/chess-flask/engine_csharp/src/Engine.Core/V3/V3_4Engine.cs
+Engine name: V3_4Engine
+Search method: SearchMoveV3_4
 Start FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 Games per batch: 20
 Time limit per move: 100.0ms

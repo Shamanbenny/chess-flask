@@ -55,10 +55,12 @@ func start
 C# local engine workflow:
 
 ```bash
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 v2.0 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V2/V2_9Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0 --max-plies 70
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
 ```
+
+`LocalTesting` is V3+ only. Use `--engine-file`/`--engine-a-file`/`--engine-b-file`; do not reintroduce version-list or pre-V3 scenario commands.
 
 When you need the current exact testing or evaluation command shape, reference `README.md`, `autoresearch/EVALUATE.md`, and `autoresearch/ATTEMPTS.md`.
 
@@ -94,7 +96,7 @@ For current autoresearch baseline and latest approved seed values, reference `au
 ## Coding Style & Naming
 
 - C#: existing .NET conventions, `PascalCase` for types/methods, `camelCase` for locals, one engine version per file.
-- Keep engine-version naming consistent with the repo: `V1_5Engine.cs`, `V3_4Engine.cs`, etc.
+- Keep engine-version naming consistent with the repo: `V3_4Engine.cs`, `V4_0Engine.cs`, etc.
 - Prefer small, contained changes. The docs consistently value measurable improvement over broad rewrites without evidence.
 
 ## Commit & PR Expectations

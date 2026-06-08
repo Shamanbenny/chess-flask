@@ -97,17 +97,22 @@ Allowed browser origins are:
 - `https://sneakyowl.net`
 - `https://www.sneakyowl.net`
 
+## Deployment Notes
+
+Deploy `engine_csharp/src/Engine.Functions` as a .NET 8 isolated Azure Functions app. `Openings.lookup.tsv` is copied into the function output during build so opening-book lookup works in published deployments.
+
+Configure `ENGINE_TIME_LIMIT_SECONDS` in Azure App Settings when the default `2.0` second budget should change.
+
 ## Native Engine Workflow
 
-Use the C# `LocalTesting` commands for engine validation and research:
+Use the C# `LocalTesting` commands for V3+ engine validation and research. These commands resolve compiled engines by source file path and reject pre-V3 engine files.
 
 ```bash
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 v2.0 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v2.0 --time-limit-seconds 1.0 --max-plies 70
-dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V2/V2_9Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0 --max-plies 70
+dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
 ```
 
 For Stockfish evaluation, set `STOCKFISH_PATH` and use the evaluator contract in `autoresearch/EVALUATE.md`.
@@ -123,9 +128,3 @@ For Stockfish evaluation, set `STOCKFISH_PATH` and use the evaluator contract in
 The fixed evaluator baseline is local `stockfish-1350`. The latest approved in-repo engine seed and current evaluator command are documented in `autoresearch/ATTEMPTS.md`.
 
 Approval requires a clean build, a completed evaluator run, no illegal/crash failures, and `lcb95 > 0.5`.
-
-## Deployment Notes
-
-Deploy `engine_csharp/src/Engine.Functions` as a .NET 8 isolated Azure Functions app. `Openings.lookup.tsv` is copied into the function output during build so opening-book lookup works in published deployments.
-
-Configure `ENGINE_TIME_LIMIT_SECONDS` in Azure App Settings when the default `2.0` second budget should change.

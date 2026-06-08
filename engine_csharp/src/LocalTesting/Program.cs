@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Text.Json;
 using Chess;
 using Engine.Core;
-using Engine.Core.V1;
 
 var exitCode = LocalTestingProgram.Run(args);
 return exitCode;
@@ -15,6 +14,7 @@ internal static class LocalTestingProgram
     private const int DefaultEvaluationGames = 500;
     private const int DefaultEvaluationMaxPlies = 200;
     private const double DefaultEvaluationTimeLimitSeconds = 0.100;
+    private const double DefaultScenarioTimeLimitSeconds = 1.0;
     private const string DefaultStockfishBinary = "stockfish";
     private const string StartingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -51,84 +51,66 @@ internal static class LocalTestingProgram
     private static int RunPuzzle1(string[] args)
     {
         var scenario = LoadScenario<Puzzle1Scenario>("puzzle_1");
-        var versions = new List<string>(scenario.DefaultVersions);
-        var depth = scenario.DefaultDepth;
+        string? engineFilePath = null;
         var timeLimitSeconds = scenario.DefaultTimeLimitSeconds;
 
         for (var index = 0; index < args.Length; index++)
         {
             switch (args[index])
             {
-                case "--depth":
-                    depth = int.Parse(args[++index]);
-                    break;
                 case "--time-limit-seconds":
                     timeLimitSeconds = double.Parse(args[++index]);
                     break;
-                case "--versions":
-                    versions = [];
-                    while (index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal))
-                    {
-                        versions.Add(args[++index]);
-                    }
+                case "--engine-file":
+                    engineFilePath = args[++index];
                     break;
                 default:
                     return Fail($"Unknown argument '{args[index]}'");
             }
         }
 
-        foreach (var version in versions)
+        if (string.IsNullOrWhiteSpace(engineFilePath))
         {
-            var board = new BoardState(scenario.StartFen);
-            if (version.Equals("v1.5", StringComparison.OrdinalIgnoreCase)
-                || version.Equals("1.5", StringComparison.OrdinalIgnoreCase)
-                || version.Equals("v1.6", StringComparison.OrdinalIgnoreCase)
-                || version.Equals("1.6", StringComparison.OrdinalIgnoreCase)
-                || version.Equals("v2.0", StringComparison.OrdinalIgnoreCase)
-                || version.Equals("2.0", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine($"=== {version} local test at time_limit={timeLimitSeconds:F3}s ===");
-            }
-            else
-            {
-                Console.WriteLine($"=== {version} local test at depth {depth} ===");
-            }
-
-            Console.WriteLine($"Start FEN: {scenario.StartFen}");
-
-            var firstStarted = DateTime.UtcNow;
-            var firstResult = EngineVersions.SearchMoveForVersion(version, board, depth, timeLimitSeconds);
-            var firstElapsed = DateTime.UtcNow - firstStarted;
-            PrintSearchLine("White 1", firstResult, scenario.ExpectedFirstWhite, firstElapsed);
-            PrintSearchDetail("White 1", firstResult);
-
-            if (!string.Equals(firstResult.MoveSan, scenario.ExpectedFirstWhite, StringComparison.Ordinal))
-            {
-                Console.WriteLine("Forced black move skipped because white did not find the target first move.");
-                Console.WriteLine();
-                continue;
-            }
-
-            board.Push(firstResult.Move);
-            var forcedBlackMove = board.LegalMoves().FirstOrDefault(move =>
-                MoveToUci(move) == scenario.ForcedBlackMoveUci);
-            if (forcedBlackMove is null)
-            {
-                throw new InvalidOperationException($"Forced move {scenario.ForcedBlackMoveUci} is illegal after {firstResult.MoveSan}");
-            }
-
-            Console.WriteLine($"Black forced: {board.GetSan(forcedBlackMove)} ({MoveToUci(forcedBlackMove)})");
-            board.Push(forcedBlackMove);
-
-            var secondStarted = DateTime.UtcNow;
-            var secondResult = EngineVersions.SearchMoveForVersion(version, board, depth, timeLimitSeconds);
-            var secondElapsed = DateTime.UtcNow - secondStarted;
-            PrintSearchLine("White 2", secondResult, scenario.ExpectedSecondWhite, secondElapsed);
-            PrintSearchDetail("White 2", secondResult);
-            Console.WriteLine(
-                $"White total: positions={PositionCount(firstResult) + PositionCount(secondResult)} | elapsed={(firstElapsed + secondElapsed).TotalSeconds:F6}s");
-            Console.WriteLine();
+            throw new ArgumentException("--engine-file is required.");
         }
+
+        var engine = EngineFileSupport.ResolveV3PlusEngine(ResolveCliPath(engineFilePath));
+        var board = new BoardState(scenario.StartFen);
+        Console.WriteLine($"=== {engine.EngineStem} puzzle_1 local test at time_limit={timeLimitSeconds:F3}s ===");
+        Console.WriteLine($"Engine source: {engine.SourcePath}");
+        Console.WriteLine($"Search method: {engine.SearchMethodName}");
+        Console.WriteLine($"Start FEN: {scenario.StartFen}");
+
+        var firstStarted = DateTime.UtcNow;
+        var firstResult = engine.SearchMove(board, timeLimitSeconds);
+        var firstElapsed = DateTime.UtcNow - firstStarted;
+        PrintSearchLine("White 1", firstResult, scenario.ExpectedFirstWhite, firstElapsed);
+        PrintSearchDetail("White 1", firstResult);
+
+        if (!string.Equals(firstResult.MoveSan, scenario.ExpectedFirstWhite, StringComparison.Ordinal))
+        {
+            Console.WriteLine("Forced black move skipped because white did not find the target first move.");
+            return 0;
+        }
+
+        board.Push(firstResult.Move);
+        var forcedBlackMove = board.LegalMoves().FirstOrDefault(move =>
+            MoveToUci(move) == scenario.ForcedBlackMoveUci);
+        if (forcedBlackMove is null)
+        {
+            throw new InvalidOperationException($"Forced move {scenario.ForcedBlackMoveUci} is illegal after {firstResult.MoveSan}");
+        }
+
+        Console.WriteLine($"Black forced: {board.GetSan(forcedBlackMove)} ({MoveToUci(forcedBlackMove)})");
+        board.Push(forcedBlackMove);
+
+        var secondStarted = DateTime.UtcNow;
+        var secondResult = engine.SearchMove(board, timeLimitSeconds);
+        var secondElapsed = DateTime.UtcNow - secondStarted;
+        PrintSearchLine("White 2", secondResult, scenario.ExpectedSecondWhite, secondElapsed);
+        PrintSearchDetail("White 2", secondResult);
+        Console.WriteLine(
+            $"White total: positions={PositionCount(firstResult) + PositionCount(secondResult)} | elapsed={(firstElapsed + secondElapsed).TotalSeconds:F6}s");
 
         return 0;
     }
@@ -136,7 +118,7 @@ internal static class LocalTestingProgram
     private static int RunPuzzle2(string[] args)
     {
         var scenario = LoadScenario<Puzzle2Scenario>("puzzle_2");
-        var version = "v1.6";
+        string? engineFilePath = null;
         var timeLimitSeconds = scenario.DefaultTimeLimitSeconds;
         var maxPlies = scenario.DefaultMaxPlies;
 
@@ -144,8 +126,8 @@ internal static class LocalTestingProgram
         {
             switch (args[index])
             {
-                case "--version":
-                    version = args[++index];
+                case "--engine-file":
+                    engineFilePath = args[++index];
                     break;
                 case "--time-limit-seconds":
                     timeLimitSeconds = double.Parse(args[++index]);
@@ -158,13 +140,21 @@ internal static class LocalTestingProgram
             }
         }
 
+        if (string.IsNullOrWhiteSpace(engineFilePath))
+        {
+            throw new ArgumentException("--engine-file is required.");
+        }
+
+        var engine = EngineFileSupport.ResolveV3PlusEngine(ResolveCliPath(engineFilePath));
         var board = new BoardState(scenario.StartFen);
-        Console.WriteLine($"=== {version} puzzle_2 local self-play at time_limit={timeLimitSeconds:F3}s ===");
+        Console.WriteLine($"=== {engine.EngineStem} puzzle_2 local self-play at time_limit={timeLimitSeconds:F3}s ===");
+        Console.WriteLine($"Engine source: {engine.SourcePath}");
+        Console.WriteLine($"Search method: {engine.SearchMethodName}");
         Console.WriteLine($"Start FEN: {scenario.StartFen}");
         Console.WriteLine($"Start turn: {(board.WhiteToMove ? "white" : "black")} | max_plies={maxPlies}");
 
         var firstStarted = DateTime.UtcNow;
-        var firstResult = EngineVersions.SearchMoveForVersion(version, board, null, timeLimitSeconds);
+        var firstResult = engine.SearchMove(board, timeLimitSeconds);
         var firstElapsed = DateTime.UtcNow - firstStarted;
         PrintSearchLine("White 1", firstResult, scenario.ExpectedFirstWhite, firstElapsed);
         PrintSearchDetail("White 1", firstResult);
@@ -193,7 +183,7 @@ internal static class LocalTestingProgram
             Console.WriteLine(
                 $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} to move | legal_moves={board.LegalMoveCount()} | time_limit={timeLimitSeconds:F3}s | search started");
             var startedAt = DateTime.UtcNow;
-            var result = EngineVersions.SearchMoveForVersion(version, board, null, timeLimitSeconds);
+            var result = engine.SearchMove(board, timeLimitSeconds);
             var elapsed = DateTime.UtcNow - startedAt;
 
             totalPositions += PositionCount(result);
@@ -234,46 +224,34 @@ internal static class LocalTestingProgram
     private static int RunEndgame(string scenarioName, string[] args)
     {
         var scenario = LoadScenario<EndgameScenario>(scenarioName);
-        var version = "v1.4";
-        var depth = scenario.DefaultDepth;
-        double? timeLimitSeconds = null;
+        string? engineFilePath = null;
+        var timeLimitSeconds = DefaultScenarioTimeLimitSeconds;
 
         for (var index = 0; index < args.Length; index++)
         {
             switch (args[index])
             {
-                case "--version":
-                    version = args[++index];
-                    break;
-                case "--depth":
-                    depth = int.Parse(args[++index]);
-                    break;
                 case "--time-limit-seconds":
                     timeLimitSeconds = double.Parse(args[++index]);
+                    break;
+                case "--engine-file":
+                    engineFilePath = args[++index];
                     break;
                 default:
                     return Fail($"Unknown argument '{args[index]}'");
             }
         }
 
+        if (string.IsNullOrWhiteSpace(engineFilePath))
+        {
+            throw new ArgumentException("--engine-file is required.");
+        }
+
+        var engine = EngineFileSupport.ResolveV3PlusEngine(ResolveCliPath(engineFilePath));
         var board = new BoardState(scenario.StartFen);
-        var isTimeLimitedVersion =
-            version.Equals("v1.5", StringComparison.OrdinalIgnoreCase)
-            || version.Equals("1.5", StringComparison.OrdinalIgnoreCase)
-            || version.Equals("v1.6", StringComparison.OrdinalIgnoreCase)
-            || version.Equals("1.6", StringComparison.OrdinalIgnoreCase)
-            || version.Equals("v2.0", StringComparison.OrdinalIgnoreCase)
-            || version.Equals("2.0", StringComparison.OrdinalIgnoreCase);
-
-        if (isTimeLimitedVersion)
-        {
-            Console.WriteLine($"=== {version} endgame local self-play at time_limit={(timeLimitSeconds ?? 1.0):F3}s ===");
-        }
-        else
-        {
-            Console.WriteLine($"=== {version} endgame local self-play at depth {depth} ===");
-        }
-
+        Console.WriteLine($"=== {engine.EngineStem} endgame local self-play at time_limit={timeLimitSeconds:F3}s ===");
+        Console.WriteLine($"Engine source: {engine.SourcePath}");
+        Console.WriteLine($"Search method: {engine.SearchMethodName}");
         Console.WriteLine($"Start FEN: {scenario.StartFen}");
         Console.WriteLine($"Start turn: {(board.WhiteToMove ? "white" : "black")} | max_plies={scenario.DefaultMaxPlies}");
 
@@ -291,19 +269,11 @@ internal static class LocalTestingProgram
                 break;
             }
 
-            if (isTimeLimitedVersion)
-            {
-                Console.WriteLine(
-                    $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} to move | legal_moves={board.LegalMoves().Count} | time_limit={(timeLimitSeconds ?? 1.0):F3}s | search started");
-            }
-            else
-            {
-                Console.WriteLine(
-                    $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} to move | legal_moves={board.LegalMoves().Count} | depth={depth} | search started");
-            }
+            Console.WriteLine(
+                $"Ply {ply}: {(board.WhiteToMove ? "white" : "black")} to move | legal_moves={board.LegalMoves().Count} | time_limit={timeLimitSeconds:F3}s | search started");
 
             var startedAt = DateTime.UtcNow;
-            var result = EngineVersions.SearchMoveForVersion(version, board, depth, timeLimitSeconds);
+            var result = engine.SearchMove(board, timeLimitSeconds);
             var elapsed = DateTime.UtcNow - startedAt;
             totalPositions += PositionCount(result);
             totalTtProbes += result.TtProbes ?? 0;
@@ -359,14 +329,12 @@ internal static class LocalTestingProgram
         return RunEvaluationSeries(
             CreateEngineFileParticipantFactory(options.EngineAFilePath),
             CreateEngineFileParticipantFactory(options.EngineBFilePath),
-            options.OpeningsFilePath,
             options.Games,
             options.MaxPlies,
             options.TimeLimitSeconds,
             options.Workers,
             options.Log,
-            options.ShortSha,
-            options.V2Test);
+            options.ShortSha);
     }
 
     private static int RunEvaluateStock(string[] args)
@@ -390,14 +358,12 @@ internal static class LocalTestingProgram
         return RunEvaluationSeries(
             CreateEngineFileParticipantFactory(options.EngineFilePath),
             CreateStockfishParticipantFactory(options.StockfishPath, options.StockfishElo),
-            options.OpeningsFilePath,
             options.Games,
             options.MaxPlies,
             options.TimeLimitSeconds,
             options.Workers,
             options.Log,
-            options.ShortSha,
-            options.V2Test);
+            options.ShortSha);
     }
 
     private static int RunBuildOpeningsLookup(string[] args)
@@ -451,11 +417,9 @@ internal static class LocalTestingProgram
         var games = DefaultEvaluationGames;
         var maxPlies = DefaultEvaluationMaxPlies;
         var timeLimitSeconds = DefaultEvaluationTimeLimitSeconds;
-        var openingsFilePath = FindDefaultOpeningSourceFile();
         var workers = 1;
         var log = false;
         string? shortSha = null;
-        var v2Test = false;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -476,9 +440,6 @@ internal static class LocalTestingProgram
                 case "--time-limit-ms":
                     timeLimitSeconds = double.Parse(args[++index]) / 1000.0;
                     break;
-                case "--openings-file":
-                    openingsFilePath = ResolveCliPath(args[++index]);
-                    break;
                 case "--workers":
                     workers = int.Parse(args[++index]);
                     break;
@@ -487,9 +448,6 @@ internal static class LocalTestingProgram
                     break;
                 case "--short-sha":
                     shortSha = args[++index];
-                    break;
-                case "--v2test":
-                    v2Test = true;
                     break;
                 default:
                     throw new ArgumentException($"Unknown argument '{args[index]}'");
@@ -514,14 +472,12 @@ internal static class LocalTestingProgram
         return new EvaluateMatchOptions(
             ResolveCliPath(engineAFilePath),
             ResolveCliPath(engineBFilePath),
-            openingsFilePath,
             games,
             maxPlies,
             timeLimitSeconds,
             workers,
             log,
-            shortSha,
-            v2Test);
+            shortSha);
     }
 
     private static EvaluateStockOptions ParseEvaluateStockOptions(string[] args)
@@ -532,11 +488,9 @@ internal static class LocalTestingProgram
         var games = DefaultEvaluationGames;
         var maxPlies = DefaultEvaluationMaxPlies;
         var timeLimitSeconds = DefaultEvaluationTimeLimitSeconds;
-        var openingsFilePath = FindDefaultOpeningSourceFile();
         var workers = 1;
         var log = false;
         string? shortSha = null;
-        var v2Test = false;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -560,9 +514,6 @@ internal static class LocalTestingProgram
                 case "--time-limit-ms":
                     timeLimitSeconds = double.Parse(args[++index]) / 1000.0;
                     break;
-                case "--openings-file":
-                    openingsFilePath = ResolveCliPath(args[++index]);
-                    break;
                 case "--workers":
                     workers = int.Parse(args[++index]);
                     break;
@@ -571,9 +522,6 @@ internal static class LocalTestingProgram
                     break;
                 case "--short-sha":
                     shortSha = args[++index];
-                    break;
-                case "--v2test":
-                    v2Test = true;
                     break;
                 default:
                     throw new ArgumentException($"Unknown argument '{args[index]}'");
@@ -599,31 +547,25 @@ internal static class LocalTestingProgram
             ResolveCliPath(engineFilePath),
             ResolveStockfishPath(stockfishPath),
             stockfishElo,
-            openingsFilePath,
             games,
             maxPlies,
             timeLimitSeconds,
             workers,
             log,
-            shortSha,
-            v2Test);
+            shortSha);
     }
 
     private static int RunEvaluationSeries(
         EvaluationParticipantFactory engineAFactory,
         EvaluationParticipantFactory engineBFactory,
-        string openingsFilePath,
         int games,
         int maxPlies,
         double timeLimitSeconds,
         int workers,
         bool log,
-        string? shortSha,
-        bool useOpeningPositions)
+        string? shortSha)
     {
-        var openingFens = useOpeningPositions
-            ? LoadOpeningPositions(openingsFilePath)
-            : [StartingFen];
+        string[] openingFens = [StartingFen];
         var totalPairs = games / 2;
         using var engineAInfo = engineAFactory.Create();
         using var engineBInfo = engineBFactory.Create();
@@ -646,9 +588,9 @@ internal static class LocalTestingProgram
             Console.WriteLine($"Time limit per move: {timeLimitSeconds * 1000.0:F1}ms");
             Console.WriteLine($"Max plies: {maxPlies}");
             Console.WriteLine($"Workers: {workers}");
-            Console.WriteLine($"Opening mode: {(useOpeningPositions ? "v2test_openings" : "starting_position")}");
-            Console.WriteLine($"Opening source file: {(useOpeningPositions ? openingsFilePath : "not used")}");
-            Console.WriteLine($"Unique opening positions loaded: {openingFens.Count}");
+            Console.WriteLine("Opening mode: starting_position");
+            Console.WriteLine("Opening source file: not used");
+            Console.WriteLine($"Unique opening positions loaded: {openingFens.Length}");
             Console.WriteLine($"Logging enabled: {log}");
             if (csvLogger is not null)
             {
@@ -664,11 +606,11 @@ internal static class LocalTestingProgram
                 new ParallelOptions { MaxDegreeOfParallelism = workers },
                 pairIndex =>
                 {
-                    var openingFen = openingFens[pairIndex % openingFens.Count];
+                    var openingFen = openingFens[pairIndex % openingFens.Length];
                     var whiteGameNumber = pairIndex * 2 + 1;
                     var blackGameNumber = pairIndex * 2 + 2;
                     var pairNumber = pairIndex + 1;
-                    var openingIndex = pairIndex % openingFens.Count + 1;
+                    var openingIndex = pairIndex % openingFens.Length + 1;
 
                     using var pairEngineA = engineAFactory.Create();
                     using var pairEngineB = engineBFactory.Create();
@@ -874,7 +816,7 @@ internal static class LocalTestingProgram
 
     private static EvaluationParticipant ResolveParticipantFromEngineFile(string engineFilePath)
     {
-        var engine = EngineVersions.ResolveTimeLimitedEngineFromFilePath(engineFilePath);
+        var engine = EngineFileSupport.ResolveV3PlusEngine(engineFilePath);
         return new EvaluationParticipant(
             engine.SourcePath,
             engine.EngineStem,
@@ -1008,28 +950,6 @@ internal static class LocalTestingProgram
         };
     }
 
-    private static List<string> LoadOpeningPositions(string openingsFilePath)
-    {
-        var fullPath = ResolveCliPath(openingsFilePath);
-        if (!File.Exists(fullPath))
-        {
-            throw new FileNotFoundException($"Opening source file not found: {fullPath}", fullPath);
-        }
-
-        var lines = File.ReadAllLines(fullPath);
-        var openings = lines.Any(line => line.TrimStart().StartsWith("pos ", StringComparison.Ordinal))
-            ? LoadOpeningPositionsFromBook(lines, fullPath)
-            : LoadOpeningPositionsFromFenList(lines, fullPath);
-
-        if (openings.Count == 0)
-        {
-            throw new InvalidOperationException($"No usable opening positions found in {fullPath}.");
-        }
-
-        ShuffleInPlace(openings);
-        return openings;
-    }
-
     private static SortedDictionary<string, SortedSet<string>> BuildOpeningMoveLookup(IEnumerable<string> lines)
     {
         var lookup = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
@@ -1084,71 +1004,6 @@ internal static class LocalTestingProgram
         return lookup;
     }
 
-    private static List<string> LoadOpeningPositionsFromFenList(IEnumerable<string> lines, string fullPath)
-    {
-        var openings = new List<string>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var rawLine in lines)
-        {
-            var line = rawLine.Trim();
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
-            {
-                continue;
-            }
-
-            _ = new BoardState(line);
-            if (seen.Add(line))
-            {
-                openings.Add(line);
-            }
-        }
-
-        return openings;
-    }
-
-    private static List<string> LoadOpeningPositionsFromBook(IEnumerable<string> lines, string fullPath)
-    {
-        var openings = new List<string>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var rawLine in lines)
-        {
-            var line = rawLine.Trim();
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue;
-            }
-
-            if (!line.StartsWith("pos ", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var fenWithoutCounters = line["pos ".Length..].Trim();
-            var fen = ExpandBookFen(fenWithoutCounters);
-            _ = new BoardState(fen);
-
-            if (string.Equals(fen, StartingFen, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (seen.Add(fen))
-            {
-                openings.Add(fen);
-            }
-        }
-
-        if (openings.Count == 0)
-        {
-            throw new InvalidOperationException(
-                $"No usable non-initial 'pos' entries were found in opening book {fullPath}.");
-        }
-
-        return openings;
-    }
-
     private static string ExpandBookFen(string fenWithoutCounters)
     {
         var parts = fenWithoutCounters.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -1159,15 +1014,6 @@ internal static class LocalTestingProgram
         }
 
         return $"{fenWithoutCounters} 0 1";
-    }
-
-    private static void ShuffleInPlace<T>(IList<T> items)
-    {
-        for (var index = items.Count - 1; index > 0; index--)
-        {
-            var swapIndex = Random.Shared.Next(index + 1);
-            (items[index], items[swapIndex]) = (items[swapIndex], items[index]);
-        }
     }
 
     private static string FindDefaultOpeningSourceFile()
@@ -1445,16 +1291,14 @@ internal static class LocalTestingProgram
     private static void PrintUsage()
     {
         Console.Error.WriteLine("Usage:");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1 v1.1 v1.2 v1.3 v1.4 --depth 4");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --versions v1.5 v1.6 --time-limit-seconds 1.0");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --version v1.6 --time-limit-seconds 1.0 --max-plies 70");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --version v2.0 --time-limit-seconds 1.0");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --version v2.0 --time-limit-seconds 1.0");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V1/V1_6Engine.cs --workers 6 --log --short-sha 1a2b3c4 --v2test");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V2/V2_0Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1800 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4 --v2test");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0 --max-plies 70");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --workers 6 --log --short-sha 1a2b3c4");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1350 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- build-openings-lookup");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V2/V2_5Engine.cs --games 20 --time-limit-ms 100 --workers 6 --skip-1-worker");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --games 20 --time-limit-ms 100 --workers 6 --skip-1-worker");
     }
 
     private sealed record Puzzle1Scenario(
@@ -1462,9 +1306,7 @@ internal static class LocalTestingProgram
         string ExpectedFirstWhite,
         string ForcedBlackMoveUci,
         string ExpectedSecondWhite,
-        int DefaultDepth,
-        double DefaultTimeLimitSeconds,
-        string[] DefaultVersions);
+        double DefaultTimeLimitSeconds);
 
     private sealed record Puzzle2Scenario(
         string StartFen,
@@ -1474,33 +1316,28 @@ internal static class LocalTestingProgram
 
     private sealed record EndgameScenario(
         string StartFen,
-        int DefaultDepth,
         int DefaultMaxPlies);
 
     private sealed record EvaluateMatchOptions(
         string EngineAFilePath,
         string EngineBFilePath,
-        string OpeningsFilePath,
         int Games,
         int MaxPlies,
         double TimeLimitSeconds,
         int Workers,
         bool Log,
-        string? ShortSha,
-        bool V2Test);
+        string? ShortSha);
 
     private sealed record EvaluateStockOptions(
         string EngineFilePath,
         string StockfishPath,
         int StockfishElo,
-        string OpeningsFilePath,
         int Games,
         int MaxPlies,
         double TimeLimitSeconds,
         int Workers,
         bool Log,
-        string? ShortSha,
-        bool V2Test);
+        string? ShortSha);
 
     private sealed record EvaluationParticipant(
         string SourcePath,
