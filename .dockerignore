@@ -1,0 +1,10 @@
+.git
+.vs
+.vscode
+**/bin
+**/obj
+**/.pytest_cache
+**/__pycache__
+.venv
+autoresearch/approved_logs
+engine_scenarios/img
