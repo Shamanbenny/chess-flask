@@ -142,3 +142,79 @@ This was a shock because it directly addressed the problem I was worried about e
 The earlier self-play-style approved runs were still mostly draws. Against the fixed `stockfish-1350` baseline, that changed: the games were no longer dominated by drawn outcomes. That means that, at minimum, one side of the matchup was able to convert advantageous positions into decisive wins often enough for the evaluator to produce much clearer signal.
 
 That matters for future `autoresearch` loops. It makes the results easier to interpret, reduces the risk of over-reading tiny differences inside draw-heavy logs, and gives each experiment a better chance of producing a conclusive inference instead of just another ambiguous marginal score.
+
+## Why I Stopped Letting Autoresearch Choose Every Direction
+
+From there, I let `autoresearch` run a bit further.
+
+That next stretch produced two more approved `v2` versions recorded in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md):
+
+- `v2.8`, which added rook open-file and semi-open-file bonuses
+- `v2.9`, which added a targeted knight outpost bonus
+
+By that point, the autonomous loop was still doing useful work. The pattern was clear enough: constrained static-evaluation changes could keep finding small, real gains against the fixed `stockfish-1350` baseline. But that was also the point where I felt the need to step back and ask a different question.
+
+Not just "what can the loop improve next?"
+
+More specifically: _what do I actually want this engine to become better at structurally?_
+
+The two ideas that stayed in my mind were:
+
+- a persistent transposition table between moves
+- an opening-book lookup table that could both avoid unnecessary search in early positions and introduce some opening variety
+
+Those were not just incremental evaluation tweaks. They were architecture-level changes that seemed likely to matter more as the engine's search kept improving. In that sense, they felt less like additive improvements and more like multiplicative ones: the kind of change that might not maximize immediate benchmark gain, but could increase the value of later search improvements built on top of them.
+
+That decision became [`v3.0`](autoresearch/ATTEMPTS.md).
+
+According to the attempt log, `v3.0` was explicitly approved by me even though its `stockfish-1350` score rate (`0.6110`) was lower than `v2.9` (`0.6480`). I did notice that drop. It just was not the part I cared about most at that moment.
+
+What mattered more was that `v3.0` established a new structural base:
+
+- a per-game search context that can keep the transposition table alive across moves
+- an opening lookup path keyed before the normal search
+- a clean `v3` engine lineage built around those ideas
+
+That is why I did not treat the temporary benchmark loss as a reason to abandon the direction. If the long-term objective is a stronger searcher under tight time limits, then memory reuse across moves and cheap opening handling look like the kind of infrastructure that should pay off more as the engine gets better elsewhere.
+
+After `v3.0`, I resumed `autoresearch` within that new lineage.
+
+The next sequence in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md) shows `v3.1`, `v3.2`, and `v3.3` being rejected before `v3.4` was finally approved. 
+
+## Why I Moved The Workflow Out Of A Pure Codex Infinite Loop
+
+That was also the point where I started noticing a deeper inconsistency in the original setup.
+
+The early modified `autoresearch` workflow depended too heavily on a pure Codex infinite loop. In theory, that sounded attractive: let the agent keep operating autonomously, keep evaluating candidates, and keep appending history without my involvement.
+
+In practice, there was a reliability problem.
+
+Some evaluator runs took a long time, especially at the full `500`-game contract. And during those long runs, there were cases where Codex would decide on its own to halt, interrupt itself, or otherwise stop behaving like a truly persistent autonomous loop, even though the instructions were explicit that it should _not_ do that. I could make `autoresearch/PROGRAM.md` say "never halt" as clearly as I wanted, but that still did not guarantee consistent behavior. Context-window drift, partial instruction recall, or simple agent inconsistency could still break the loop at the exact point where reliability mattered most.
+
+That was the core limitation.
+
+The problem was not that Codex could not produce useful engine changes. It clearly could. The problem was that I did not want core workflow guarantees such as version control, evaluator execution, approval rules, and attempt logging to depend on whether the agent happened to remain obedient and context-stable across a very long-running session.
+
+That is what led to the current Python-script workflow now documented in [`autoresearch/README.md`](autoresearch/README.md).
+
+The advantages of that shift are fairly concrete:
+
+- Python now owns the strict parts of the workflow: sandbox setup, version selection, evaluator execution, approval or rejection, changelog updates, attempt logging, and local git commits
+- Codex no longer has to carry the full protocol in context for hours at a time
+- each experiment runs inside a fresh sandbox with a generated `PROGRAM.md`, a copied `ATTEMPTS.md`, the candidate engine file, and `RETURN.json`
+- Codex is only responsible for the candidate engine edit and its own short structured summary fields
+
+That makes the overall system more reliable and also cheaper in the ways that matter operationally:
+
+- less context to maintain
+- less token usage to burn on workflow bookkeeping
+- less room for inconsistent decisions around evaluator handling
+- a more repeatable contract between "agent proposes a change" and "system evaluates and records it"
+
+So the transition away from a fully Codex-owned loop was not a retreat from `autoresearch`.
+
+It was the opposite. It was an attempt to make `autoresearch` stricter, more reproducible, and less dependent on long-horizon agent behavior for the parts of the loop that should really be deterministic.
+
+That is where this phase of the story currently ends.
+
+I still expect to keep using `autoresearch` going forward. The difference now is that the workflow is no longer asking Codex to also be the process supervisor, evaluator operator, historian, and policy enforcer all at once.
