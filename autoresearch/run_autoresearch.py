@@ -18,7 +18,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from contextlib import closing
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -778,32 +777,35 @@ def metrics_to_dict(metrics: EvaluationMetrics | None) -> dict[str, Any]:
 
 def append_attempt_markdown(attempt: dict[str, Any]) -> None:
     metrics = attempt["metrics"]
-    hypotheses = "\n".join(f"  - `{item}`" for item in attempt["hypotheses"])
-    text = textwrap.dedent(
-        f"""
-
-        ## Attempt: {attempt['timestamp']} - {attempt['candidate_version']}
-
-        - status: `{attempt['status']}`
-        - commit: `{attempt['commit']}`
-        - evaluator_baseline: `{attempt['evaluator_baseline']}`
-        - seed_version: `{attempt['seed_version']}`
-        - seed_file: `{attempt['seed_file']}`
-        - candidate_version: `{attempt['candidate_version']}`
-        - version_bump: `{attempt['version_bump']}`
-        - hypotheses:
-        {hypotheses}
-        - implementation_summary: `{attempt['implementation_summary']}`
-        - evaluation_log_path: `{attempt['evaluation_log_path']}`
-        - wins/draws/losses: `{format_wdl(metrics)}`
-        - score: `{format_score(metrics)}`
-        - score_rate: `{format_float(metrics.get('score_rate'))}`
-        - average_plies: `{format_float(metrics.get('average_plies'))}`
-        - average_processing_time_ms: `{format_float(metrics.get('average_processing_time_ms'))}`
-        - average_positions_or_nodes: `{format_float(metrics.get('average_positions_or_nodes'))}`
-        - inferred_conclusion: `{attempt['inferred_conclusion']}`
-        """
+    lines = [
+        "",
+        "",
+        f"## Attempt: {attempt['timestamp']} - {attempt['candidate_version']}",
+        "",
+        f"- status: `{attempt['status']}`",
+        f"- commit: `{attempt['commit']}`",
+        f"- evaluator_baseline: `{attempt['evaluator_baseline']}`",
+        f"- seed_version: `{attempt['seed_version']}`",
+        f"- seed_file: `{attempt['seed_file']}`",
+        f"- candidate_version: `{attempt['candidate_version']}`",
+        f"- version_bump: `{attempt['version_bump']}`",
+        "- hypotheses:",
+    ]
+    lines.extend(f"  - `{item}`" for item in attempt["hypotheses"])
+    lines.extend(
+        [
+            f"- implementation_summary: `{attempt['implementation_summary']}`",
+            f"- evaluation_log_path: `{attempt['evaluation_log_path']}`",
+            f"- wins/draws/losses: `{format_wdl(metrics)}`",
+            f"- score: `{format_score(metrics)}`",
+            f"- score_rate: `{format_float(metrics.get('score_rate'))}`",
+            f"- average_plies: `{format_float(metrics.get('average_plies'))}`",
+            f"- average_processing_time_ms: `{format_float(metrics.get('average_processing_time_ms'))}`",
+            f"- average_positions_or_nodes: `{format_float(metrics.get('average_positions_or_nodes'))}`",
+            f"- inferred_conclusion: `{attempt['inferred_conclusion']}`",
+        ]
     )
+    text = "\n".join(lines)
     with ATTEMPTS_PATH.open("a", encoding="utf-8") as handle:
         handle.write(text)
 
@@ -1073,21 +1075,23 @@ def run(
     capture: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     if not capture:
-        with closing(
-            subprocess.Popen(
-                command,
-                cwd=cwd,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-        ) as process:
+        process = subprocess.Popen(
+            command,
+            cwd=cwd,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        try:
             streamed_output: list[str] = []
             assert process.stdout is not None
             for line in process.stdout:
                 streamed_output.append(line)
                 emit_console(line, flush=False)
             returncode = process.wait()
+        finally:
+            if process.stdout is not None:
+                process.stdout.close()
         stdout = "".join(streamed_output)
         if check and returncode != 0:
             raise SystemExit(f"Command failed: {' '.join(command)}\n{stdout}")
