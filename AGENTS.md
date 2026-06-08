@@ -62,7 +62,7 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a
 
 `LocalTesting` is V3+ only. Use `--engine-file`/`--engine-a-file`/`--engine-b-file`; do not reintroduce version-list or pre-V3 scenario commands.
 
-When you need the current exact testing or evaluation command shape, reference `README.md`, `autoresearch/EVALUATE.md`, and `autoresearch/ATTEMPTS.md`.
+When you need the current exact testing or evaluation command shape, reference `README.md`, `autoresearch/README.md`, and `autoresearch/ATTEMPTS.md`.
 
 ## Testing and Validation
 
@@ -78,8 +78,7 @@ When editing docs or code, distinguish between historical explanation and curren
 
 `autoresearch/` defines the `v2+` experimentation contract. Read these files before doing autonomous engine-iteration work:
 
-- `autoresearch/PROGRAM.md`
-- `autoresearch/EVALUATE.md`
+- `autoresearch/README.md`
 - `autoresearch/ATTEMPTS.md`
 
 Important rules:
@@ -87,7 +86,7 @@ Important rules:
 - The fixed evaluator baseline is local `stockfish-1350`.
 - The latest approved in-repo engine is the seed for new candidate versions.
 - New work happens in a newly cloned versioned engine file.
-- The current fixed evaluator contract is documented in `autoresearch/EVALUATE.md`; use that file and `autoresearch/ATTEMPTS.md` for the current command, baseline, and latest approved seed values.
+- The current fixed evaluator contract is documented in `autoresearch/README.md`; use that file, `autoresearch/state.json`, and `autoresearch/ATTEMPTS.md` for the current command, baseline, and latest approved seed values.
 - Approval requires a clean build, a completed evaluator run, no illegal/crash failures, and `lcb95 > 0.5`.
 - `ATTEMPTS.md` is append-only except for the “Latest Approved Engine Seed” section.
 

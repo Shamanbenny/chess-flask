@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "evaluator": {
+    "opponent": "stockfish-1350",
+    "stockfish_elo": 1350,
+    "games": 500,
+    "time_limit_ms": 100,
+    "max_plies": 200,
+    "workers": 6,
+    "approval": {
+      "lcb95_min_exclusive": 0.5,
+      "max_plies_rate_max_exclusive": 0.1,
+      "t_critical_one_sided_95_by_df": {
+        "249": 1.650996
+      }
+    }
+  },
+  "latest_approved": {
+    "version": "v3.4",
+    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_4Engine.cs",
+    "commit": "e45c109",
+    "approved_recorded_at": "2026-06-08",
+    "approved_reference_score_rate_vs_stockfish_1350": 0.646,
+    "approved_reference_score_source": "autoresearch/approved_logs/V3_4Engine-0398feb-result.csv",
+    "notes": "Current v3.4 baseline after making draw/repetition contempt material-aware."
+  },
+  "next_candidate_version": "v3.5",
+  "agent": {
+    "max_hypotheses_per_experiment": 2
+  }
+}

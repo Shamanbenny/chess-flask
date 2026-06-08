@@ -11,6 +11,8 @@ ENV/
 env.bak/ 
 venv.bak/ 
 .env*
+__pycache__/
+*.pyc
 
 # .NET build outputs
 **/bin/
@@ -18,3 +20,4 @@ venv.bak/
 
 # Misc
 autoresearch/logs/
+autoresearch-sandbox/

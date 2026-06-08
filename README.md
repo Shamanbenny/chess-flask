@@ -115,16 +115,15 @@ dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --engine-file e
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
 ```
 
-For Stockfish evaluation, set `STOCKFISH_PATH` and use the evaluator contract in `autoresearch/EVALUATE.md`.
+For Stockfish evaluation, set `STOCKFISH_PATH` and use the evaluator contract in `autoresearch/README.md`.
 
 ## Autoresearch
 
 `autoresearch/` defines the `v2+` experimentation contract. Read these before autonomous engine-iteration work:
 
-- `autoresearch/PROGRAM.md`
-- `autoresearch/EVALUATE.md`
+- `autoresearch/README.md`
 - `autoresearch/ATTEMPTS.md`
 
-The fixed evaluator baseline is local `stockfish-1350`. The latest approved in-repo engine seed and current evaluator command are documented in `autoresearch/ATTEMPTS.md`.
+The fixed evaluator baseline is local `stockfish-1350`. The current evaluator command and approval rule are documented in `autoresearch/README.md`; latest approved seed metadata lives in `autoresearch/state.json` and the append-only history in `autoresearch/ATTEMPTS.md`.
 
 Approval requires a clean build, a completed evaluator run, no illegal/crash failures, and `lcb95 > 0.5`.
