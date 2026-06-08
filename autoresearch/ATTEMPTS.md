@@ -370,3 +370,26 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `99.675`
 - average_positions_or_nodes: `11335.12`
 - inferred_conclusion: `The prior v3.0 draw/repetition contempt was too aggressive when materially worse. Making draw-saving material-aware produced a large raw-score improvement, fewer losses, and stayed under the max-plies threshold despite more willingness to save bad positions. Future v3 work should build from v3.4 and preserve material-aware draw behavior; further improvements should target opening/context use or similarly cheap policies that improve conversion without increasing max_plies_rate beyond 0.10.`
+
+
+      ## Attempt: 2026-06-08T17:22:22Z - v3.5
+
+      - status: `approved`
+      - commit: `8b24935`
+      - evaluator_baseline: `stockfish-1350`
+      - seed_version: `v3.4`
+      - seed_file: `engine_csharp/src/Engine.Core/V3/V3_4Engine.cs`
+      - candidate_version: `v3.5`
+      - version_bump: `minor`
+      - hypotheses:
+        - `A principal-variation search pass on non-first moves will let v3.5 search more narrowly behind the existing TT move ordering, improving effective depth at 100ms without adding evaluation overhead.`
+- `Applying the same narrow-window re-search policy at the root should preserve move quality while reducing wasted full-window work on clearly inferior alternatives.`
+      - implementation_summary: `Cloned v3.4 into v3.5 and changed the root and recursive negamax loops to use principal-variation style zero-window searches on non-first ordered moves, with full re-search only when a narrow probe beats the current alpha/best score.`
+      - evaluation_log_path: `autoresearch/approved_logs/8b24935-result.csv`
+      - wins/draws/losses: `320/73/107`
+      - score: `356.5`
+      - score_rate: `0.7130`
+      - average_plies: `84.1620`
+      - average_processing_time_ms: `98.1941`
+      - average_positions_or_nodes: `11576.6619`
+      - inferred_conclusion: `The principal-variation zero-window re-search policy produced a large strength gain over v3.4 while keeping failures at zero and reducing capped games, so v3 search should continue to build around cheap search-control improvements that exploit existing move ordering rather than adding heavier per-node evaluation work.`

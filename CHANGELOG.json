@@ -166,6 +166,31 @@
         "Context reuse depends on the same warm server instance receiving future requests, so cold starts or different instances may begin with an empty cache."
       ],
       "summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties."
+    },
+    {
+      "version": "v3.5",
+      "api_version": "v3_5",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_5Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "8b24935",
+      "hypotheses": [
+        "A principal-variation search pass on non-first moves will let v3.5 search more narrowly behind the existing TT move ordering, improving effective depth at 100ms without adding evaluation overhead.",
+        "Applying the same narrow-window re-search policy at the root should preserve move quality while reducing wasted full-window work on clearly inferior alternatives."
+      ],
+      "summary": "Cloned v3.4 into v3.5 and changed the root and recursive negamax loops to use principal-variation style zero-window searches on non-first ordered moves, with full re-search only when a narrow probe beats the current alpha/best score.",
+      "implementation_summary": "Cloned v3.4 into v3.5 and changed the root and recursive negamax loops to use principal-variation style zero-window searches on non-first ordered moves, with full re-search only when a narrow probe beats the current alpha/best score.",
+      "evaluation_log_path": "autoresearch/approved_logs/8b24935-result.csv",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 320,
+        "draws": 73,
+        "losses": 107,
+        "score": 356.5,
+        "score_rate": 0.713,
+        "text": "C# v3.5 scored 356.5/500 against Stockfish (1350 Elo): 320 wins, 73 draws, 107 losses, score rate 0.7130."
+      },
+      "limitations": []
     }
   ]
 }

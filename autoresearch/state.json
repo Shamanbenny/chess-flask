@@ -16,15 +16,15 @@
     }
   },
   "latest_approved": {
-    "version": "v3.4",
-    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_4Engine.cs",
-    "commit": "e45c109",
+    "version": "v3.5",
+    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_5Engine.cs",
+    "commit": "8b24935",
     "approved_recorded_at": "2026-06-08",
-    "approved_reference_score_rate_vs_stockfish_1350": 0.646,
-    "approved_reference_score_source": "autoresearch/approved_logs/V3_4Engine-0398feb-result.csv",
-    "notes": "Current v3.4 baseline after making draw/repetition contempt material-aware."
+    "approved_reference_score_rate_vs_stockfish_1350": 0.713,
+    "approved_reference_score_source": "autoresearch/approved_logs/8b24935-result.csv",
+    "notes": "Cloned v3.4 into v3.5 and changed the root and recursive negamax loops to use principal-variation style zero-window searches on non-first ordered moves, with full re-search only when a narrow probe beats the current alpha/best score."
   },
-  "next_candidate_version": "v3.5",
+  "next_candidate_version": "v3.6",
   "agent": {
     "max_hypotheses_per_experiment": 2
   }
