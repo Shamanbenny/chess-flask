@@ -415,3 +415,24 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `97.8252`
 - average_positions_or_nodes: `10700.0111`
 - inferred_conclusion: `Root aspiration windows produced another meaningful v3 search-strength gain over the already strong v3.5 seed while keeping failures at zero and further lowering capped games. Future experiments should continue prioritizing cheap root and move-ordering search-control improvements that exploit iterative-deepening score stability, rather than adding heavier per-node evaluation terms.`
+
+## Attempt: 2026-06-08T18:03:52Z - v3.7
+
+- status: `rejected`
+- commit: `<n/a>`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.6`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_6Engine.cs`
+- candidate_version: `v3.7`
+- version_bump: `minor`
+- hypotheses:
+  - `A persistent quiet-move ordering layer built from killer moves and quiet history will improve v3.6's PVS and aspiration-window cutoffs at 100ms without adding per-node evaluation cost.`
+- implementation_summary: `Cloned v3.6 into v3.7 and extended the search context with persistent killer-move and quiet-history tables, then fed those heuristics into quiet move ordering and updated them on quiet beta cutoffs at the root and recursive negamax nodes.`
+- evaluation_log_path: `<n/a>`
+- wins/draws/losses: `n/a/n/a/n/a`
+- score: `n/a`
+- score_rate: `n/a`
+- average_plies: `n/a`
+- average_processing_time_ms: `n/a`
+- average_positions_or_nodes: `n/a`
+- inferred_conclusion: `This attempt failed before evaluation because the move-ordering refactor introduced a build-breaking API mismatch in the sandbox candidate, so it provides no strength signal against v3.6. Future search-control experiments should keep the change surface equally narrow but verify helper accessibility and static-versus-instance call boundaries before handing control back to the orchestrator.`
