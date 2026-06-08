@@ -393,3 +393,25 @@ Use this exact structure for each appended attempt:
       - average_processing_time_ms: `98.1941`
       - average_positions_or_nodes: `11576.6619`
       - inferred_conclusion: `The principal-variation zero-window re-search policy produced a large strength gain over v3.4 while keeping failures at zero and reducing capped games, so v3 search should continue to build around cheap search-control improvements that exploit existing move ordering rather than adding heavier per-node evaluation work.`
+
+
+## Attempt: 2026-06-08T17:59:54Z - v3.6
+
+- status: `approved`
+- commit: `62e5166`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.5`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_5Engine.cs`
+- candidate_version: `v3.6`
+- version_bump: `minor`
+- hypotheses:
+  - `Root aspiration windows around the previous iteration score will reduce full-window work on stable positions and improve effective depth at 100ms, while fail-low and fail-high re-search keeps the result exact when the window is wrong.`
+- implementation_summary: `Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result.`
+- evaluation_log_path: `autoresearch/approved_logs/62e5166-result.csv`
+- wins/draws/losses: `343/49/108`
+- score: `367.5`
+- score_rate: `0.7350`
+- average_plies: `84.2260`
+- average_processing_time_ms: `97.8252`
+- average_positions_or_nodes: `10700.0111`
+- inferred_conclusion: `Root aspiration windows produced another meaningful v3 search-strength gain over the already strong v3.5 seed while keeping failures at zero and further lowering capped games. Future experiments should continue prioritizing cheap root and move-ordering search-control improvements that exploit iterative-deepening score stability, rather than adding heavier per-node evaluation terms.`

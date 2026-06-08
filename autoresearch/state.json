@@ -16,15 +16,15 @@
     }
   },
   "latest_approved": {
-    "version": "v3.5",
-    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_5Engine.cs",
-    "commit": "8b24935",
+    "version": "v3.6",
+    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_6Engine.cs",
+    "commit": "62e5166",
     "approved_recorded_at": "2026-06-08",
-    "approved_reference_score_rate_vs_stockfish_1350": 0.713,
-    "approved_reference_score_source": "autoresearch/approved_logs/8b24935-result.csv",
-    "notes": "Cloned v3.4 into v3.5 and changed the root and recursive negamax loops to use principal-variation style zero-window searches on non-first ordered moves, with full re-search only when a narrow probe beats the current alpha/best score."
+    "approved_reference_score_rate_vs_stockfish_1350": 0.735,
+    "approved_reference_score_source": "autoresearch/approved_logs/62e5166-result.csv",
+    "notes": "Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result."
   },
-  "next_candidate_version": "v3.6",
+  "next_candidate_version": "v3.7",
   "agent": {
     "max_hypotheses_per_experiment": 2
   }

@@ -191,6 +191,30 @@
         "text": "C# v3.5 scored 356.5/500 against Stockfish (1350 Elo): 320 wins, 73 draws, 107 losses, score rate 0.7130."
       },
       "limitations": []
+    },
+    {
+      "version": "v3.6",
+      "api_version": "v3_6",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_6Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "62e5166",
+      "hypotheses": [
+        "Root aspiration windows around the previous iteration score will reduce full-window work on stable positions and improve effective depth at 100ms, while fail-low and fail-high re-search keeps the result exact when the window is wrong."
+      ],
+      "summary": "Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result.",
+      "implementation_summary": "Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result.",
+      "evaluation_log_path": "autoresearch/approved_logs/62e5166-result.csv",
+      "stockfish_1350": {
+        "games": 500,
+        "wins": 343,
+        "draws": 49,
+        "losses": 108,
+        "score": 367.5,
+        "score_rate": 0.735,
+        "text": "C# v3.6 scored 367.5/500 against Stockfish (1350 Elo): 343 wins, 49 draws, 108 losses, score rate 0.7350."
+      },
+      "limitations": []
     }
   ]
 }
