@@ -40,6 +40,12 @@ that is absent from the deployed assembly.
 
 ## Commands
 
+To run the following, we must [install **.NET 8 SDK** with Snap](https://learn.microsoft.com/en-us/dotnet/core/install/linux-snap-sdk) for Linux:
+
+```bash
+sudo snap install dotnet-sdk --classic --channel 8.0/stable
+```
+
 ```bash
 dotnet build engine_csharp/ChessEngine.sln
 dotnet run --project engine_csharp/src/Engine.Functions

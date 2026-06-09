@@ -14,10 +14,20 @@ updates.
 
 Create and activate a repo-local Python virtual environment first (Run the following in the Root Repo Directory):
 
+- For Linux:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r autoresearch/requirements.txt
+```
+
+- For Windows (Using PowerShell equivalents):
+
+```bash
+python3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r autoresearch\requirements.txt
 ```
 
 Then run the orchestrator from the activated venv:
