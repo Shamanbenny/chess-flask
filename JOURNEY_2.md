@@ -179,7 +179,7 @@ That is why I did not treat the temporary benchmark loss as a reason to abandon 
 
 After `v3.0`, I resumed `autoresearch` within that new lineage.
 
-The next sequence in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md) shows `v3.1`, `v3.2`, and `v3.3` being rejected before `v3.4` was finally approved. 
+The next sequence in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md) shows `v3.1`, `v3.2`, and `v3.3` being rejected before `v3.4` was finally approved.
 
 ## Why I Moved The Workflow Out Of A Pure Codex Infinite Loop
 
@@ -215,6 +215,24 @@ So the transition away from a fully Codex-owned loop was not a retreat from `aut
 
 It was the opposite. It was an attempt to make `autoresearch` stricter, more reproducible, and less dependent on long-horizon agent behavior for the parts of the loop that should really be deterministic.
 
-That is where this phase of the story currently ends.
+## Where This Phase Actually Ends Now
 
-I still expect to keep using `autoresearch` going forward. The difference now is that the workflow is no longer asking Codex to also be the process supervisor, evaluator operator, historian, and policy enforcer all at once.
+At the time of writing this update, that structural rewrite has already justified itself.
+
+The important result is not a single approved version. The important result is that the new workflow has now sustained more than a dozen experiments in sequence without the experiment loop itself becoming the problem. The loop kept spawning candidates, evaluating them, rejecting weak ones, approving stronger ones, and recording the outcomes cleanly.
+
+The concrete numbers, version-by-version outcomes, and evaluator summaries are all in [`autoresearch/ATTEMPTS.md`](autoresearch/ATTEMPTS.md). That file is the place to inspect the actual stats. The point that matters for this narrative is simpler: the structural changes worked, and they worked under repeated use rather than only as a one-off success case.
+
+That does not mean I think the workflow is "solved."
+
+The next likely limitation is conceptual rather than operational. Right now each experiment is constrained to a small number of hypotheses. That is good for interpretability, but it may become a bottleneck later. Some improvements may only emerge when a third prerequisite idea is already in place. Hypotheses `A` and `B` together may look neutral or weak unless hypothesis `C` has already landed first. A workflow that mostly explores isolated or paired ideas can miss that kind of dependency chain.
+
+There is also a second concern I take seriously: the growing attempt history may start to bias future runs too strongly against revisiting rejected ideas. In some cases that is exactly what we want. In other cases, a rejected hypothesis may only have failed because it was tried too early, paired with the wrong companion change, or tested before the engine had the right surrounding structure. If the hydrated context implicitly teaches Codex that those ideas are "settled," then the workflow may discourage useful retests that would make sense later.
+
+Regardless of these concerns, however, I think the pattern has demonstrated clearly enough to be useful beyond this chess engine. This workflow will especially be well-suited to systems where:
+
+- meaningful improvements can be argued for at a hypothesis or theory level before implementation
+- each candidate can be evaluated by a stable quantitative benchmark
+- the benchmark is good enough to tell whether the change was actually an improvement
+
+That is where this phase of the story ends: not with uncertainty about whether the modified workflow works, but with a clearer sense of both its strengths and the kinds of future experiments it may struggle to discover on its own.
