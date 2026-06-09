@@ -479,3 +479,25 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `98.1286`
 - average_positions_or_nodes: `10684.7203`
 - inferred_conclusion: `Internal iterative deepening as a TT-move seeding fallback was effectively neutral on top of v3.6: it preserved stability and a strong paired lower bound, but slightly underperformed the approved seed on score_rate while also trimming nodes a bit. Future v3 search-control experiments should avoid spending extra work on generic reduced-depth bootstrap probes unless they produce a clearer move-ordering gain, and should instead target higher-leverage ordering or pruning changes that more directly improve root move selection within the same 100ms budget.`
+
+## Attempt: 2026-06-09T05:47:08Z - v3.10
+
+- status: `approved`
+- commit: `41846bf`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.6`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_6Engine.cs`
+- candidate_version: `v3.10`
+- version_bump: `minor`
+- hypotheses:
+  - `Late-move reductions for quiet, later-ordered moves should let v3.10 search deeper on low-priority branches without weakening principal-variation re-search when a reduced move proves interesting.`
+  - `A narrow killer-move ordering layer for quiet beta cutoffs should improve v3.10's existing PVS move ordering enough to make those late-move reductions safer and more effective at 100ms.`
+- implementation_summary: `Cloned v3.6 into v3.10 and added quiet-move killer ordering plus a contained late-move reduction path for later-ordered quiet moves, with full PVS re-search whenever a reduced probe still raises alpha.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_10Engine-41846bf-result.csv`
+- wins/draws/losses: `682/130/188`
+- score: `747.0`
+- score_rate: `0.7470`
+- average_plies: `86.9570`
+- average_processing_time_ms: `98.9572`
+- average_positions_or_nodes: `8168.5526`
+- inferred_conclusion: `The contained quiet-move killer ordering plus late-move reduction policy produced a real improvement over v3.6 under the full 1000-game Stockfish-1350 contract, clearing the prior 0.7350 score_rate while keeping capped games low and failures at zero. Future v3 work should keep building on cheap search-control changes that improve move ordering and reduce wasted work on low-priority branches, while being careful not to overextend reduction heuristics in ways that increase tactical misses or long drawn games.`

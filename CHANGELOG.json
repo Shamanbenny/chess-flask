@@ -215,6 +215,31 @@
         "text": "C# v3.6 scored 367.5/500 against Stockfish (1350 Elo): 343 wins, 49 draws, 108 losses, score rate 0.7350."
       },
       "limitations": []
+    },
+    {
+      "version": "v3.10",
+      "api_version": "v3_10",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_10Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "41846bf",
+      "hypotheses": [
+        "Late-move reductions for quiet, later-ordered moves should let v3.10 search deeper on low-priority branches without weakening principal-variation re-search when a reduced move proves interesting.",
+        "A narrow killer-move ordering layer for quiet beta cutoffs should improve v3.10's existing PVS move ordering enough to make those late-move reductions safer and more effective at 100ms."
+      ],
+      "summary": "Cloned v3.6 into v3.10 and added quiet-move killer ordering plus a contained late-move reduction path for later-ordered quiet moves, with full PVS re-search whenever a reduced probe still raises alpha.",
+      "implementation_summary": "Cloned v3.6 into v3.10 and added quiet-move killer ordering plus a contained late-move reduction path for later-ordered quiet moves, with full PVS re-search whenever a reduced probe still raises alpha.",
+      "evaluation_log_path": "autoresearch/approved_logs/V3_10Engine-41846bf-result.csv",
+      "stockfish_1350": {
+        "games": 1000,
+        "wins": 682,
+        "draws": 130,
+        "losses": 188,
+        "score": 747.0,
+        "score_rate": 0.747,
+        "text": "C# v3.10 scored 747.0/1000 against Stockfish (1350 Elo): 682 wins, 130 draws, 188 losses, score rate 0.7470."
+      },
+      "limitations": []
     }
   ]
 }

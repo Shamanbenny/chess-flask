@@ -16,15 +16,15 @@
     }
   },
   "latest_approved": {
-    "version": "v3.6",
-    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_6Engine.cs",
-    "commit": "62e5166",
-    "approved_recorded_at": "2026-06-08",
-    "approved_reference_score_rate_vs_stockfish_1350": 0.735,
-    "approved_reference_score_source": "autoresearch/approved_logs/62e5166-result.csv",
-    "notes": "Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result."
+    "version": "v3.10",
+    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_10Engine.cs",
+    "commit": "41846bf",
+    "approved_recorded_at": "2026-06-09",
+    "approved_reference_score_rate_vs_stockfish_1350": 0.747,
+    "approved_reference_score_source": "autoresearch/approved_logs/V3_10Engine-41846bf-result.csv",
+    "notes": "Cloned v3.6 into v3.10 and added quiet-move killer ordering plus a contained late-move reduction path for later-ordered quiet moves, with full PVS re-search whenever a reduced probe still raises alpha."
   },
-  "next_candidate_version": "v3.10",
+  "next_candidate_version": "v3.11",
   "agent": {
     "max_hypotheses_per_experiment": 2
   }
