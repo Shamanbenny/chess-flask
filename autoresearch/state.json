@@ -16,15 +16,15 @@
     }
   },
   "latest_approved": {
-    "version": "v3.13",
-    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_13Engine.cs",
-    "commit": "49960e8",
+    "version": "v3.14",
+    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_14Engine.cs",
+    "commit": "ec54e97",
     "approved_recorded_at": "2026-06-09",
-    "approved_reference_score_rate_vs_stockfish_1350": 0.7775,
-    "approved_reference_score_source": "autoresearch/approved_logs/V3_13Engine-49960e8-result.csv",
-    "notes": "Added a guarded null-move pruning path to negamax with no-null-reply recursion control, a pawns-and-king-only endgame exclusion to reduce zugzwang risk, and native-board null-move make/unmake helpers while preserving the existing LMR/PVS framework."
+    "approved_reference_score_rate_vs_stockfish_1350": 0.8085,
+    "approved_reference_score_source": "autoresearch/approved_logs/V3_14Engine-ec54e97-result.csv",
+    "notes": "Added guarded reverse futility pruning in negamax for shallow non-check nodes, using the existing static evaluation only when the side to move still has non-pawn material and the margin over beta is comfortably large."
   },
-  "next_candidate_version": "v3.14",
+  "next_candidate_version": "v3.15",
   "agent": {
     "max_hypotheses_per_experiment": 2,
     "codex_turn_timeout_minutes": 15

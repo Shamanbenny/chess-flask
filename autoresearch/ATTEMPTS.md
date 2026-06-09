@@ -566,3 +566,24 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `98.3980`
 - average_positions_or_nodes: `11407.9374`
 - inferred_conclusion: `The guarded null-move pruning change was a clear improvement over v3.11, raising score_rate from 0.7565 to 0.7775 while keeping failures at zero and max-plies comfortably within the approval threshold. Future v3 experiments should continue exploring selective search-control changes with explicit zugzwang and endgame safety guards, since this branch benefited more from a contained pruning improvement than from stacking additional small static evaluation bonuses.`
+
+## Attempt: 2026-06-09T08:36:59Z - v3.14
+
+- status: `approved`
+- commit: `ec54e97`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.13`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_13Engine.cs`
+- candidate_version: `v3.14`
+- version_bump: `minor`
+- hypotheses:
+  - `Adding shallow reverse futility pruning at non-check nodes with remaining non-pawn material should cut clearly fail-high branches near the horizon and improve root move selection within the 100ms budget.`
+- implementation_summary: `Added guarded reverse futility pruning in negamax for shallow non-check nodes, using the existing static evaluation only when the side to move still has non-pawn material and the margin over beta is comfortably large.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_14Engine-ec54e97-result.csv`
+- wins/draws/losses: `752/113/135`
+- score: `808.5`
+- score_rate: `0.8085`
+- average_plies: `83.9430`
+- average_processing_time_ms: `98.1973`
+- average_positions_or_nodes: `12580.9138`
+- inferred_conclusion: `The guarded shallow reverse futility pruning change was a strong improvement over v3.13, raising score_rate from 0.7775 to 0.8085 with zero failures and a comfortably acceptable max-plies rate. Future v3 experiments should keep exploring selective shallow pruning and move-filtering ideas that save search on clearly safe branches, while preserving the existing endgame and zugzwang guards that keep aggressive pruning from backfiring.`

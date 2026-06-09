@@ -608,6 +608,30 @@
         "text": "C# v3.13 scored 777.5/1000 against Stockfish (1350 Elo): 708 wins, 139 draws, 153 losses, score rate 0.7775."
       },
       "limitations": []
+    },
+    {
+      "version": "v3.14",
+      "api_version": "v3_14",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_14Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "ec54e97",
+      "hypotheses": [
+        "Adding shallow reverse futility pruning at non-check nodes with remaining non-pawn material should cut clearly fail-high branches near the horizon and improve root move selection within the 100ms budget."
+      ],
+      "summary": "Added guarded reverse futility pruning in negamax for shallow non-check nodes, using the existing static evaluation only when the side to move still has non-pawn material and the margin over beta is comfortably large.",
+      "implementation_summary": "Added guarded reverse futility pruning in negamax for shallow non-check nodes, using the existing static evaluation only when the side to move still has non-pawn material and the margin over beta is comfortably large.",
+      "evaluation_log_path": "autoresearch/approved_logs/V3_14Engine-ec54e97-result.csv",
+      "stockfish_1350": {
+        "games": 1000,
+        "wins": 752,
+        "draws": 113,
+        "losses": 135,
+        "score": 808.5,
+        "score_rate": 0.8085,
+        "text": "C# v3.14 scored 808.5/1000 against Stockfish (1350 Elo): 752 wins, 113 draws, 135 losses, score rate 0.8085."
+      },
+      "limitations": []
     }
   ]
 }
