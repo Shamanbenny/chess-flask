@@ -82,6 +82,28 @@ def emit_console(message: str, *, stream: Any = sys.stdout, flush: bool = False)
                 handle.flush()
 
 
+def format_elapsed_duration(seconds: float) -> str:
+    total_seconds = max(0, int(round(seconds)))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours:d}h {minutes:02d}m {secs:02d}s"
+    if minutes:
+        return f"{minutes:d}m {secs:02d}s"
+    return f"{secs:d}s"
+
+
+def log_experiment_duration(candidate: Candidate, started_at: dt.datetime, started_monotonic: float) -> None:
+    ended_at = dt.datetime.now()
+    elapsed = time.monotonic() - started_monotonic
+    log_phase(
+        "Experiment timing for "
+        f"{candidate.version}: start={started_at.strftime('%Y-%m-%d %H:%M:%S')}, "
+        f"end={ended_at.strftime('%Y-%m-%d %H:%M:%S')}, "
+        f"elapsed={format_elapsed_duration(elapsed)}."
+    )
+
+
 def main() -> int:
     args = parse_args()
     if args.major and not args.prompt:
@@ -104,6 +126,8 @@ def main() -> int:
         return 0
 
     while True:
+        experiment_started_at = dt.datetime.now()
+        experiment_started_monotonic = time.monotonic()
         log_phase(f"Starting attempt for {candidate.version}.")
         try:
             codex_session = run_codex_implementation(state, candidate)
@@ -111,6 +135,7 @@ def main() -> int:
             reason = str(exc)
             log_phase(reason)
             cleanup_timed_out_attempt(candidate)
+            log_experiment_duration(candidate, experiment_started_at, experiment_started_monotonic)
             choice = prompt_continue("timed out", candidate, reason)
             if choice == "stop":
                 return 0
@@ -165,6 +190,7 @@ def main() -> int:
                 log_path=log_path if log_path.exists() else None,
                 approved_log_path=approved_log_path,
             )
+            log_experiment_duration(candidate, experiment_started_at, experiment_started_monotonic)
             choice = prompt_continue("timed out", candidate, reason)
             if choice == "stop":
                 return 0
@@ -196,6 +222,7 @@ def main() -> int:
             finalize_attempt_commit(candidate, status, commit_sha, approved_log_path)
             log_phase(f"Recorded git commit {commit_sha} for {candidate.version}.")
 
+        log_experiment_duration(candidate, experiment_started_at, experiment_started_monotonic)
         choice = prompt_continue(status, candidate, verdict_reason)
         if choice == "stop":
             return 0
