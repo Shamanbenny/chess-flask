@@ -24,7 +24,7 @@
     "approved_reference_score_source": "autoresearch/approved_logs/V3_11Engine-8214d59-result.csv",
     "notes": "Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot."
   },
-  "next_candidate_version": "v3.12",
+  "next_candidate_version": "v3.13",
   "agent": {
     "max_hypotheses_per_experiment": 2,
     "codex_turn_timeout_minutes": 15

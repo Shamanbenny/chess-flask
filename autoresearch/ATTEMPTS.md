@@ -523,3 +523,25 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `98.0551`
 - average_positions_or_nodes: `10445.0749`
 - inferred_conclusion: `The combined bishop-mobility and king-supported passed-pawn endgame evaluation changes produced a statistically reliable improvement over v3.10 while keeping failures at zero and max-plies safely below the threshold. Future experiments should continue exploring targeted low-cost activity and conversion terms, especially endgame features that change practical winning technique rather than broad generic structure bonuses.`
+
+## Attempt: 2026-06-09T07:01:36Z - v3.12
+
+- status: `rejected`
+- commit: `<n/a>`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.11`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_11Engine.cs`
+- candidate_version: `v3.12`
+- version_bump: `minor`
+- hypotheses:
+  - `A modest rook-on-seventh-rank activity bonus should improve practical attacking and conversion move choice with minimal evaluation overhead.`
+  - `Rewarding connected advanced passed pawns in endgames should improve promotion-race and winning-line conversion beyond the existing single-passer escort/blockade term.`
+- implementation_summary: `Added a rook-on-seventh-rank activity bonus with an extra incentive when the opposing king is stuck on the back rank, and added an endgame-weighted connected passed-pawn bonus for adjacent advanced passers while reusing the evaluator's existing passed-pawn tracking.`
+- evaluation_log_path: `<n/a>`
+- wins/draws/losses: `677/151/172`
+- score: `752.5`
+- score_rate: `0.7525`
+- average_plies: `84.6120`
+- average_processing_time_ms: `97.8991`
+- average_positions_or_nodes: `10439.0495`
+- inferred_conclusion: `The added rook-on-seventh and connected-passed-pawn bonuses were directionally plausible but slightly underperformed the v3.11 seed, so stacking more small generic activity/conversion bonuses on top of v3.11 is not enough by itself. Future v3 experiments should favor more selective evaluation terms or search changes that materially alter tactical move choice, rather than broad static bonuses that mostly preserve existing plans.`
