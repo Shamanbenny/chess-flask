@@ -3,7 +3,7 @@
   "evaluator": {
     "opponent": "stockfish-1350",
     "stockfish_elo": 1350,
-    "games": 500,
+    "games": 1000,
     "time_limit_ms": 100,
     "max_plies": 200,
     "workers": 6,
