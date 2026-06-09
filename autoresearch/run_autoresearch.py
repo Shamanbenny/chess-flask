@@ -1051,6 +1051,8 @@ def upsert_changelog_version(
         raise SystemExit("CHANGELOG.json must contain a versions array.")
 
     has_metrics = metrics is not None
+    evaluator = changelog_evaluator_metadata()
+    opponent_key = evaluator_opponent_key(evaluator)
 
     version_entry = {
         "version": candidate.version,
@@ -1067,18 +1069,20 @@ def upsert_changelog_version(
             if approved_log_path is not None
             else "<pending>" if status == "approved" else "<n/a>"
         ),
-        "stockfish_1350": {
-            "games": metrics.games if has_metrics else None,
-            "wins": metrics.wins if has_metrics else None,
-            "draws": metrics.draws if has_metrics else None,
-            "losses": metrics.losses if has_metrics else None,
-            "score": round(metrics.score, 1) if has_metrics else None,
-            "score_rate": round(metrics.score_rate, 4) if has_metrics else None,
-            "text": (
-                stockfish_score_text(candidate.version, metrics)
-                if has_metrics
-                else "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
-            ),
+        "evaluation_opponents": {
+            opponent_key: {
+                "games": metrics.games if has_metrics else None,
+                "wins": metrics.wins if has_metrics else None,
+                "draws": metrics.draws if has_metrics else None,
+                "losses": metrics.losses if has_metrics else None,
+                "score": round(metrics.score, 1) if has_metrics else None,
+                "score_rate": round(metrics.score_rate, 4) if has_metrics else None,
+                "text": (
+                    evaluator_score_text(candidate.version, metrics, evaluator)
+                    if has_metrics
+                    else f"No final {evaluator['name']} ({evaluator['elo']} Elo) result was recorded for this rejected attempt."
+                ),
+            },
         },
         "limitations": [],
     }
@@ -1096,12 +1100,30 @@ def upsert_changelog_version(
         versions[existing_index] = version_entry
 
     versions.sort(key=lambda item: parse_version(str(item["version"])))
+    changelog["schema_version"] = max(int(changelog.get("schema_version", 1)), 2)
+    changelog.setdefault("evaluation_opponents", {})[opponent_key] = evaluator
+    changelog.pop("stockfish_baseline", None)
     write_changelog(changelog)
 
 
-def stockfish_score_text(version: str, metrics: EvaluationMetrics) -> str:
+def changelog_evaluator_metadata() -> dict[str, Any]:
+    state = load_state()
+    evaluator = state["evaluator"]
+    opponent = str(evaluator["opponent"])
+    name = "Stockfish" if opponent.lower().startswith("stockfish") else opponent
+    return {
+        "name": name,
+        "elo": evaluator["stockfish_elo"],
+    }
+
+
+def evaluator_opponent_key(evaluator: dict[str, Any]) -> str:
+    return f"{str(evaluator['name']).lower().replace(' ', '-')}-{evaluator['elo']}"
+
+
+def evaluator_score_text(version: str, metrics: EvaluationMetrics, evaluator: dict[str, Any]) -> str:
     return (
-        f"C# {version} scored {metrics.score:.1f}/{metrics.games} against Stockfish (1350 Elo): "
+        f"C# {version} scored {metrics.score:.1f}/{metrics.games} against {evaluator['name']} ({evaluator['elo']} Elo): "
         f"{metrics.wins} wins, {metrics.draws} draws, {metrics.losses} losses, "
         f"score rate {metrics.score_rate:.4f}."
     )
@@ -1110,11 +1132,13 @@ def stockfish_score_text(version: str, metrics: EvaluationMetrics) -> str:
 def load_changelog() -> dict[str, Any]:
     if not CHANGELOG_PATH.exists():
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "generated_from": "autoresearch/ATTEMPTS.md and autoresearch/approved_logs",
-            "stockfish_baseline": {
-                "name": "Stockfish",
-                "elo": 1350,
+            "evaluation_opponents": {
+                "stockfish-1350": {
+                    "name": "Stockfish",
+                    "elo": 1350,
+                },
             },
             "versions": [],
         }

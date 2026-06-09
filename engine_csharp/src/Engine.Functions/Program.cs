@@ -28,8 +28,9 @@ app.MapGet("/api/chess/metadata", async () =>
         return Results.Json(
             new
             {
-                schema_version = 1,
+                schema_version = 2,
                 error = "CHANGELOG.json not found",
+                evaluation_opponents = new Dictionary<string, object>(),
                 versions = Array.Empty<object>(),
             },
             statusCode: StatusCodes.Status500InternalServerError);

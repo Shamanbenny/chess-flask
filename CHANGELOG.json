@@ -1,9 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "generated_from": "autoresearch/ATTEMPTS.md and autoresearch/approved_logs",
-  "stockfish_baseline": {
-    "name": "Stockfish",
-    "elo": 1350
+  "evaluation_opponents": {
+    "stockfish-1350": {
+      "name": "Stockfish",
+      "elo": 1350
+    }
   },
   "versions": [
     {
@@ -16,17 +18,19 @@
         "Move the accepted v1.6 search structure onto a lower-cost native board representation so later C# search and evaluation experiments are meaningful under fixed time budgets."
       ],
       "implementation_summary": "Native-board C# v2 baseline with iterative deepening, negamax alpha-beta, quiescence search, and transposition-table reuse.",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 160,
-        "draws": 94,
-        "losses": 246,
-        "score": 207.0,
-        "score_rate": 0.414,
-        "text": "C# v2.0 scored 207.0/500 against Stockfish (1350 Elo): 160 wins, 94 draws, 246 losses, score rate 0.4140."
-      },
       "limitations": [],
-      "summary": "Native-board C# v2 baseline with iterative deepening, negamax alpha-beta, quiescence search, and transposition-table reuse."
+      "summary": "Native-board C# v2 baseline with iterative deepening, negamax alpha-beta, quiescence search, and transposition-table reuse.",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 160,
+          "draws": 94,
+          "losses": 246,
+          "score": 207,
+          "score_rate": 0.414,
+          "text": "C# v2.0 scored 207.0/500 against Stockfish (1350 Elo): 160 wins, 94 draws, 246 losses, score rate 0.4140."
+        }
+      }
     },
     {
       "version": "v2.1",
@@ -41,16 +45,18 @@
       "summary": "Cloned v2.0 into v2.1, renamed the public type/search entrypoint, and added a per-search quiet history table that rewards quiet beta-cutoff moves by side/from/to square.",
       "implementation_summary": "Cloned v2.0 into v2.1, renamed the public type/search entrypoint, and added a per-search quiet history table that rewards quiet beta-cutoff moves by side/from/to square.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": null,
-        "wins": null,
-        "draws": null,
-        "losses": null,
-        "score": null,
-        "score_rate": null,
-        "text": "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": null,
+          "wins": null,
+          "draws": null,
+          "losses": null,
+          "score": null,
+          "score_rate": null,
+          "text": "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
+        }
+      }
     },
     {
       "version": "v2.2",
@@ -65,16 +71,18 @@
       "summary": "Cloned v2.0 into v2.2, renamed the public type/search entrypoint, and added static piece-square tables for pawns, knights, bishops, rooks, queens, and phase-blended kings to the local evaluation.",
       "implementation_summary": "Cloned v2.0 into v2.2, renamed the public type/search entrypoint, and added static piece-square tables for pawns, knights, bishops, rooks, queens, and phase-blended kings to the local evaluation.",
       "evaluation_log_path": "autoresearch/approved_logs/V2_2Engine-765feb6-result.csv",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 117,
-        "draws": 350,
-        "losses": 33,
-        "score": 292.0,
-        "score_rate": 0.584,
-        "text": "C# v2.2 scored 292.0/500 against Stockfish (1350 Elo): 117 wins, 350 draws, 33 losses, score rate 0.5840."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 117,
+          "draws": 350,
+          "losses": 33,
+          "score": 292,
+          "score_rate": 0.584,
+          "text": "C# v2.2 scored 292.0/500 against Stockfish (1350 Elo): 117 wins, 350 draws, 33 losses, score rate 0.5840."
+        }
+      }
     },
     {
       "version": "v2.3",
@@ -89,16 +97,18 @@
       "summary": "Cloned v2.2 into v2.3, renamed the public type/search entrypoint, and changed evaluation snapshot construction to compute endgame phase once, collect king squares during the existing board scan, and score king PSTs from the cached phase instead of rescanning the board.",
       "implementation_summary": "Cloned v2.2 into v2.3, renamed the public type/search entrypoint, and changed evaluation snapshot construction to compute endgame phase once, collect king squares during the existing board scan, and score king PSTs from the cached phase instead of rescanning the board.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 65,
-        "draws": 359,
-        "losses": 76,
-        "score": 244.5,
-        "score_rate": 0.489,
-        "text": "C# v2.3 scored 244.5/500 against Stockfish (1350 Elo): 65 wins, 359 draws, 76 losses, score rate 0.4890."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 65,
+          "draws": 359,
+          "losses": 76,
+          "score": 244.5,
+          "score_rate": 0.489,
+          "text": "C# v2.3 scored 244.5/500 against Stockfish (1350 Elo): 65 wins, 359 draws, 76 losses, score rate 0.4890."
+        }
+      }
     },
     {
       "version": "v2.4",
@@ -113,16 +123,18 @@
       "summary": "Cloned v2.2 into v2.4, renamed the public type/search entrypoint, and added a 35 centipawn bishop-pair bonus to each side's existing positional total after bishop counts are collected.",
       "implementation_summary": "Cloned v2.2 into v2.4, renamed the public type/search entrypoint, and added a 35 centipawn bishop-pair bonus to each side's existing positional total after bishop counts are collected.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 80,
-        "draws": 348,
-        "losses": 72,
-        "score": 254.0,
-        "score_rate": 0.508,
-        "text": "C# v2.4 scored 254.0/500 against Stockfish (1350 Elo): 80 wins, 348 draws, 72 losses, score rate 0.5080."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 80,
+          "draws": 348,
+          "losses": 72,
+          "score": 254,
+          "score_rate": 0.508,
+          "text": "C# v2.4 scored 254.0/500 against Stockfish (1350 Elo): 80 wins, 348 draws, 72 losses, score rate 0.5080."
+        }
+      }
     },
     {
       "version": "v2.5",
@@ -134,17 +146,19 @@
         "A modest passed-pawn advancement bonus will improve conversion and pawn-structure decisions beyond v2.2's indirect endgame pawn-danger term."
       ],
       "implementation_summary": "Cloned v2.2 into v2.5 and added rank-scaled passed-pawn bonuses for pawns with no opposing pawn ahead on the same or adjacent files.",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 239,
-        "draws": 122,
-        "losses": 139,
-        "score": 300.0,
-        "score_rate": 0.6,
-        "text": "C# v2.5 scored 300.0/500 against Stockfish (1350 Elo): 239 wins, 122 draws, 139 losses, score rate 0.6000."
-      },
       "limitations": [],
-      "summary": "Cloned v2.2 into v2.5 and added rank-scaled passed-pawn bonuses for pawns with no opposing pawn ahead on the same or adjacent files."
+      "summary": "Cloned v2.2 into v2.5 and added rank-scaled passed-pawn bonuses for pawns with no opposing pawn ahead on the same or adjacent files.",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 239,
+          "draws": 122,
+          "losses": 139,
+          "score": 300,
+          "score_rate": 0.6,
+          "text": "C# v2.5 scored 300.0/500 against Stockfish (1350 Elo): 239 wins, 122 draws, 139 losses, score rate 0.6000."
+        }
+      }
     },
     {
       "version": "v2.6",
@@ -159,16 +173,18 @@
       "summary": "Cloned v2.5 into v2.6, renamed the public type/search entrypoint, and added a 14 centipawn bonus when a passed pawn is defended from behind by a friendly pawn on an adjacent file.",
       "implementation_summary": "Cloned v2.5 into v2.6, renamed the public type/search entrypoint, and added a 14 centipawn bonus when a passed pawn is defended from behind by a friendly pawn on an adjacent file.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 93,
-        "draws": 322,
-        "losses": 85,
-        "score": 254.0,
-        "score_rate": 0.508,
-        "text": "C# v2.6 scored 254.0/500 against Stockfish (1350 Elo): 93 wins, 322 draws, 85 losses, score rate 0.5080."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 93,
+          "draws": 322,
+          "losses": 85,
+          "score": 254,
+          "score_rate": 0.508,
+          "text": "C# v2.6 scored 254.0/500 against Stockfish (1350 Elo): 93 wins, 322 draws, 85 losses, score rate 0.5080."
+        }
+      }
     },
     {
       "version": "v2.7",
@@ -183,16 +199,18 @@
       "summary": "Cloned v2.5 into v2.7, renamed the public type/search entrypoint, counted pawns per file during evaluation, and subtracted a 12 centipawn penalty for each extra same-color pawn on a file.",
       "implementation_summary": "Cloned v2.5 into v2.7, renamed the public type/search entrypoint, counted pawns per file during evaluation, and subtracted a 12 centipawn penalty for each extra same-color pawn on a file.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 93,
-        "draws": 311,
-        "losses": 96,
-        "score": 248.5,
-        "score_rate": 0.497,
-        "text": "C# v2.7 scored 248.5/500 against Stockfish (1350 Elo): 93 wins, 311 draws, 96 losses, score rate 0.4970."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 93,
+          "draws": 311,
+          "losses": 96,
+          "score": 248.5,
+          "score_rate": 0.497,
+          "text": "C# v2.7 scored 248.5/500 against Stockfish (1350 Elo): 93 wins, 311 draws, 96 losses, score rate 0.4970."
+        }
+      }
     },
     {
       "version": "v2.8",
@@ -207,16 +225,18 @@
       "summary": "Cloned v2.5 into v2.8, renamed the public type/search entrypoint, counted pawn files during evaluation, and added 18 centipawns for rooks on open files or 9 centipawns for rooks on semi-open files.",
       "implementation_summary": "Cloned v2.5 into v2.8, renamed the public type/search entrypoint, counted pawn files during evaluation, and added 18 centipawns for rooks on open files or 9 centipawns for rooks on semi-open files.",
       "evaluation_log_path": "autoresearch/approved_logs/V2_8Engine-acdf45c-result.csv",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 247,
-        "draws": 110,
-        "losses": 143,
-        "score": 302.0,
-        "score_rate": 0.604,
-        "text": "C# v2.8 scored 302.0/500 against Stockfish (1350 Elo): 247 wins, 110 draws, 143 losses, score rate 0.6040."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 247,
+          "draws": 110,
+          "losses": 143,
+          "score": 302,
+          "score_rate": 0.604,
+          "text": "C# v2.8 scored 302.0/500 against Stockfish (1350 Elo): 247 wins, 110 draws, 143 losses, score rate 0.6040."
+        }
+      }
     },
     {
       "version": "v2.9",
@@ -229,17 +249,19 @@
         "Using pawn-defended and not enemy-pawn-attacked advanced knight squares is more targeted than another broad pawn-structure bonus."
       ],
       "implementation_summary": "Cloned v2.8 into v2.9 and added a knight outpost bonus for advanced, pawn-defended squares not attacked by enemy pawns.",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 271,
-        "draws": 106,
-        "losses": 123,
-        "score": 324.0,
-        "score_rate": 0.648,
-        "text": "C# v2.9 scored 324.0/500 against Stockfish (1350 Elo): 271 wins, 106 draws, 123 losses, score rate 0.6480."
-      },
       "limitations": [],
-      "summary": "Cloned v2.8 into v2.9 and added a knight outpost bonus for advanced, pawn-defended squares not attacked by enemy pawns."
+      "summary": "Cloned v2.8 into v2.9 and added a knight outpost bonus for advanced, pawn-defended squares not attacked by enemy pawns.",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 271,
+          "draws": 106,
+          "losses": 123,
+          "score": 324,
+          "score_rate": 0.648,
+          "text": "C# v2.9 scored 324.0/500 against Stockfish (1350 Elo): 271 wins, 106 draws, 123 losses, score rate 0.6480."
+        }
+      }
     },
     {
       "version": "v2.10",
@@ -254,16 +276,18 @@
       "summary": "Cloned v2.9 into v2.10, renamed the public type/search entrypoint, and added a 16 centipawn bonus for rooks on the opponent's second rank.",
       "implementation_summary": "Cloned v2.9 into v2.10, renamed the public type/search entrypoint, and added a 16 centipawn bonus for rooks on the opponent's second rank.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 256,
-        "draws": 97,
-        "losses": 147,
-        "score": 304.5,
-        "score_rate": 0.609,
-        "text": "C# v2.10 scored 304.5/500 against Stockfish (1350 Elo): 256 wins, 97 draws, 147 losses, score rate 0.6090."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 256,
+          "draws": 97,
+          "losses": 147,
+          "score": 304.5,
+          "score_rate": 0.609,
+          "text": "C# v2.10 scored 304.5/500 against Stockfish (1350 Elo): 256 wins, 97 draws, 147 losses, score rate 0.6090."
+        }
+      }
     },
     {
       "version": "v3.0",
@@ -276,19 +300,21 @@
         "Checking a normalized FEN opening lookup before native search should avoid spending the 100ms move budget on early-book positions while preserving legal SAN output through the existing BoardState move path."
       ],
       "implementation_summary": "Forked v2.9 into V3_0Engine with optional per-game search context and opening-book lookup before the native search path.",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 254,
-        "draws": 103,
-        "losses": 143,
-        "score": 305.5,
-        "score_rate": 0.611,
-        "text": "C# v3.0 scored 305.5/500 against Stockfish (1350 Elo): 254 wins, 103 draws, 143 losses, score rate 0.6110."
-      },
       "limitations": [
         "Context reuse depends on the same warm server instance receiving future requests, so cold starts or different instances may begin with an empty cache."
       ],
-      "summary": "Forked v2.9 into V3_0Engine with optional per-game search context and opening-book lookup before the native search path."
+      "summary": "Forked v2.9 into V3_0Engine with optional per-game search context and opening-book lookup before the native search path.",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 254,
+          "draws": 103,
+          "losses": 143,
+          "score": 305.5,
+          "score_rate": 0.611,
+          "text": "C# v3.0 scored 305.5/500 against Stockfish (1350 Elo): 254 wins, 103 draws, 143 losses, score rate 0.6110."
+        }
+      }
     },
     {
       "version": "v3.1",
@@ -303,16 +329,18 @@
       "summary": "Cloned v3.0 into v3.1, renamed the public type and search-context entrypoints, and added a middlegame-scaled king-shelter evaluation bonus that inspects the pawn shield directly in front of a back-rank king and penalizes missing shelter on nearby open or semi-open files.",
       "implementation_summary": "Cloned v3.0 into v3.1, renamed the public type and search-context entrypoints, and added a middlegame-scaled king-shelter evaluation bonus that inspects the pawn shield directly in front of a back-rank king and penalizes missing shelter on nearby open or semi-open files.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 325,
-        "wins": 140,
-        "draws": 56,
-        "losses": 129,
-        "score": 188.0,
-        "score_rate": 0.5785,
-        "text": "C# v3.1 scored 188.0/325 against Stockfish (1350 Elo): 140 wins, 56 draws, 129 losses, score rate 0.5785."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 325,
+          "wins": 140,
+          "draws": 56,
+          "losses": 129,
+          "score": 188,
+          "score_rate": 0.5785,
+          "text": "C# v3.1 scored 188.0/325 against Stockfish (1350 Elo): 140 wins, 56 draws, 129 losses, score rate 0.5785."
+        }
+      }
     },
     {
       "version": "v3.2",
@@ -327,16 +355,18 @@
       "summary": "Added v3.2 as a focused transposition-table experiment that changes TT storage to prefer same-generation updates instead of blindly replacing persistent entries.",
       "implementation_summary": "Added v3.2 as a focused transposition-table experiment that changes TT storage to prefer same-generation updates instead of blindly replacing persistent entries.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 245,
-        "draws": 91,
-        "losses": 164,
-        "score": 290.5,
-        "score_rate": 0.581,
-        "text": "C# v3.2 scored 290.5/500 against Stockfish (1350 Elo): 245 wins, 91 draws, 164 losses, score rate 0.5810."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 245,
+          "draws": 91,
+          "losses": 164,
+          "score": 290.5,
+          "score_rate": 0.581,
+          "text": "C# v3.2 scored 290.5/500 against Stockfish (1350 Elo): 245 wins, 91 draws, 164 losses, score rate 0.5810."
+        }
+      }
     },
     {
       "version": "v3.3",
@@ -352,16 +382,18 @@
       "summary": "Cloned v3.0 into v3.3, renamed the public type and search-context entrypoints, and added a capped bishop safe-mobility evaluation bonus that counts diagonal reachable non-edge squares not attacked by enemy pawns.",
       "implementation_summary": "Cloned v3.0 into v3.3, renamed the public type and search-context entrypoints, and added a capped bishop safe-mobility evaluation bonus that counts diagonal reachable non-edge squares not attacked by enemy pawns.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 251,
-        "draws": 103,
-        "losses": 146,
-        "score": 302.5,
-        "score_rate": 0.605,
-        "text": "C# v3.3 scored 302.5/500 against Stockfish (1350 Elo): 251 wins, 103 draws, 146 losses, score rate 0.6050."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 251,
+          "draws": 103,
+          "losses": 146,
+          "score": 302.5,
+          "score_rate": 0.605,
+          "text": "C# v3.3 scored 302.5/500 against Stockfish (1350 Elo): 251 wins, 103 draws, 146 losses, score rate 0.6050."
+        }
+      }
     },
     {
       "version": "v3.4",
@@ -374,19 +406,21 @@
         "Keeping the existing draw-avoidance penalties for equal-or-better positions should preserve v3.0's decisiveness while reducing avoidable losses."
       ],
       "implementation_summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties.",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 277,
-        "draws": 92,
-        "losses": 131,
-        "score": 323.0,
-        "score_rate": 0.646,
-        "text": "C# v3.4 scored 323.0/500 against Stockfish (1350 Elo): 277 wins, 92 draws, 131 losses, score rate 0.6460."
-      },
       "limitations": [
         "Context reuse depends on the same warm server instance receiving future requests, so cold starts or different instances may begin with an empty cache."
       ],
-      "summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties."
+      "summary": "Cloned v3.0 into v3.4 and changed RepetitionDrawAdjustment so materially worse positions receive bounded draw-saving bonuses while equal-or-better positions retain repetition and draw penalties.",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 277,
+          "draws": 92,
+          "losses": 131,
+          "score": 323,
+          "score_rate": 0.646,
+          "text": "C# v3.4 scored 323.0/500 against Stockfish (1350 Elo): 277 wins, 92 draws, 131 losses, score rate 0.6460."
+        }
+      }
     },
     {
       "version": "v3.5",
@@ -402,16 +436,18 @@
       "summary": "Cloned v3.4 into v3.5 and changed the root and recursive negamax loops to use principal-variation style zero-window searches on non-first ordered moves, with full re-search only when a narrow probe beats the current alpha/best score.",
       "implementation_summary": "Cloned v3.4 into v3.5 and changed the root and recursive negamax loops to use principal-variation style zero-window searches on non-first ordered moves, with full re-search only when a narrow probe beats the current alpha/best score.",
       "evaluation_log_path": "autoresearch/approved_logs/8b24935-result.csv",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 320,
-        "draws": 73,
-        "losses": 107,
-        "score": 356.5,
-        "score_rate": 0.713,
-        "text": "C# v3.5 scored 356.5/500 against Stockfish (1350 Elo): 320 wins, 73 draws, 107 losses, score rate 0.7130."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 320,
+          "draws": 73,
+          "losses": 107,
+          "score": 356.5,
+          "score_rate": 0.713,
+          "text": "C# v3.5 scored 356.5/500 against Stockfish (1350 Elo): 320 wins, 73 draws, 107 losses, score rate 0.7130."
+        }
+      }
     },
     {
       "version": "v3.6",
@@ -426,16 +462,18 @@
       "summary": "Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result.",
       "implementation_summary": "Cloned v3.5 into v3.6 and wrapped iterative deepening root searches in aspiration windows centered on the previous iteration score, with a factored root-search helper and automatic widening re-search on fail-low or fail-high before storing the exact root result.",
       "evaluation_log_path": "autoresearch/approved_logs/62e5166-result.csv",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 343,
-        "draws": 49,
-        "losses": 108,
-        "score": 367.5,
-        "score_rate": 0.735,
-        "text": "C# v3.6 scored 367.5/500 against Stockfish (1350 Elo): 343 wins, 49 draws, 108 losses, score rate 0.7350."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 343,
+          "draws": 49,
+          "losses": 108,
+          "score": 367.5,
+          "score_rate": 0.735,
+          "text": "C# v3.6 scored 367.5/500 against Stockfish (1350 Elo): 343 wins, 49 draws, 108 losses, score rate 0.7350."
+        }
+      }
     },
     {
       "version": "v3.7",
@@ -450,16 +488,18 @@
       "summary": "Cloned v3.6 into v3.7 and extended the search context with persistent killer-move and quiet-history tables, then fed those heuristics into quiet move ordering and updated them on quiet beta cutoffs at the root and recursive negamax nodes.",
       "implementation_summary": "Cloned v3.6 into v3.7 and extended the search context with persistent killer-move and quiet-history tables, then fed those heuristics into quiet move ordering and updated them on quiet beta cutoffs at the root and recursive negamax nodes.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": null,
-        "wins": null,
-        "draws": null,
-        "losses": null,
-        "score": null,
-        "score_rate": null,
-        "text": "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": null,
+          "wins": null,
+          "draws": null,
+          "losses": null,
+          "score": null,
+          "score_rate": null,
+          "text": "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
+        }
+      }
     },
     {
       "version": "v3.8",
@@ -475,16 +515,18 @@
       "summary": "Cloned v3.6 into v3.8 and added persistent primary/secondary killer moves plus a side-aware quiet-history table to the search context, then used those heuristics to score quiet move ordering and reward quiet beta cutoffs at the root and recursive negamax nodes while keeping the change self-contained in the engine file.",
       "implementation_summary": "Cloned v3.6 into v3.8 and added persistent primary/secondary killer moves plus a side-aware quiet-history table to the search context, then used those heuristics to score quiet move ordering and reward quiet beta cutoffs at the root and recursive negamax nodes while keeping the change self-contained in the engine file.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": null,
-        "wins": null,
-        "draws": null,
-        "losses": null,
-        "score": null,
-        "score_rate": null,
-        "text": "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": null,
+          "wins": null,
+          "draws": null,
+          "losses": null,
+          "score": null,
+          "score_rate": null,
+          "text": "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
+        }
+      }
     },
     {
       "version": "v3.9",
@@ -499,16 +541,18 @@
       "summary": "Cloned v3.6 into v3.9 and added a contained internal-iterative-deepening fallback in negamax so deeper non-check nodes without a TT move first run a reduced-depth probe to populate and reuse a transposition-table move for the main ordered search.",
       "implementation_summary": "Cloned v3.6 into v3.9 and added a contained internal-iterative-deepening fallback in negamax so deeper non-check nodes without a TT move first run a reduced-depth probe to populate and reuse a transposition-table move for the main ordered search.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 500,
-        "wins": 329,
-        "draws": 76,
-        "losses": 95,
-        "score": 367.0,
-        "score_rate": 0.734,
-        "text": "C# v3.9 scored 367.0/500 against Stockfish (1350 Elo): 329 wins, 76 draws, 95 losses, score rate 0.7340."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 500,
+          "wins": 329,
+          "draws": 76,
+          "losses": 95,
+          "score": 367,
+          "score_rate": 0.734,
+          "text": "C# v3.9 scored 367.0/500 against Stockfish (1350 Elo): 329 wins, 76 draws, 95 losses, score rate 0.7340."
+        }
+      }
     },
     {
       "version": "v3.10",
@@ -524,16 +568,18 @@
       "summary": "Cloned v3.6 into v3.10 and added quiet-move killer ordering plus a contained late-move reduction path for later-ordered quiet moves, with full PVS re-search whenever a reduced probe still raises alpha.",
       "implementation_summary": "Cloned v3.6 into v3.10 and added quiet-move killer ordering plus a contained late-move reduction path for later-ordered quiet moves, with full PVS re-search whenever a reduced probe still raises alpha.",
       "evaluation_log_path": "autoresearch/approved_logs/V3_10Engine-41846bf-result.csv",
-      "stockfish_1350": {
-        "games": 1000,
-        "wins": 682,
-        "draws": 130,
-        "losses": 188,
-        "score": 747.0,
-        "score_rate": 0.747,
-        "text": "C# v3.10 scored 747.0/1000 against Stockfish (1350 Elo): 682 wins, 130 draws, 188 losses, score rate 0.7470."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 682,
+          "draws": 130,
+          "losses": 188,
+          "score": 747,
+          "score_rate": 0.747,
+          "text": "C# v3.10 scored 747.0/1000 against Stockfish (1350 Elo): 682 wins, 130 draws, 188 losses, score rate 0.7470."
+        }
+      }
     },
     {
       "version": "v3.11",
@@ -549,16 +595,18 @@
       "summary": "Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot.",
       "implementation_summary": "Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot.",
       "evaluation_log_path": "autoresearch/approved_logs/V3_11Engine-8214d59-result.csv",
-      "stockfish_1350": {
-        "games": 1000,
-        "wins": 685,
-        "draws": 143,
-        "losses": 172,
-        "score": 756.5,
-        "score_rate": 0.7565,
-        "text": "C# v3.11 scored 756.5/1000 against Stockfish (1350 Elo): 685 wins, 143 draws, 172 losses, score rate 0.7565."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 685,
+          "draws": 143,
+          "losses": 172,
+          "score": 756.5,
+          "score_rate": 0.7565,
+          "text": "C# v3.11 scored 756.5/1000 against Stockfish (1350 Elo): 685 wins, 143 draws, 172 losses, score rate 0.7565."
+        }
+      }
     },
     {
       "version": "v3.12",
@@ -574,16 +622,18 @@
       "summary": "Added a rook-on-seventh-rank activity bonus with an extra incentive when the opposing king is stuck on the back rank, and added an endgame-weighted connected passed-pawn bonus for adjacent advanced passers while reusing the evaluator's existing passed-pawn tracking.",
       "implementation_summary": "Added a rook-on-seventh-rank activity bonus with an extra incentive when the opposing king is stuck on the back rank, and added an endgame-weighted connected passed-pawn bonus for adjacent advanced passers while reusing the evaluator's existing passed-pawn tracking.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 1000,
-        "wins": 677,
-        "draws": 151,
-        "losses": 172,
-        "score": 752.5,
-        "score_rate": 0.7525,
-        "text": "C# v3.12 scored 752.5/1000 against Stockfish (1350 Elo): 677 wins, 151 draws, 172 losses, score rate 0.7525."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 677,
+          "draws": 151,
+          "losses": 172,
+          "score": 752.5,
+          "score_rate": 0.7525,
+          "text": "C# v3.12 scored 752.5/1000 against Stockfish (1350 Elo): 677 wins, 151 draws, 172 losses, score rate 0.7525."
+        }
+      }
     },
     {
       "version": "v3.13",
@@ -598,16 +648,18 @@
       "summary": "Added a guarded null-move pruning path to negamax with no-null-reply recursion control, a pawns-and-king-only endgame exclusion to reduce zugzwang risk, and native-board null-move make/unmake helpers while preserving the existing LMR/PVS framework.",
       "implementation_summary": "Added a guarded null-move pruning path to negamax with no-null-reply recursion control, a pawns-and-king-only endgame exclusion to reduce zugzwang risk, and native-board null-move make/unmake helpers while preserving the existing LMR/PVS framework.",
       "evaluation_log_path": "autoresearch/approved_logs/V3_13Engine-49960e8-result.csv",
-      "stockfish_1350": {
-        "games": 1000,
-        "wins": 708,
-        "draws": 139,
-        "losses": 153,
-        "score": 777.5,
-        "score_rate": 0.7775,
-        "text": "C# v3.13 scored 777.5/1000 against Stockfish (1350 Elo): 708 wins, 139 draws, 153 losses, score rate 0.7775."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 708,
+          "draws": 139,
+          "losses": 153,
+          "score": 777.5,
+          "score_rate": 0.7775,
+          "text": "C# v3.13 scored 777.5/1000 against Stockfish (1350 Elo): 708 wins, 139 draws, 153 losses, score rate 0.7775."
+        }
+      }
     },
     {
       "version": "v3.14",
@@ -622,16 +674,18 @@
       "summary": "Added guarded reverse futility pruning in negamax for shallow non-check nodes, using the existing static evaluation only when the side to move still has non-pawn material and the margin over beta is comfortably large.",
       "implementation_summary": "Added guarded reverse futility pruning in negamax for shallow non-check nodes, using the existing static evaluation only when the side to move still has non-pawn material and the margin over beta is comfortably large.",
       "evaluation_log_path": "autoresearch/approved_logs/V3_14Engine-ec54e97-result.csv",
-      "stockfish_1350": {
-        "games": 1000,
-        "wins": 752,
-        "draws": 113,
-        "losses": 135,
-        "score": 808.5,
-        "score_rate": 0.8085,
-        "text": "C# v3.14 scored 808.5/1000 against Stockfish (1350 Elo): 752 wins, 113 draws, 135 losses, score rate 0.8085."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 752,
+          "draws": 113,
+          "losses": 135,
+          "score": 808.5,
+          "score_rate": 0.8085,
+          "text": "C# v3.14 scored 808.5/1000 against Stockfish (1350 Elo): 752 wins, 113 draws, 135 losses, score rate 0.8085."
+        }
+      }
     },
     {
       "version": "v3.15",
@@ -646,16 +700,18 @@
       "summary": "Added a shallow quiet-move futility pruning path in negamax for later-ordered quiet moves at depths up to 2, reusing static evaluation when already available from reverse futility pruning and keeping the existing non-check and pawns-and-king-only safety guards.",
       "implementation_summary": "Added a shallow quiet-move futility pruning path in negamax for later-ordered quiet moves at depths up to 2, reusing static evaluation when already available from reverse futility pruning and keeping the existing non-check and pawns-and-king-only safety guards.",
       "evaluation_log_path": "autoresearch/approved_logs/V3_15Engine-901cf13-result.csv",
-      "stockfish_1350": {
-        "games": 1000,
-        "wins": 788,
-        "draws": 99,
-        "losses": 113,
-        "score": 837.5,
-        "score_rate": 0.8375,
-        "text": "C# v3.15 scored 837.5/1000 against Stockfish (1350 Elo): 788 wins, 99 draws, 113 losses, score rate 0.8375."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 788,
+          "draws": 99,
+          "losses": 113,
+          "score": 837.5,
+          "score_rate": 0.8375,
+          "text": "C# v3.15 scored 837.5/1000 against Stockfish (1350 Elo): 788 wins, 99 draws, 113 losses, score rate 0.8375."
+        }
+      }
     },
     {
       "version": "v3.16",
@@ -671,16 +727,18 @@
       "summary": "Added a tapered king-shield evaluation around each king that scores nearby pawn cover only outside pure endgames, and added a connected passed pawn bonus for adjacent advanced passers on neighboring files with similar ranks.",
       "implementation_summary": "Added a tapered king-shield evaluation around each king that scores nearby pawn cover only outside pure endgames, and added a connected passed pawn bonus for adjacent advanced passers on neighboring files with similar ranks.",
       "evaluation_log_path": "<n/a>",
-      "stockfish_1350": {
-        "games": 1000,
-        "wins": 756,
-        "draws": 111,
-        "losses": 133,
-        "score": 811.5,
-        "score_rate": 0.8115,
-        "text": "C# v3.16 scored 811.5/1000 against Stockfish (1350 Elo): 756 wins, 111 draws, 133 losses, score rate 0.8115."
-      },
-      "limitations": []
+      "limitations": [],
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 756,
+          "draws": 111,
+          "losses": 133,
+          "score": 811.5,
+          "score_rate": 0.8115,
+          "text": "C# v3.16 scored 811.5/1000 against Stockfish (1350 Elo): 756 wins, 111 draws, 133 losses, score rate 0.8115."
+        }
+      }
     }
   ]
 }
