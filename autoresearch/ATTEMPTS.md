@@ -501,3 +501,25 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `98.9572`
 - average_positions_or_nodes: `8168.5526`
 - inferred_conclusion: `The contained quiet-move killer ordering plus late-move reduction policy produced a real improvement over v3.6 under the full 1000-game Stockfish-1350 contract, clearing the prior 0.7350 score_rate while keeping capped games low and failures at zero. Future v3 work should keep building on cheap search-control changes that improve move ordering and reduce wasted work on low-priority branches, while being careful not to overextend reduction heuristics in ways that increase tactical misses or long drawn games.`
+
+## Attempt: 2026-06-09T06:33:00Z - v3.11
+
+- status: `approved`
+- commit: `8214d59`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.10`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_10Engine.cs`
+- candidate_version: `v3.11`
+- version_bump: `minor`
+- hypotheses:
+  - `Adding a lightweight bishop mobility term will improve piece-activity move selection more reliably than another generic one-off static bonus.`
+  - `Rewarding king-supported advanced passed pawns and penalizing directly blockaded passed pawns in endgames will improve conversion and reduce wasted winning lines.`
+- implementation_summary: `Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_11Engine-8214d59-result.csv`
+- wins/draws/losses: `685/143/172`
+- score: `756.5`
+- score_rate: `0.7565`
+- average_plies: `86.7240`
+- average_processing_time_ms: `98.0551`
+- average_positions_or_nodes: `10445.0749`
+- inferred_conclusion: `The combined bishop-mobility and king-supported passed-pawn endgame evaluation changes produced a statistically reliable improvement over v3.10 while keeping failures at zero and max-plies safely below the threshold. Future experiments should continue exploring targeted low-cost activity and conversion terms, especially endgame features that change practical winning technique rather than broad generic structure bonuses.`

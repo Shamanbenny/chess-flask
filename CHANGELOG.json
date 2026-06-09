@@ -240,6 +240,31 @@
         "text": "C# v3.10 scored 747.0/1000 against Stockfish (1350 Elo): 682 wins, 130 draws, 188 losses, score rate 0.7470."
       },
       "limitations": []
+    },
+    {
+      "version": "v3.11",
+      "api_version": "v3_11",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_11Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "8214d59",
+      "hypotheses": [
+        "Adding a lightweight bishop mobility term will improve piece-activity move selection more reliably than another generic one-off static bonus.",
+        "Rewarding king-supported advanced passed pawns and penalizing directly blockaded passed pawns in endgames will improve conversion and reduce wasted winning lines."
+      ],
+      "summary": "Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot.",
+      "implementation_summary": "Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot.",
+      "evaluation_log_path": "autoresearch/approved_logs/V3_11Engine-8214d59-result.csv",
+      "stockfish_1350": {
+        "games": 1000,
+        "wins": 685,
+        "draws": 143,
+        "losses": 172,
+        "score": 756.5,
+        "score_rate": 0.7565,
+        "text": "C# v3.11 scored 756.5/1000 against Stockfish (1350 Elo): 685 wins, 143 draws, 172 losses, score rate 0.7565."
+      },
+      "limitations": []
     }
   ]
 }

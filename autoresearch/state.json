@@ -16,15 +16,15 @@
     }
   },
   "latest_approved": {
-    "version": "v3.10",
-    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_10Engine.cs",
-    "commit": "41846bf",
+    "version": "v3.11",
+    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_11Engine.cs",
+    "commit": "8214d59",
     "approved_recorded_at": "2026-06-09",
-    "approved_reference_score_rate_vs_stockfish_1350": 0.747,
-    "approved_reference_score_source": "autoresearch/approved_logs/V3_10Engine-41846bf-result.csv",
-    "notes": "Cloned v3.6 into v3.10 and added quiet-move killer ordering plus a contained late-move reduction path for later-ordered quiet moves, with full PVS re-search whenever a reduced probe still raises alpha."
+    "approved_reference_score_rate_vs_stockfish_1350": 0.7565,
+    "approved_reference_score_source": "autoresearch/approved_logs/V3_11Engine-8214d59-result.csv",
+    "notes": "Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot."
   },
-  "next_candidate_version": "v3.11",
+  "next_candidate_version": "v3.12",
   "agent": {
     "max_hypotheses_per_experiment": 2,
     "codex_turn_timeout_minutes": 15
