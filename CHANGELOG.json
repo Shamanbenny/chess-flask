@@ -632,6 +632,30 @@
         "text": "C# v3.14 scored 808.5/1000 against Stockfish (1350 Elo): 752 wins, 113 draws, 135 losses, score rate 0.8085."
       },
       "limitations": []
+    },
+    {
+      "version": "v3.15",
+      "api_version": "v3_15",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_15Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "901cf13",
+      "hypotheses": [
+        "Guarded shallow quiet-move futility pruning on later-ordered moves should save search at depth 1-2 in clearly non-improving non-check nodes, improving root move selection within the 100ms budget without changing evaluation."
+      ],
+      "summary": "Added a shallow quiet-move futility pruning path in negamax for later-ordered quiet moves at depths up to 2, reusing static evaluation when already available from reverse futility pruning and keeping the existing non-check and pawns-and-king-only safety guards.",
+      "implementation_summary": "Added a shallow quiet-move futility pruning path in negamax for later-ordered quiet moves at depths up to 2, reusing static evaluation when already available from reverse futility pruning and keeping the existing non-check and pawns-and-king-only safety guards.",
+      "evaluation_log_path": "autoresearch/approved_logs/V3_15Engine-901cf13-result.csv",
+      "stockfish_1350": {
+        "games": 1000,
+        "wins": 788,
+        "draws": 99,
+        "losses": 113,
+        "score": 837.5,
+        "score_rate": 0.8375,
+        "text": "C# v3.15 scored 837.5/1000 against Stockfish (1350 Elo): 788 wins, 99 draws, 113 losses, score rate 0.8375."
+      },
+      "limitations": []
     }
   ]
 }

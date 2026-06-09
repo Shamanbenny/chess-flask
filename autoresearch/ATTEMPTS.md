@@ -587,3 +587,24 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `98.1973`
 - average_positions_or_nodes: `12580.9138`
 - inferred_conclusion: `The guarded shallow reverse futility pruning change was a strong improvement over v3.13, raising score_rate from 0.7775 to 0.8085 with zero failures and a comfortably acceptable max-plies rate. Future v3 experiments should keep exploring selective shallow pruning and move-filtering ideas that save search on clearly safe branches, while preserving the existing endgame and zugzwang guards that keep aggressive pruning from backfiring.`
+
+## Attempt: 2026-06-09T09:04:13Z - v3.15
+
+- status: `approved`
+- commit: `901cf13`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.14`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_14Engine.cs`
+- candidate_version: `v3.15`
+- version_bump: `minor`
+- hypotheses:
+  - `Guarded shallow quiet-move futility pruning on later-ordered moves should save search at depth 1-2 in clearly non-improving non-check nodes, improving root move selection within the 100ms budget without changing evaluation.`
+- implementation_summary: `Added a shallow quiet-move futility pruning path in negamax for later-ordered quiet moves at depths up to 2, reusing static evaluation when already available from reverse futility pruning and keeping the existing non-check and pawns-and-king-only safety guards.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_15Engine-901cf13-result.csv`
+- wins/draws/losses: `788/99/113`
+- score: `837.5`
+- score_rate: `0.8375`
+- average_plies: `80.3900`
+- average_processing_time_ms: `98.6030`
+- average_positions_or_nodes: `10260.1696`
+- inferred_conclusion: `The guarded shallow quiet-move futility pruning change was a strong improvement over v3.14, raising score_rate from 0.8085 to 0.8375 while keeping failures at zero and reducing capped games to a low 0.0330 max_plies_rate. Future v3 experiments should continue exploring tightly guarded shallow move-pruning and search-selectivity ideas that trim clearly unpromising quiet branches without relaxing the existing endgame and tactical safety checks.`
