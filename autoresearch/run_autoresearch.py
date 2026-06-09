@@ -933,6 +933,14 @@ def update_state_and_attempts(
         "inferred_conclusion": attempt_note["inferred_conclusion"],
         "metrics": metrics_to_dict(metrics),
     }
+    upsert_changelog_version(
+        candidate,
+        status,
+        attempt_note,
+        metrics,
+        approved_log_path,
+        commit="<pending>" if status == "approved" else "<n/a>",
+    )
     if status == "approved" and metrics is not None:
         state["latest_approved"] = {
             "version": candidate.version,
@@ -944,14 +952,6 @@ def update_state_and_attempts(
             "notes": attempt_note["implementation_summary"],
         }
         update_latest_approved_markdown(state["latest_approved"])
-        upsert_changelog_version(
-            candidate,
-            status,
-            attempt_note,
-            metrics,
-            approved_log_path,
-            commit="<pending>",
-        )
     state["next_candidate_version"] = bump_minor(candidate.version)
     append_attempt_markdown(attempt)
 
@@ -1041,7 +1041,7 @@ def upsert_changelog_version(
     candidate: Candidate,
     status: str,
     attempt_note: dict[str, Any],
-    metrics: EvaluationMetrics,
+    metrics: EvaluationMetrics | None,
     approved_log_path: Path | None,
     commit: str,
 ) -> None:
@@ -1049,6 +1049,8 @@ def upsert_changelog_version(
     versions = changelog.setdefault("versions", [])
     if not isinstance(versions, list):
         raise SystemExit("CHANGELOG.json must contain a versions array.")
+
+    has_metrics = metrics is not None
 
     version_entry = {
         "version": candidate.version,
@@ -1063,16 +1065,20 @@ def upsert_changelog_version(
         "evaluation_log_path": (
             str(approved_log_path.relative_to(REPO_ROOT))
             if approved_log_path is not None
-            else "<pending>"
+            else "<pending>" if status == "approved" else "<n/a>"
         ),
         "stockfish_1350": {
-            "games": metrics.games,
-            "wins": metrics.wins,
-            "draws": metrics.draws,
-            "losses": metrics.losses,
-            "score": round(metrics.score, 1),
-            "score_rate": round(metrics.score_rate, 4),
-            "text": stockfish_score_text(candidate.version, metrics),
+            "games": metrics.games if has_metrics else None,
+            "wins": metrics.wins if has_metrics else None,
+            "draws": metrics.draws if has_metrics else None,
+            "losses": metrics.losses if has_metrics else None,
+            "score": round(metrics.score, 1) if has_metrics else None,
+            "score_rate": round(metrics.score_rate, 4) if has_metrics else None,
+            "text": (
+                stockfish_score_text(candidate.version, metrics)
+                if has_metrics
+                else "No final Stockfish (1350 Elo) result was recorded for this rejected attempt."
+            ),
         },
         "limitations": [],
     }

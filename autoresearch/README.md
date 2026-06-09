@@ -94,7 +94,8 @@ python autoresearch/run_autoresearch.py --dry-run --prompt "Try a small containe
 - `ATTEMPTS.md`: human-readable attempt history. The orchestrator appends this
   after evaluation and the second Codex prompt.
 - `../CHANGELOG.json`: V2+ engine metadata contract for the HTTP metadata
-  endpoint and frontend. Approved candidates are appended here automatically.
+  endpoint and frontend. Evaluated candidates are appended or updated here
+  automatically.
 - `requirements.txt`: Python dependency list for the Codex SDK.
 - `approved_logs/`: tracked CSV logs for approved engines.
 - `logs/`: temporary evaluator logs for active or rejected runs.
@@ -255,12 +256,18 @@ Each version entry should include:
 - `stockfish_1350.text`: standardized display text for the frontend
 - `limitations`: frontend-facing limitations, defaulting to an empty list
 
-When a candidate is approved, `run_autoresearch.py` appends or updates its
-`CHANGELOG.json` entry using the same `RETURN.json` and evaluator data already
-used for `ATTEMPTS.md`. The `summary` and `implementation_summary` fields both
-come from `RETURN.json`'s `implementation_summary` value. New approved candidates are written with
-`"served": false` by default. Change this to `true` only when the HTTP serving
-switch and endpoint documentation have also been updated for that version.
+After every attempt, `run_autoresearch.py` appends or updates the candidate's
+`CHANGELOG.json` entry using the same `RETURN.json` and any evaluator data
+already used for `ATTEMPTS.md`. The `summary` and `implementation_summary`
+fields both come from `RETURN.json`'s `implementation_summary` value. New
+approved candidates are written with `"served": false` by default. Rejected
+candidates remain in `CHANGELOG.json` with `status: "rejected"` so downstream
+consumers can inspect experiment history without serving or displaying those
+versions publicly. If an attempt never reaches a final evaluator result, its
+`stockfish_1350` numeric fields are recorded as `null` so frontend code can
+ignore those points cleanly. Change `"served"` to `true` only when the HTTP
+serving switch and endpoint documentation have also been updated for that
+version.
 
 ## Approval Rule
 
