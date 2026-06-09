@@ -26,6 +26,7 @@
   },
   "next_candidate_version": "v3.11",
   "agent": {
-    "max_hypotheses_per_experiment": 2
+    "max_hypotheses_per_experiment": 2,
+    "codex_turn_timeout_minutes": 15
   }
 }

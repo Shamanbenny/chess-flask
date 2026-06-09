@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import textwrap
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -61,6 +62,10 @@ class EvaluationMetrics:
     games: int
 
 
+class CodexTurnTimeoutError(RuntimeError):
+    pass
+
+
 def log_phase(message: str) -> None:
     stamp = dt.datetime.now().strftime("%H:%M:%S")
     emit_console(f"[autoresearch {stamp}] {message}\n", flush=True)
@@ -100,7 +105,22 @@ def main() -> int:
 
     while True:
         log_phase(f"Starting attempt for {candidate.version}.")
-        codex_session = run_codex_implementation(candidate)
+        try:
+            codex_session = run_codex_implementation(state, candidate)
+        except CodexTurnTimeoutError as exc:
+            reason = str(exc)
+            log_phase(reason)
+            cleanup_timed_out_attempt(candidate)
+            choice = prompt_continue("timed out", candidate, reason)
+            if choice == "stop":
+                return 0
+            state = load_state()
+            user_input = args.prompt or ""
+            log_phase(f"Re-preparing sandbox for retry of {candidate.version}.")
+            prepare_sandbox(state, candidate, user_input)
+            log_phase(f"Sandbox ready at {candidate.sandbox_dir.relative_to(REPO_ROOT)}.")
+            continue
+
         log_phase(f"Copying {candidate.sandbox_engine_file.name} back into the repository.")
         copy_candidate_to_repo(candidate)
         attempt_id = make_attempt_id(candidate)
@@ -135,7 +155,25 @@ def main() -> int:
 
         evaluation_summary = build_evaluation_summary(candidate, status, verdict_reason, metrics, state)
         log_phase("Sending evaluation summary back into the existing Codex session.")
-        run_codex_result_update(candidate, codex_session, evaluation_summary)
+        try:
+            run_codex_result_update(state, candidate, codex_session, evaluation_summary)
+        except CodexTurnTimeoutError as exc:
+            reason = str(exc)
+            log_phase(reason)
+            cleanup_timed_out_attempt(
+                candidate,
+                log_path=log_path if log_path.exists() else None,
+                approved_log_path=approved_log_path,
+            )
+            choice = prompt_continue("timed out", candidate, reason)
+            if choice == "stop":
+                return 0
+            state = load_state()
+            user_input = args.prompt or ""
+            log_phase(f"Re-preparing sandbox for retry of {candidate.version}.")
+            prepare_sandbox(state, candidate, user_input)
+            log_phase(f"Sandbox ready at {candidate.sandbox_dir.relative_to(REPO_ROOT)}.")
+            continue
         log_phase("Reading structured sandbox result from RETURN.json.")
         attempt_note = read_return_json(candidate)
 
@@ -349,7 +387,7 @@ def agent_program(state: dict[str, Any], candidate: Candidate, user_input: str) 
         ## Forbidden Changes
 
         - Do not run git commands.
-        - You are not expected to and not allowed to run the evaluator.
+        - You are NOT expected to and NOT allowed to run the evaluator. (THIS IS OF UTMOST IMPORTANCE)
         - Do not edit `ATTEMPTS.md` or `PROGRAM.md`. (These files will be deleted regardless)
         - Do not add package dependencies or extra source files in your solution. (Everything should be self-contained)
         - Do not change the public engine API shape above.
@@ -440,7 +478,105 @@ class CodexSession:
     thread: Any
 
 
-def run_codex_implementation(candidate: Candidate) -> CodexSession:
+@dataclass
+class CodexTurnStreamResult:
+    final_response: str
+    usage: Any | None
+
+
+def format_codex_usage(usage: Any | None) -> str:
+    if usage is None:
+        return "n/a"
+    if hasattr(usage, "model_dump"):
+        return json.dumps(usage.model_dump(exclude_none=True), sort_keys=True)
+    if hasattr(usage, "dict"):
+        return json.dumps(usage.dict(exclude_none=True), sort_keys=True)
+    return str(usage)
+
+
+def codex_turn_timeout_seconds(state: dict[str, Any]) -> int:
+    minutes = int(state.get("agent", {}).get("codex_turn_timeout_minutes", 15))
+    return max(minutes, 1) * 60
+
+
+def run_codex_turn(
+    thread: Any,
+    *,
+    state: dict[str, Any],
+    prompt: str,
+    label: str,
+    sandbox_cwd: Path,
+) -> CodexTurnStreamResult:
+    emit_console(f"\n[codex prompt: {label}]\n{prompt}\n\n", flush=True)
+    turn = thread.turn(prompt, cwd=str(sandbox_cwd))
+    state: dict[str, Any] = {
+        "error": None,
+        "completed_status": None,
+        "completed_usage": None,
+        "completed_texts": [],
+        "printed_response_prefix": False,
+    }
+
+    def worker() -> None:
+        try:
+            for event in turn.stream():
+                if event.method == "turn/started":
+                    log_phase(f"Codex turn started: {label}.")
+                    continue
+
+                if event.method == "item/agentMessage/delta":
+                    delta = event.payload.delta
+                    if delta:
+                        if not state["printed_response_prefix"]:
+                            emit_console(f"[codex response: {label}] ", flush=True)
+                            state["printed_response_prefix"] = True
+                        emit_console(delta, flush=True)
+                    continue
+
+                if event.method == "item/completed":
+                    root = event.payload.item.root
+                    if getattr(root, "type", None) == "agentMessage":
+                        state["completed_texts"].append(root.text)
+                    continue
+
+                if event.method == "turn/completed":
+                    state["completed_status"] = event.payload.turn.status.value
+                    state["completed_usage"] = getattr(event.payload.turn, "usage", None)
+        except Exception as exc:
+            state["error"] = exc
+
+    worker_thread = threading.Thread(target=worker, name=f"codex-turn-{label}", daemon=True)
+    worker_thread.start()
+    timeout_seconds = codex_turn_timeout_seconds(state)
+    deadline = time.monotonic() + timeout_seconds
+
+    while worker_thread.is_alive():
+        worker_thread.join(timeout=0.5)
+        if time.monotonic() < deadline:
+            continue
+
+        try:
+            turn.interrupt()
+        except Exception as exc:
+            log_phase(f"Codex turn timeout interrupt failed for {label}: {exc}")
+        worker_thread.join(timeout=5)
+        raise CodexTurnTimeoutError(
+            f"Codex turn '{label}' exceeded {timeout_seconds // 60} minutes."
+        )
+
+    if state["printed_response_prefix"]:
+        emit_console("\n", flush=True)
+
+    if state["error"] is not None:
+        raise state["error"]
+
+    final_response = state["completed_texts"][-1].strip() if state["completed_texts"] else ""
+    log_phase(f"Codex turn completed: {label} ({state['completed_status'] or 'unknown'}).")
+    log_phase(f"Codex turn usage ({label}): {format_codex_usage(state['completed_usage'])}")
+    return CodexTurnStreamResult(final_response=final_response, usage=state["completed_usage"])
+
+
+def run_codex_implementation(state: dict[str, Any], candidate: Candidate) -> CodexSession:
     try:
         from openai_codex import Codex, Sandbox
     except ImportError as exc:
@@ -450,15 +586,26 @@ def run_codex_implementation(candidate: Candidate) -> CodexSession:
     manager = Codex()
     previous_cwd = Path.cwd()
     os.chdir(candidate.sandbox_dir)
+    codex = None
     try:
         log_phase("Opening new Codex session.")
         codex = manager.__enter__()
         log_phase("Creating workspace-write Codex thread.")
-        thread = codex.thread_start(sandbox=Sandbox.workspace_write)
+        thread = codex.thread_start(sandbox=Sandbox.workspace_write, cwd=str(candidate.sandbox_dir))
         log_phase("Waiting for Codex to finish the initial implementation pass.")
-        result = thread.run("Start by looking at `PROGRAM.md`, and let's kick off the experiment loop!")
+        result = run_codex_turn(
+            thread,
+            state=state,
+            prompt="Start by looking at `PROGRAM.md`, and let's kick off the experiment loop!",
+            label=f"{candidate.version} implementation",
+            sandbox_cwd=candidate.sandbox_dir,
+        )
         final_response = result.final_response
         log_phase("Codex finished the initial implementation pass.")
+    except Exception:
+        if codex is not None:
+            manager.__exit__(None, None, None)
+        raise
     finally:
         os.chdir(previous_cwd)
 
@@ -466,15 +613,26 @@ def run_codex_implementation(candidate: Candidate) -> CodexSession:
     return CodexSession(manager, thread)
 
 
-def run_codex_result_update(candidate: Candidate, session: CodexSession, evaluation_summary: str) -> None:
+def run_codex_result_update(
+    state: dict[str, Any],
+    candidate: Candidate,
+    session: CodexSession,
+    evaluation_summary: str,
+) -> None:
     previous_cwd = Path.cwd()
     os.chdir(candidate.sandbox_dir)
     try:
         log_phase("Waiting for Codex to process the evaluation follow-up prompt.")
-        result = session.thread.run(
-            f"Here's your evaluation result for {candidate.version} Engine.\n\n"
-            f"{evaluation_summary}\n\n"
-            "Reminder: update `RETURN.json` with your inferred conclusion, and thank you for your help!"
+        result = run_codex_turn(
+            session.thread,
+            state=state,
+            prompt=(
+                f"Here's your evaluation result for {candidate.version} Engine.\n\n"
+                f"{evaluation_summary}\n\n"
+                "Reminder: update `RETURN.json` with your inferred conclusion, and thank you for your help!"
+            ),
+            label=f"{candidate.version} evaluation follow-up",
+            sandbox_cwd=candidate.sandbox_dir,
         )
         final_response = result.final_response
         log_phase("Codex finished the evaluation follow-up prompt.")
@@ -489,6 +647,22 @@ def run_codex_result_update(candidate: Candidate, session: CodexSession, evaluat
 def copy_candidate_to_repo(candidate: Candidate) -> None:
     candidate.engine_file.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(candidate.sandbox_engine_file, candidate.engine_file)
+
+
+def cleanup_timed_out_attempt(
+    candidate: Candidate,
+    *,
+    log_path: Path | None = None,
+    approved_log_path: Path | None = None,
+) -> None:
+    if approved_log_path is not None and approved_log_path.exists():
+        approved_log_path.unlink()
+    if log_path is not None and log_path.exists():
+        log_path.unlink()
+    if candidate.engine_file.exists():
+        candidate.engine_file.unlink()
+    if candidate.sandbox_dir.exists():
+        shutil.rmtree(candidate.sandbox_dir)
 
 
 def make_attempt_id(candidate: Candidate) -> str:
