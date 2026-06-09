@@ -545,3 +545,24 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `97.8991`
 - average_positions_or_nodes: `10439.0495`
 - inferred_conclusion: `The added rook-on-seventh and connected-passed-pawn bonuses were directionally plausible but slightly underperformed the v3.11 seed, so stacking more small generic activity/conversion bonuses on top of v3.11 is not enough by itself. Future v3 experiments should favor more selective evaluation terms or search changes that materially alter tactical move choice, rather than broad static bonuses that mostly preserve existing plans.`
+
+## Attempt: 2026-06-09T08:09:15Z - v3.13
+
+- status: `approved`
+- commit: `49960e8`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.11`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_11Engine.cs`
+- candidate_version: `v3.13`
+- version_bump: `minor`
+- hypotheses:
+  - `Conservative null-move pruning at deeper non-check nodes with non-pawn material should reduce wasted search on clearly safe fail-high branches and improve tactical move selection within the 100ms budget.`
+- implementation_summary: `Added a guarded null-move pruning path to negamax with no-null-reply recursion control, a pawns-and-king-only endgame exclusion to reduce zugzwang risk, and native-board null-move make/unmake helpers while preserving the existing LMR/PVS framework.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_13Engine-49960e8-result.csv`
+- wins/draws/losses: `708/139/153`
+- score: `777.5`
+- score_rate: `0.7775`
+- average_plies: `86.3960`
+- average_processing_time_ms: `98.3980`
+- average_positions_or_nodes: `11407.9374`
+- inferred_conclusion: `The guarded null-move pruning change was a clear improvement over v3.11, raising score_rate from 0.7565 to 0.7775 while keeping failures at zero and max-plies comfortably within the approval threshold. Future v3 experiments should continue exploring selective search-control changes with explicit zugzwang and endgame safety guards, since this branch benefited more from a contained pruning improvement than from stacking additional small static evaluation bonuses.`

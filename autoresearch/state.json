@@ -16,15 +16,15 @@
     }
   },
   "latest_approved": {
-    "version": "v3.11",
-    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_11Engine.cs",
-    "commit": "8214d59",
+    "version": "v3.13",
+    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_13Engine.cs",
+    "commit": "49960e8",
     "approved_recorded_at": "2026-06-09",
-    "approved_reference_score_rate_vs_stockfish_1350": 0.7565,
-    "approved_reference_score_source": "autoresearch/approved_logs/V3_11Engine-8214d59-result.csv",
-    "notes": "Added bishop mobility scoring, added an endgame passed-pawn escort/blockade evaluation term based on king proximity to the square in front of advanced passers, and refactored king PST scoring to use the already-computed endgame phase inside the evaluation snapshot."
+    "approved_reference_score_rate_vs_stockfish_1350": 0.7775,
+    "approved_reference_score_source": "autoresearch/approved_logs/V3_13Engine-49960e8-result.csv",
+    "notes": "Added a guarded null-move pruning path to negamax with no-null-reply recursion control, a pawns-and-king-only endgame exclusion to reduce zugzwang risk, and native-board null-move make/unmake helpers while preserving the existing LMR/PVS framework."
   },
-  "next_candidate_version": "v3.13",
+  "next_candidate_version": "v3.14",
   "agent": {
     "max_hypotheses_per_experiment": 2,
     "codex_turn_timeout_minutes": 15

@@ -584,6 +584,30 @@
         "text": "C# v3.12 scored 752.5/1000 against Stockfish (1350 Elo): 677 wins, 151 draws, 172 losses, score rate 0.7525."
       },
       "limitations": []
+    },
+    {
+      "version": "v3.13",
+      "api_version": "v3_13",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_13Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "49960e8",
+      "hypotheses": [
+        "Conservative null-move pruning at deeper non-check nodes with non-pawn material should reduce wasted search on clearly safe fail-high branches and improve tactical move selection within the 100ms budget."
+      ],
+      "summary": "Added a guarded null-move pruning path to negamax with no-null-reply recursion control, a pawns-and-king-only endgame exclusion to reduce zugzwang risk, and native-board null-move make/unmake helpers while preserving the existing LMR/PVS framework.",
+      "implementation_summary": "Added a guarded null-move pruning path to negamax with no-null-reply recursion control, a pawns-and-king-only endgame exclusion to reduce zugzwang risk, and native-board null-move make/unmake helpers while preserving the existing LMR/PVS framework.",
+      "evaluation_log_path": "autoresearch/approved_logs/V3_13Engine-49960e8-result.csv",
+      "stockfish_1350": {
+        "games": 1000,
+        "wins": 708,
+        "draws": 139,
+        "losses": 153,
+        "score": 777.5,
+        "score_rate": 0.7775,
+        "text": "C# v3.13 scored 777.5/1000 against Stockfish (1350 Elo): 708 wins, 139 draws, 153 losses, score rate 0.7775."
+      },
+      "limitations": []
     }
   ]
 }
