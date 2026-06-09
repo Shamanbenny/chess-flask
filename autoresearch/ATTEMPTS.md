@@ -608,3 +608,25 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `98.6030`
 - average_positions_or_nodes: `10260.1696`
 - inferred_conclusion: `The guarded shallow quiet-move futility pruning change was a strong improvement over v3.14, raising score_rate from 0.8085 to 0.8375 while keeping failures at zero and reducing capped games to a low 0.0330 max_plies_rate. Future v3 experiments should continue exploring tightly guarded shallow move-pruning and search-selectivity ideas that trim clearly unpromising quiet branches without relaxing the existing endgame and tactical safety checks.`
+
+## Attempt: 2026-06-09T09:31:57Z - v3.16
+
+- status: `rejected`
+- commit: `<n/a>`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.15`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_15Engine.cs`
+- candidate_version: `v3.16`
+- version_bump: `minor`
+- hypotheses:
+  - `A middlegame king-shield bonus that rewards pawns in front of the king and penalizes missing cover will improve defensive move choice more reliably than another search-only heuristic tweak.`
+  - `A connected-passed-pawn bonus for adjacent advanced passers will improve endgame conversion beyond the existing single-passer and king-escort terms.`
+- implementation_summary: `Added a tapered king-shield evaluation around each king that scores nearby pawn cover only outside pure endgames, and added a connected passed pawn bonus for adjacent advanced passers on neighboring files with similar ranks.`
+- evaluation_log_path: `<n/a>`
+- wins/draws/losses: `756/111/133`
+- score: `811.5`
+- score_rate: `0.8115`
+- average_plies: `83.8490`
+- average_processing_time_ms: `99.0042`
+- average_positions_or_nodes: `10068.7432`
+- inferred_conclusion: `The added king-shield and connected-passed-pawn terms preserved stability and remained strong, but they reduced score_rate versus the approved v3.15 baseline and did not justify replacing it. Future v3.x attempts should avoid stacking broad static evaluation bonuses unless they target a clearly missing decision pattern with tighter conditions or are paired with a search change that converts the extra evaluation signal into stronger move selection.`

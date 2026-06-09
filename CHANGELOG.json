@@ -656,6 +656,31 @@
         "text": "C# v3.15 scored 837.5/1000 against Stockfish (1350 Elo): 788 wins, 99 draws, 113 losses, score rate 0.8375."
       },
       "limitations": []
+    },
+    {
+      "version": "v3.16",
+      "api_version": "v3_16",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_16Engine.cs",
+      "served": false,
+      "status": "rejected",
+      "commit": "<n/a>",
+      "hypotheses": [
+        "A middlegame king-shield bonus that rewards pawns in front of the king and penalizes missing cover will improve defensive move choice more reliably than another search-only heuristic tweak.",
+        "A connected-passed-pawn bonus for adjacent advanced passers will improve endgame conversion beyond the existing single-passer and king-escort terms."
+      ],
+      "summary": "Added a tapered king-shield evaluation around each king that scores nearby pawn cover only outside pure endgames, and added a connected passed pawn bonus for adjacent advanced passers on neighboring files with similar ranks.",
+      "implementation_summary": "Added a tapered king-shield evaluation around each king that scores nearby pawn cover only outside pure endgames, and added a connected passed pawn bonus for adjacent advanced passers on neighboring files with similar ranks.",
+      "evaluation_log_path": "<n/a>",
+      "stockfish_1350": {
+        "games": 1000,
+        "wins": 756,
+        "draws": 111,
+        "losses": 133,
+        "score": 811.5,
+        "score_rate": 0.8115,
+        "text": "C# v3.16 scored 811.5/1000 against Stockfish (1350 Elo): 756 wins, 111 draws, 133 losses, score rate 0.8115."
+      },
+      "limitations": []
     }
   ]
 }
