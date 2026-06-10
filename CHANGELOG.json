@@ -739,6 +739,32 @@
           "text": "C# v3.16 scored 811.5/1000 against Stockfish (1350 Elo): 756 wins, 111 draws, 133 losses, score rate 0.8115."
         }
       }
+    },
+    {
+      "version": "v3.17",
+      "api_version": "v3_17",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_17Engine.cs",
+      "served": false,
+      "status": "rejected",
+      "commit": "<n/a>",
+      "hypotheses": [
+        "A conservative depth-1 razoring shortcut at quiet non-check nodes will skip clearly hopeless full move generation while still searching captures through quiescence, improving effective search selectivity on top of v3.15's futility pruning."
+      ],
+      "summary": "Added a guarded depth-1 razoring check in negamax that reuses static evaluation, excludes check and pawns-and-king-only positions, and falls back to quiescence when static evaluation is safely below alpha.",
+      "implementation_summary": "Added a guarded depth-1 razoring check in negamax that reuses static evaluation, excludes check and pawns-and-king-only positions, and falls back to quiescence when static evaluation is safely below alpha.",
+      "evaluation_log_path": "<n/a>",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 778,
+          "draws": 102,
+          "losses": 120,
+          "score": 829.0,
+          "score_rate": 0.829,
+          "text": "C# v3.17 scored 829.0/1000 against Stockfish (1350 Elo): 778 wins, 102 draws, 120 losses, score rate 0.8290."
+        }
+      },
+      "limitations": []
     }
   ]
 }

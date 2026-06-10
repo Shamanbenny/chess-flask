@@ -24,7 +24,7 @@
     "approved_reference_score_source": "autoresearch/approved_logs/V3_15Engine-901cf13-result.csv",
     "notes": "Added a shallow quiet-move futility pruning path in negamax for later-ordered quiet moves at depths up to 2, reusing static evaluation when already available from reverse futility pruning and keeping the existing non-check and pawns-and-king-only safety guards."
   },
-  "next_candidate_version": "v3.17",
+  "next_candidate_version": "v3.18",
   "agent": {
     "max_hypotheses_per_experiment": 2,
     "codex_turn_timeout_minutes": 15

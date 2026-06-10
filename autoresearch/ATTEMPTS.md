@@ -630,3 +630,24 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `99.0042`
 - average_positions_or_nodes: `10068.7432`
 - inferred_conclusion: `The added king-shield and connected-passed-pawn terms preserved stability and remained strong, but they reduced score_rate versus the approved v3.15 baseline and did not justify replacing it. Future v3.x attempts should avoid stacking broad static evaluation bonuses unless they target a clearly missing decision pattern with tighter conditions or are paired with a search change that converts the extra evaluation signal into stronger move selection.`
+
+## Attempt: 2026-06-10T08:11:56Z - v3.17
+
+- status: `rejected`
+- commit: `<n/a>`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.15`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_15Engine.cs`
+- candidate_version: `v3.17`
+- version_bump: `minor`
+- hypotheses:
+  - `A conservative depth-1 razoring shortcut at quiet non-check nodes will skip clearly hopeless full move generation while still searching captures through quiescence, improving effective search selectivity on top of v3.15's futility pruning.`
+- implementation_summary: `Added a guarded depth-1 razoring check in negamax that reuses static evaluation, excludes check and pawns-and-king-only positions, and falls back to quiescence when static evaluation is safely below alpha.`
+- evaluation_log_path: `<n/a>`
+- wins/draws/losses: `778/102/120`
+- score: `829.0`
+- score_rate: `0.8290`
+- average_plies: `83.5790`
+- average_processing_time_ms: `98.9151`
+- average_positions_or_nodes: `10486.3856`
+- inferred_conclusion: `The depth-1 razoring shortcut remained stable with zero crashes, illegal moves, or timeouts, but it underperformed the v3.15 seed at 0.8290 versus 0.8375 and slightly increased capped games to 0.0450. Future v3 attempts should avoid adding this broad pre-move-generation razoring layer on top of the existing futility pruning, and should instead target more selective pruning conditions or move-ordering changes that preserve v3.15's tactical coverage.`
