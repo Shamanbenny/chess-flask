@@ -963,12 +963,11 @@ def ensure_codex_account_ready(
 
     account = codex.account(refresh_token=True)
     if getattr(account, "requires_openai_auth", False):
-        raise CodexAuthRequiredError(
-            "Codex login completed, but the account still reports that OpenAI authentication is required.",
-            browser_auth_url=browser_auth_url,
-            device_code_url=device_code_url,
-            device_code=device_code,
+        log_phase(
+            "Codex login completed, but account refresh still reports requiresOpenaiAuth=true; "
+            "continuing so the next Codex operation can validate the session."
         )
+        return
     log_phase("Codex login completed; continuing experiment.")
 
 
