@@ -178,7 +178,13 @@ def main() -> int:
         experiment_log_start_line = current_text_log_line_count()
         log_phase(f"Starting attempt for {candidate.version}.")
         try:
-            codex_session = run_codex_implementation(state, candidate, soc_cc_enabled=args.soc_cc)
+            codex_session = run_codex_implementation(
+                state,
+                candidate,
+                soc_cc_enabled=args.soc_cc,
+                soc_cc_config=soc_cc,
+                experiment_log_start_line=experiment_log_start_line,
+            )
         except CodexTurnTimeoutError as exc:
             reason = str(exc)
             log_phase(reason)
@@ -902,28 +908,68 @@ def classify_codex_exception(exc: Exception) -> Exception:
     return exc
 
 
-def ensure_codex_account_ready(codex: Any, *, soc_cc_enabled: bool) -> None:
+def ensure_codex_account_ready(
+    codex: Any,
+    *,
+    soc_cc_enabled: bool,
+    soc_cc_config: SocCcConfig | None,
+    candidate: Candidate,
+    experiment_log_start_line: int,
+) -> None:
     account = codex.account(refresh_token=True)
-    if getattr(account, "requires_openai_auth", False):
-        browser_auth_url: str | None = None
-        device_code_url: str | None = None
-        device_code: str | None = None
-        try:
-            if soc_cc_enabled:
-                device_handle = codex.login_chatgpt_device_code()
-                device_code_url = device_handle.verification_url
-                device_code = device_handle.user_code
-            else:
-                browser_handle = codex.login_chatgpt()
-                browser_auth_url = browser_handle.auth_url
-        except Exception:
-            pass
+    if not getattr(account, "requires_openai_auth", False):
+        return
+
+    browser_auth_url: str | None = None
+    device_code_url: str | None = None
+    device_code: str | None = None
+    login_handle: Any | None = None
+
+    if soc_cc_enabled:
+        login_handle = codex.login_chatgpt_device_code()
+        device_code_url = login_handle.verification_url
+        device_code = login_handle.user_code
+    else:
+        login_handle = codex.login_chatgpt()
+        browser_auth_url = login_handle.auth_url
+
+    auth_error = CodexAuthRequiredError(
+        "Codex account state reports that OpenAI authentication is required before the experiment can continue.",
+        browser_auth_url=browser_auth_url,
+        device_code_url=device_code_url,
+        device_code=device_code,
+    )
+    log_phase(str(auth_error))
+    emit_console(format_auth_resolution(auth_error), flush=True)
+
+    if soc_cc_config is not None:
+        send_soc_cc_blocker_email(
+            soc_cc_config,
+            candidate,
+            auth_error,
+            experiment_log_start_line=experiment_log_start_line,
+        )
+
+    log_phase("Waiting for Codex login completion.")
+    completed = login_handle.wait()
+    if not getattr(completed, "success", False):
+        error = getattr(completed, "error", None) or "login did not complete successfully"
         raise CodexAuthRequiredError(
-            "Codex account state reports that OpenAI authentication is required before the experiment can continue.",
+            f"Codex login failed: {error}",
             browser_auth_url=browser_auth_url,
             device_code_url=device_code_url,
             device_code=device_code,
         )
+
+    account = codex.account(refresh_token=True)
+    if getattr(account, "requires_openai_auth", False):
+        raise CodexAuthRequiredError(
+            "Codex login completed, but the account still reports that OpenAI authentication is required.",
+            browser_auth_url=browser_auth_url,
+            device_code_url=device_code_url,
+            device_code=device_code,
+        )
+    log_phase("Codex login completed; continuing experiment.")
 
 
 def run_codex_turn(
@@ -1013,6 +1059,8 @@ def run_codex_implementation(
     candidate: Candidate,
     *,
     soc_cc_enabled: bool,
+    soc_cc_config: SocCcConfig | None,
+    experiment_log_start_line: int,
 ) -> CodexSession:
     try:
         from openai_codex import Codex, Sandbox
@@ -1028,7 +1076,13 @@ def run_codex_implementation(
         log_phase("Opening new Codex session.")
         codex = manager.__enter__()
         log_phase("Checking Codex account state.")
-        ensure_codex_account_ready(codex, soc_cc_enabled=soc_cc_enabled)
+        ensure_codex_account_ready(
+            codex,
+            soc_cc_enabled=soc_cc_enabled,
+            soc_cc_config=soc_cc_config,
+            candidate=candidate,
+            experiment_log_start_line=experiment_log_start_line,
+        )
         log_phase("Creating workspace-write Codex thread.")
         thread = codex.thread_start(sandbox=Sandbox.workspace_write, cwd=str(candidate.sandbox_dir))
         log_phase("Waiting for Codex to finish the initial implementation pass.")
