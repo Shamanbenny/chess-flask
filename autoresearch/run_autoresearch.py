@@ -73,7 +73,18 @@ class CodexTurnTimeoutError(RuntimeError):
 
 
 class CodexAuthRequiredError(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        browser_auth_url: str | None = None,
+        device_code_url: str | None = None,
+        device_code: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.browser_auth_url = browser_auth_url
+        self.device_code_url = device_code_url
+        self.device_code = device_code
 
 
 class CodexUsageLimitError(RuntimeError):
@@ -167,7 +178,7 @@ def main() -> int:
         experiment_log_start_line = current_text_log_line_count()
         log_phase(f"Starting attempt for {candidate.version}.")
         try:
-            codex_session = run_codex_implementation(state, candidate)
+            codex_session = run_codex_implementation(state, candidate, soc_cc_enabled=args.soc_cc)
         except CodexTurnTimeoutError as exc:
             reason = str(exc)
             log_phase(reason)
@@ -184,6 +195,7 @@ def main() -> int:
             continue
         except (CodexAuthRequiredError, CodexUsageLimitError) as exc:
             log_phase(str(exc))
+            emit_console(format_auth_resolution(exc), flush=True)
             if soc_cc is not None:
                 send_soc_cc_blocker_email(
                     soc_cc,
@@ -255,6 +267,7 @@ def main() -> int:
             continue
         except (CodexAuthRequiredError, CodexUsageLimitError) as exc:
             log_phase(str(exc))
+            emit_console(format_auth_resolution(exc), flush=True)
             if soc_cc is not None:
                 send_soc_cc_blocker_email(
                     soc_cc,
@@ -479,6 +492,7 @@ def send_soc_cc_blocker_email(
     attachments: list[tuple[str, bytes, str]] = []
     log_artifacts = build_experiment_log_attachment(candidate, experiment_log_start_line)
     attachments.append((log_artifacts.log_attachment_name, log_artifacts.log_attachment_bytes, "text/plain"))
+    resolution = format_auth_resolution(exc) if isinstance(exc, CodexAuthRequiredError) else ""
     send_soc_cc_email(
         config,
         subject=f"[autoresearch][soc-cc] {candidate.version} blocked: {blocker_type}",
@@ -487,6 +501,7 @@ def send_soc_cc_blocker_email(
             f"Blocker: {blocker_type}\n"
             f"Detail: {exc}\n"
             f"Console log: {CURRENT_TEXT_LOG.relative_to(REPO_ROOT) if CURRENT_TEXT_LOG is not None else 'n/a'}\n"
+            f"{resolution}"
         ),
         attachments=attachments,
     )
@@ -838,6 +853,32 @@ def is_usage_limit_error_text(text: str) -> bool:
     )
 
 
+def format_auth_resolution(exc: Exception) -> str:
+    if not isinstance(exc, CodexAuthRequiredError):
+        return ""
+
+    lines = ["", "Resolution:"]
+    if exc.browser_auth_url:
+        lines.extend(
+            [
+                "- Finish signing in via your browser using this URL:",
+                f"  {exc.browser_auth_url}",
+            ]
+        )
+    if exc.device_code_url and exc.device_code:
+        lines.extend(
+            [
+                "- On a remote or headless machine, use device code login:",
+                f"  verification_url: {exc.device_code_url}",
+                f"  user_code: {exc.device_code}",
+            ]
+        )
+    if len(lines) == 2:
+        lines.append("- No interactive login URL or device code was available from the SDK.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def classify_turn_failure(turn_error: Any) -> Exception:
     message = turn_error_text(turn_error)
     payload_text = error_payload_text(getattr(turn_error, "codex_error_info", None))
@@ -861,11 +902,27 @@ def classify_codex_exception(exc: Exception) -> Exception:
     return exc
 
 
-def ensure_codex_account_ready(codex: Any) -> None:
+def ensure_codex_account_ready(codex: Any, *, soc_cc_enabled: bool) -> None:
     account = codex.account(refresh_token=True)
     if getattr(account, "requires_openai_auth", False):
+        browser_auth_url: str | None = None
+        device_code_url: str | None = None
+        device_code: str | None = None
+        try:
+            if soc_cc_enabled:
+                device_handle = codex.login_chatgpt_device_code()
+                device_code_url = device_handle.verification_url
+                device_code = device_handle.user_code
+            else:
+                browser_handle = codex.login_chatgpt()
+                browser_auth_url = browser_handle.auth_url
+        except Exception:
+            pass
         raise CodexAuthRequiredError(
-            "Codex account state reports that OpenAI authentication is required before the experiment can continue."
+            "Codex account state reports that OpenAI authentication is required before the experiment can continue.",
+            browser_auth_url=browser_auth_url,
+            device_code_url=device_code_url,
+            device_code=device_code,
         )
 
 
@@ -951,7 +1008,12 @@ def run_codex_turn(
     return CodexTurnStreamResult(final_response=final_response, usage=turn_state["completed_usage"])
 
 
-def run_codex_implementation(state: dict[str, Any], candidate: Candidate) -> CodexSession:
+def run_codex_implementation(
+    state: dict[str, Any],
+    candidate: Candidate,
+    *,
+    soc_cc_enabled: bool,
+) -> CodexSession:
     try:
         from openai_codex import Codex, Sandbox
     except ImportError as exc:
@@ -966,7 +1028,7 @@ def run_codex_implementation(state: dict[str, Any], candidate: Candidate) -> Cod
         log_phase("Opening new Codex session.")
         codex = manager.__enter__()
         log_phase("Checking Codex account state.")
-        ensure_codex_account_ready(codex)
+        ensure_codex_account_ready(codex, soc_cc_enabled=soc_cc_enabled)
         log_phase("Creating workspace-write Codex thread.")
         thread = codex.thread_start(sandbox=Sandbox.workspace_write, cwd=str(candidate.sandbox_dir))
         log_phase("Waiting for Codex to finish the initial implementation pass.")
