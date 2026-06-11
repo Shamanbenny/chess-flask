@@ -16,15 +16,15 @@
     }
   },
   "latest_approved": {
-    "version": "v3.18",
-    "engine_file": "engine_csharp/src/Engine.Core/V3/V3_18Engine.cs",
+    "version": "v4.0",
+    "engine_file": "engine_csharp/src/Engine.Core/V4/V4_0Engine.cs",
     "commit": "99698ba",
     "approved_recorded_at": "2026-06-11",
     "approved_reference_score_rate_vs_stockfish_1350": 0.842,
-    "approved_reference_score_source": "autoresearch/approved_logs/V3_18Engine-99698ba-result.csv",
-    "notes": "Added a persistent quiet-history table to the v3.18 search context, scored quiet moves with a small capped history bonus below TT/capture/killer priority, and rewarded quiet beta cutoffs by remaining-depth-squared history increments while preserving the existing evaluation and pruning guards."
+    "approved_reference_score_source": "autoresearch/approved_logs/V4_0Engine-99698ba-result.csv",
+    "notes": "V4.0 is a direct namespace/type refactor of the approved V4.0 engine. It keeps the same quiet-history ordering logic and inherits V4.0's approved Stockfish-1350 reference result until a V4-specific evaluation log is recorded."
   },
-  "next_candidate_version": "v3.20",
+  "next_candidate_version": "v4.1",
   "agent": {
     "max_hypotheses_per_experiment": 2,
     "codex_turn_timeout_minutes": 15

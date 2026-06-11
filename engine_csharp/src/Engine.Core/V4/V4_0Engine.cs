@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using Chess;
 
-namespace Engine.Core.V3;
+namespace Engine.Core.V4;
 
-public static class V3_18Engine
+public static class V4_0Engine
 {
     private const int TimeCheckInterval = 1024;
     private const int TtSizeBits = 18;
@@ -50,11 +50,11 @@ public static class V3_18Engine
     private const int QuietFutilityPruningMinMoveIndex = 2;
     private const int QuietFutilityMarginPerDepth = 140;
 
-    public static SearchResult SearchMoveV3_18(
+    public static SearchResult SearchMoveV4_0(
         BoardState board,
         double timeLimitSeconds = 1.0,
         int? maxDepth = null,
-        V3_18SearchContext? searchContext = null)
+        V4_0SearchContext? searchContext = null)
     {
         if (timeLimitSeconds <= 0)
         {
@@ -74,7 +74,7 @@ public static class V3_18Engine
         var selectedMove = legalMoves.FirstOrDefault(move => MoveToUci(move) == uci);
         if (selectedMove is null)
         {
-            throw new InvalidOperationException($"Native v3.18 search returned an illegal root move: {uci}");
+            throw new InvalidOperationException($"Native V4.0 search returned an illegal root move: {uci}");
         }
 
         return new SearchResult(
@@ -91,9 +91,9 @@ public static class V3_18Engine
             result.NodesSearched);
     }
 
-    public static V3_18SearchContext CreateSearchContextV3_18()
+    public static V4_0SearchContext CreateSearchContextV4_0()
     {
-        return new V3_18SearchContext();
+        return new V4_0SearchContext();
     }
 
     private static string MoveToUci(Move move)
@@ -104,7 +104,7 @@ public static class V3_18Engine
         return $"{move.OriginalPosition}{move.NewPosition}{promotion}";
     }
 
-    public sealed class V3_18SearchContext
+    public sealed class V4_0SearchContext
     {
         internal TtEntry[] TranspositionTable { get; } = new TtEntry[TtSize];
         internal ushort[] PrimaryKillerMoves { get; } = new ushort[MaxSearchPly];
@@ -129,7 +129,7 @@ public static class V3_18Engine
         private int _ttHits;
         private int _ttCutoffs;
 
-        public NativeSearch(NativeBoard board, double timeLimitSeconds, int? maxDepth, V3_18SearchContext? searchContext)
+        public NativeSearch(NativeBoard board, double timeLimitSeconds, int? maxDepth, V4_0SearchContext? searchContext)
         {
             _board = board;
             _deadlineTimestamp = Stopwatch.GetTimestamp() + (long)(timeLimitSeconds * Stopwatch.Frequency);
@@ -145,7 +145,7 @@ public static class V3_18Engine
             var fallbackMoves = OrderedSearchMoves(ply: 0);
             if (fallbackMoves.Count == 0)
             {
-                throw new InvalidOperationException("No legal moves available for v3.18 search");
+                throw new InvalidOperationException("No legal moves available for V4.0 search");
             }
 
             var bestMove = fallbackMoves[0];

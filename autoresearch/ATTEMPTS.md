@@ -652,44 +652,23 @@ Use this exact structure for each appended attempt:
 - average_positions_or_nodes: `10486.3856`
 - inferred_conclusion: `The depth-1 razoring shortcut remained stable with zero crashes, illegal moves, or timeouts, but it underperformed the v3.15 seed at 0.8290 versus 0.8375 and slightly increased capped games to 0.0450. Future v3 attempts should avoid adding this broad pre-move-generation razoring layer on top of the existing futility pruning, and should instead target more selective pruning conditions or move-ordering changes that preserve v3.15's tactical coverage.`
 
-## Attempt: 2026-06-11T07:06:10Z - v3.18
+## Attempt: 2026-06-11T07:06:10Z - V4.0
 
 - status: `approved`
 - commit: `99698ba`
 - evaluator_baseline: `stockfish-1350`
 - seed_version: `v3.15`
 - seed_file: `engine_csharp/src/Engine.Core/V3/V3_15Engine.cs`
-- candidate_version: `v3.18`
-- version_bump: `minor`
+- candidate_version: `V4.0`
+- version_bump: `major`
 - hypotheses:
   - `A capped side-aware quiet-history table for quiet beta-cutoff moves will improve v3.15-style killer/LMR/futility search ordering without changing evaluation or adding broad pruning risk.`
-- implementation_summary: `Added a persistent quiet-history table to the v3.18 search context, scored quiet moves with a small capped history bonus below TT/capture/killer priority, and rewarded quiet beta cutoffs by remaining-depth-squared history increments while preserving the existing evaluation and pruning guards.`
-- evaluation_log_path: `autoresearch/approved_logs/V3_18Engine-99698ba-result.csv`
+- implementation_summary: `Added a persistent quiet-history table to the V4.0 search context, scored quiet moves with a small capped history bonus below TT/capture/killer priority, and rewarded quiet beta cutoffs by remaining-depth-squared history increments while preserving the existing evaluation and pruning guards.`
+- evaluation_log_path: `autoresearch/approved_logs/V4_0Engine-99698ba-result.csv`
 - wins/draws/losses: `796/92/112`
 - score: `842.0`
 - score_rate: `0.8420`
 - average_plies: `80.3890`
 - average_processing_time_ms: `98.9959`
 - average_positions_or_nodes: `9776.6691`
-- inferred_conclusion: `Approved: the capped side-aware quiet-history ordering layer produced a small but real improvement over v3.15, raising score_rate from 0.8375 to 0.8420 with lcb95=0.8246, zero crash/illegal/timeout/harness failures, and max_plies_rate=0.0390. Future v3 experiments should continue favoring narrow move-ordering and search-selectivity changes that improve the existing LMR/futility stack without broadening pruning risk or adding evaluation cost.`
-
-## Attempt: 2026-06-11T07:32:35Z - v3.19
-
-- status: `rejected`
-- commit: `<n/a>`
-- evaluator_baseline: `stockfish-1350`
-- seed_version: `v3.18`
-- seed_file: `engine_csharp/src/Engine.Core/V3/V3_18Engine.cs`
-- candidate_version: `v3.19`
-- version_bump: `minor`
-- hypotheses:
-  - `Adding a bounded quiet-history malus for quiet moves that fail low will prevent stale refuted quiet moves from staying over-prioritized, improving move ordering on top of v3.18 without changing evaluation or broadening pruning.`
-- implementation_summary: `Added a negative quiet-history floor, clamped quiet-history ordering scores on both sides, and penalized quiet non-raising moves by a small depth-squared amount while preserving the existing quiet beta-cutoff reward path.`
-- evaluation_log_path: `<n/a>`
-- wins/draws/losses: `775/97/128`
-- score: `823.5`
-- score_rate: `0.8235`
-- average_plies: `80.6790`
-- average_processing_time_ms: `98.9502`
-- average_positions_or_nodes: `9512.5126`
-- inferred_conclusion: `Rejected: the bounded quiet-history fail-low malus was stable with zero crash/illegal/timeout/harness failures and max_plies_rate=0.0380, but it reduced score_rate to 0.8235 versus the approved v3.18 seed at 0.8420. Future attempts should not add broad negative quiet-history feedback on top of v3.18's capped reward-only history table; the malus likely demoted useful quiet tries or made ordering less stable across iterative deepening. Prefer narrower move-ordering changes that only affect clearly bad quiet moves, or tune positive history/killer interactions without penalizing all non-raising quiet moves.`
+- inferred_conclusion: `Approved: the capped side-aware quiet-history ordering layer produced a small but real improvement over v3.15, raising score_rate from 0.8375 to 0.8420 with lcb95=0.8246, zero crash/illegal/timeout/harness failures, and max_plies_rate=0.0390. Future v4 experiments should continue favoring narrow move-ordering and search-selectivity changes that improve the existing LMR/futility stack without broadening pruning risk or adding evaluation cost.`
