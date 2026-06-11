@@ -88,6 +88,36 @@ non-approving evaluator pass with `N` games to check that the candidate builds,
 the evaluator launches, and CSV parsing works. Smoke results are always rejected
 because they do not use the fixed 500-game contract.
 
+`--soc-cc` enables School of Computing Compute Cluster mode. In this mode:
+
+- the post-attempt KDialog prompt is skipped and the loop auto-continues
+- the evaluator uses a script constant of `12` workers instead of the normal
+  `state.json` value
+- the finalized autoresearch commit is pushed to `origin/<current-branch>` after
+  each attempt
+- the script reads a repo-local `.env` file and sends Gmail notifications when
+  Codex requires login credentials, when Codex reports usage/token exhaustion,
+  and when an experiment completes
+
+The repo-local `.env` file must define:
+
+```dotenv
+SOC_CC_GMAIL_USERNAME=your-gmail-address@gmail.com
+SOC_CC_GMAIL_APP_PASSWORD=your-gmail-app-password
+SOC_CC_NOTIFY_EMAIL_TO=destination@example.com
+# Optional; defaults to SOC_CC_GMAIL_USERNAME when omitted
+SOC_CC_NOTIFY_EMAIL_FROM=your-gmail-address@gmail.com
+```
+
+Completion emails attach:
+
+- a text attachment containing the first 100 and last 100 lines from the latest
+  experiment slice of the mirrored console log
+- the rejected `result.csv` when the attempt was rejected
+
+Approved attempts do not attach the CSV because the approved log is already
+tracked and pushed by the finalized commit.
+
 For a safe setup check:
 
 ```bash
@@ -200,6 +230,9 @@ Stockfish opponent:
 - transport: direct local engine-vs-Stockfish evaluation through
   `engine_csharp/src/LocalTesting`
 - no depth argument; the match is time-limited
+
+SOC CC mode overrides the worker count with a script constant of `12` without
+editing `state.json`.
 
 The command shape is:
 

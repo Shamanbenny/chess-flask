@@ -11,12 +11,14 @@ import math
 import os
 import re
 import shutil
+import smtplib
 import subprocess
 import sys
 import textwrap
 import threading
 import time
 from dataclasses import dataclass
+from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +29,11 @@ ATTEMPTS_PATH = REPO_ROOT / "autoresearch" / "ATTEMPTS.md"
 CHANGELOG_PATH = REPO_ROOT / "CHANGELOG.json"
 SANDBOX_ROOT = REPO_ROOT / "autoresearch-sandbox"
 TEXT_LOG_DIR = REPO_ROOT / "autoresearch" / "console-logs"
+LOCAL_ENV_PATH = REPO_ROOT / ".env"
 ENGINE_VERSION_RE = re.compile(r"^v(?P<major>\d+)\.(?P<minor>\d+)$", re.IGNORECASE)
+SOC_CC_EVALUATOR_WORKERS = 12
+SOC_CC_SMTP_HOST = "smtp.gmail.com"
+SOC_CC_SMTP_PORT = 465
 CURRENT_TEXT_LOG: Path | None = None
 
 
@@ -64,6 +70,32 @@ class EvaluationMetrics:
 
 class CodexTurnTimeoutError(RuntimeError):
     pass
+
+
+class CodexAuthRequiredError(RuntimeError):
+    pass
+
+
+class CodexUsageLimitError(RuntimeError):
+    pass
+
+
+class SocCcConfigurationError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class SocCcConfig:
+    email_username: str
+    email_password: str
+    email_to: str
+    email_from: str
+
+
+@dataclass(frozen=True)
+class ExperimentNotificationArtifacts:
+    log_attachment_name: str
+    log_attachment_bytes: bytes
 
 
 def log_phase(message: str) -> None:
@@ -110,6 +142,10 @@ def main() -> int:
         raise SystemExit("A major improvement requires additional information about what to modify, so --prompt is required.")
 
     start_text_log()
+    try:
+        soc_cc = load_soc_cc_config() if args.soc_cc else None
+    except SocCcConfigurationError as exc:
+        raise SystemExit(str(exc)) from exc
     state = load_state()
     if not args.dry_run:
         ensure_clean_worktree()
@@ -128,6 +164,7 @@ def main() -> int:
     while True:
         experiment_started_at = dt.datetime.now()
         experiment_started_monotonic = time.monotonic()
+        experiment_log_start_line = current_text_log_line_count()
         log_phase(f"Starting attempt for {candidate.version}.")
         try:
             codex_session = run_codex_implementation(state, candidate)
@@ -136,7 +173,7 @@ def main() -> int:
             log_phase(reason)
             cleanup_timed_out_attempt(candidate)
             log_experiment_duration(candidate, experiment_started_at, experiment_started_monotonic)
-            choice = prompt_continue("timed out", candidate, reason)
+            choice = prompt_continue("timed out", candidate, reason, soc_cc_enabled=args.soc_cc)
             if choice == "stop":
                 return 0
             state = load_state()
@@ -145,6 +182,16 @@ def main() -> int:
             prepare_sandbox(state, candidate, user_input)
             log_phase(f"Sandbox ready at {candidate.sandbox_dir.relative_to(REPO_ROOT)}.")
             continue
+        except (CodexAuthRequiredError, CodexUsageLimitError) as exc:
+            log_phase(str(exc))
+            if soc_cc is not None:
+                send_soc_cc_blocker_email(
+                    soc_cc,
+                    candidate,
+                    exc,
+                    experiment_log_start_line=experiment_log_start_line,
+                )
+            return 1
 
         log_phase(f"Copying {candidate.sandbox_engine_file.name} back into the repository.")
         copy_candidate_to_repo(candidate)
@@ -160,7 +207,13 @@ def main() -> int:
 
         if build_ok:
             log_phase("Build succeeded. Starting evaluator run.")
-            evaluator_ok = run_evaluator(candidate, state, attempt_id, args.smoke_games)
+            evaluator_ok = run_evaluator(
+                candidate,
+                state,
+                attempt_id,
+                args.smoke_games,
+                soc_cc_enabled=args.soc_cc,
+            )
             if evaluator_ok and log_path.exists():
                 log_phase(f"Evaluator finished. Parsing results from {log_path.relative_to(REPO_ROOT)}.")
                 metrics = parse_evaluation_csv(log_path, state)
@@ -191,7 +244,7 @@ def main() -> int:
                 approved_log_path=approved_log_path,
             )
             log_experiment_duration(candidate, experiment_started_at, experiment_started_monotonic)
-            choice = prompt_continue("timed out", candidate, reason)
+            choice = prompt_continue("timed out", candidate, reason, soc_cc_enabled=args.soc_cc)
             if choice == "stop":
                 return 0
             state = load_state()
@@ -200,6 +253,16 @@ def main() -> int:
             prepare_sandbox(state, candidate, user_input)
             log_phase(f"Sandbox ready at {candidate.sandbox_dir.relative_to(REPO_ROOT)}.")
             continue
+        except (CodexAuthRequiredError, CodexUsageLimitError) as exc:
+            log_phase(str(exc))
+            if soc_cc is not None:
+                send_soc_cc_blocker_email(
+                    soc_cc,
+                    candidate,
+                    exc,
+                    experiment_log_start_line=experiment_log_start_line,
+                )
+            return 1
         log_phase("Reading structured sandbox result from RETURN.json.")
         attempt_note = read_return_json(candidate)
 
@@ -217,14 +280,36 @@ def main() -> int:
         )
         persist_state(state)
         cleanup_rejected_candidate(candidate, status)
+        push_error: str | None = None
         commit_sha = commit_attempt(candidate, status)
         if commit_sha:
-            finalize_attempt_commit(candidate, status, commit_sha, approved_log_path)
+            commit_sha = finalize_attempt_commit(candidate, status, commit_sha, approved_log_path)
             log_phase(f"Recorded git commit {commit_sha} for {candidate.version}.")
+            if args.soc_cc:
+                try:
+                    push_current_branch()
+                except RuntimeError as exc:
+                    push_error = str(exc)
+                    log_phase(push_error)
 
         log_experiment_duration(candidate, experiment_started_at, experiment_started_monotonic)
-        choice = prompt_continue(status, candidate, verdict_reason)
+        if soc_cc is not None:
+            send_soc_cc_completion_email(
+                soc_cc,
+                candidate,
+                status,
+                verdict_reason if push_error is None else f"{verdict_reason} Push status: {push_error}",
+                commit_sha,
+                metrics,
+                rejected_csv_path=log_path if status == "rejected" and log_path.exists() else None,
+                experiment_log_start_line=experiment_log_start_line,
+            )
+        if push_error is not None:
+            return 1
+        choice = prompt_continue(status, candidate, verdict_reason, soc_cc_enabled=args.soc_cc)
         if choice == "stop":
+            return 0
+        if args.once:
             return 0
 
         state = load_state()
@@ -233,8 +318,6 @@ def main() -> int:
         log_phase(f"Preparing sandbox for next candidate {candidate.version}.")
         prepare_sandbox(state, candidate, user_input)
         log_phase(f"Sandbox ready at {candidate.sandbox_dir.relative_to(REPO_ROOT)}.")
-        if args.once:
-            return 0
 
 
 def parse_args() -> argparse.Namespace:
@@ -244,6 +327,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--major", action="store_true", help="Start a new major version experiment. Requires --prompt.")
     parser.add_argument("--dry-run", action="store_true", help="Prepare sandbox only; do not call Codex or evaluate.")
     parser.add_argument("--once", action="store_true", help="Exit after one attempt instead of prompting for another.")
+    parser.add_argument(
+        "--soc-cc",
+        action="store_true",
+        help=(
+            "Enable School of Computing Compute Cluster mode: auto-continue without KDialog, "
+            "use 12 evaluator workers, push after each finalized commit, and send Gmail notifications "
+            "using credentials from the repo-local .env file."
+        ),
+    )
     parser.add_argument(
         "--smoke-games",
         type=int,
@@ -258,6 +350,192 @@ def start_text_log() -> None:
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     CURRENT_TEXT_LOG = TEXT_LOG_DIR / f"{stamp}-log.txt"
     emit_console(f"[autoresearch {dt.datetime.now().strftime('%H:%M:%S')}] Mirroring console output to {CURRENT_TEXT_LOG.relative_to(REPO_ROOT)}.\n", flush=True)
+
+
+def load_soc_cc_config() -> SocCcConfig:
+    env = load_local_env(LOCAL_ENV_PATH)
+    username = env.get("SOC_CC_GMAIL_USERNAME", "").strip()
+    password = env.get("SOC_CC_GMAIL_APP_PASSWORD", "").strip()
+    recipient = env.get("SOC_CC_NOTIFY_EMAIL_TO", "").strip()
+    sender = env.get("SOC_CC_NOTIFY_EMAIL_FROM", "").strip() or username
+
+    missing = [
+        key
+        for key, value in (
+            ("SOC_CC_GMAIL_USERNAME", username),
+            ("SOC_CC_GMAIL_APP_PASSWORD", password),
+            ("SOC_CC_NOTIFY_EMAIL_TO", recipient),
+        )
+        if not value
+    ]
+    if missing:
+        raise SocCcConfigurationError(
+            "SOC CC mode requires the repo-local .env file to define: " + ", ".join(missing)
+        )
+
+    return SocCcConfig(
+        email_username=username,
+        email_password=password,
+        email_to=recipient,
+        email_from=sender,
+    )
+
+
+def load_local_env(path: Path) -> dict[str, str]:
+    if not path.exists():
+        raise SocCcConfigurationError(f"SOC CC mode requires a repo-local .env file at {path}.")
+
+    values: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def current_text_log_line_count() -> int:
+    if CURRENT_TEXT_LOG is None or not CURRENT_TEXT_LOG.exists():
+        return 0
+    with CURRENT_TEXT_LOG.open(encoding="utf-8") as handle:
+        return sum(1 for _ in handle)
+
+
+def latest_experiment_log_lines(start_line: int) -> list[str]:
+    if CURRENT_TEXT_LOG is None or not CURRENT_TEXT_LOG.exists():
+        return []
+    with CURRENT_TEXT_LOG.open(encoding="utf-8") as handle:
+        lines = handle.readlines()
+    return lines[start_line:]
+
+
+def build_experiment_log_attachment(candidate: Candidate, start_line: int) -> ExperimentNotificationArtifacts:
+    lines = latest_experiment_log_lines(start_line)
+    first_chunk = lines[:100]
+    last_chunk = lines[-100:] if len(lines) > 100 else []
+    body = [
+        f"# Latest Experiment Log Slice for {candidate.version}",
+        "",
+        "## First 100 Lines",
+        "",
+        *(line.rstrip("\n") for line in first_chunk),
+    ]
+    if last_chunk:
+        body.extend(
+            [
+                "",
+                "## Last 100 Lines",
+                "",
+                *(line.rstrip("\n") for line in last_chunk),
+            ]
+        )
+
+    attachment_name = f"{candidate.stem}-console-log-head-tail.txt"
+    return ExperimentNotificationArtifacts(
+        log_attachment_name=attachment_name,
+        log_attachment_bytes=("\n".join(body) + "\n").encode("utf-8"),
+    )
+
+
+def send_soc_cc_email(
+    config: SocCcConfig,
+    *,
+    subject: str,
+    body: str,
+    attachments: list[tuple[str, bytes, str]] | None = None,
+) -> None:
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = config.email_from
+    message["To"] = config.email_to
+    message.set_content(body)
+
+    for filename, payload, mime_type in attachments or []:
+        maintype, subtype = mime_type.split("/", 1)
+        message.add_attachment(payload, maintype=maintype, subtype=subtype, filename=filename)
+
+    with smtplib.SMTP_SSL(SOC_CC_SMTP_HOST, SOC_CC_SMTP_PORT) as smtp:
+        smtp.login(config.email_username, config.email_password)
+        smtp.send_message(message)
+
+
+def send_soc_cc_blocker_email(
+    config: SocCcConfig,
+    candidate: Candidate,
+    exc: Exception,
+    *,
+    experiment_log_start_line: int,
+) -> None:
+    blocker_type = "login required" if isinstance(exc, CodexAuthRequiredError) else "usage limit reached"
+    attachments: list[tuple[str, bytes, str]] = []
+    log_artifacts = build_experiment_log_attachment(candidate, experiment_log_start_line)
+    attachments.append((log_artifacts.log_attachment_name, log_artifacts.log_attachment_bytes, "text/plain"))
+    send_soc_cc_email(
+        config,
+        subject=f"[autoresearch][soc-cc] {candidate.version} blocked: {blocker_type}",
+        body=(
+            f"Candidate: {candidate.version}\n"
+            f"Blocker: {blocker_type}\n"
+            f"Detail: {exc}\n"
+            f"Console log: {CURRENT_TEXT_LOG.relative_to(REPO_ROOT) if CURRENT_TEXT_LOG is not None else 'n/a'}\n"
+        ),
+        attachments=attachments,
+    )
+
+
+def send_soc_cc_completion_email(
+    config: SocCcConfig,
+    candidate: Candidate,
+    status: str,
+    verdict_reason: str,
+    commit_sha: str | None,
+    metrics: EvaluationMetrics | None,
+    *,
+    rejected_csv_path: Path | None,
+    experiment_log_start_line: int,
+) -> None:
+    log_artifacts = build_experiment_log_attachment(candidate, experiment_log_start_line)
+    attachments: list[tuple[str, bytes, str]] = [
+        (log_artifacts.log_attachment_name, log_artifacts.log_attachment_bytes, "text/plain")
+    ]
+    if rejected_csv_path is not None and rejected_csv_path.exists():
+        attachments.append((rejected_csv_path.name, rejected_csv_path.read_bytes(), "text/csv"))
+
+    metrics_lines = "n/a"
+    if metrics is not None:
+        metrics_lines = (
+            f"wins/draws/losses: {metrics.wins}/{metrics.draws}/{metrics.losses}\n"
+            f"score_rate: {metrics.score_rate:.4f}\n"
+            f"lcb95: {metrics.lcb95:.4f}\n"
+            f"max_plies_rate: {metrics.max_plies_rate:.4f}\n"
+            f"average_plies: {metrics.average_plies:.2f}\n"
+            f"average_processing_time_ms: {metrics.average_processing_time_ms:.3f}\n"
+            f"average_positions_or_nodes: {metrics.average_positions_or_nodes:.2f}"
+        )
+
+    send_soc_cc_email(
+        config,
+        subject=f"[autoresearch][soc-cc] {candidate.version} {status}",
+        body=(
+            f"Candidate: {candidate.version}\n"
+            f"Status: {status}\n"
+            f"Verdict: {verdict_reason}\n"
+            f"Commit: {commit_sha or 'n/a'}\n"
+            f"Console log: {CURRENT_TEXT_LOG.relative_to(REPO_ROOT) if CURRENT_TEXT_LOG is not None else 'n/a'}\n"
+            f"Rejected CSV attached: {'yes' if rejected_csv_path is not None and rejected_csv_path.exists() else 'no'}\n"
+            f"Metrics:\n{metrics_lines}\n"
+        ),
+        attachments=attachments,
+    )
 
 
 def load_state() -> dict[str, Any]:
@@ -526,6 +804,71 @@ def codex_turn_timeout_seconds(state: dict[str, Any]) -> int:
     return max(minutes, 1) * 60
 
 
+def turn_error_text(turn_error: Any) -> str:
+    message = getattr(turn_error, "message", None)
+    if isinstance(message, str) and message.strip():
+        return message.strip()
+    return str(turn_error)
+
+
+def error_payload_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if hasattr(value, "model_dump"):
+        return json.dumps(value.model_dump(by_alias=True, exclude_none=True), sort_keys=True)
+    if isinstance(value, dict):
+        return json.dumps(value, sort_keys=True)
+    return str(value)
+
+
+def is_usage_limit_error_text(text: str) -> bool:
+    lowered = text.lower()
+    return any(
+        fragment in lowered
+        for fragment in (
+            "usagelimitexceeded",
+            "usage limit exceeded",
+            "usage limit",
+            "token limit",
+            "token budget",
+            "quota",
+        )
+    )
+
+
+def classify_turn_failure(turn_error: Any) -> Exception:
+    message = turn_error_text(turn_error)
+    payload_text = error_payload_text(getattr(turn_error, "codex_error_info", None))
+    combined = f"{message}\n{payload_text}"
+    lowered = combined.lower()
+
+    if "unauthorized" in lowered or "requiresopenaiauth" in lowered or "login" in lowered:
+        return CodexAuthRequiredError(f"Codex requires login credentials: {message}")
+    if is_usage_limit_error_text(lowered):
+        return CodexUsageLimitError(f"Codex usage limit reached: {message}")
+    return RuntimeError(message)
+
+
+def classify_codex_exception(exc: Exception) -> Exception:
+    combined = error_payload_text(exc)
+    lowered = combined.lower()
+    if "unauthorized" in lowered or "requiresopenaiauth" in lowered:
+        return CodexAuthRequiredError(f"Codex requires login credentials: {exc}")
+    if is_usage_limit_error_text(lowered):
+        return CodexUsageLimitError(f"Codex usage limit reached: {exc}")
+    return exc
+
+
+def ensure_codex_account_ready(codex: Any) -> None:
+    account = codex.account(refresh_token=True)
+    if getattr(account, "requires_openai_auth", False):
+        raise CodexAuthRequiredError(
+            "Codex account state reports that OpenAI authentication is required before the experiment can continue."
+        )
+
+
 def run_codex_turn(
     thread: Any,
     *,
@@ -536,12 +879,13 @@ def run_codex_turn(
 ) -> CodexTurnStreamResult:
     emit_console(f"\n[codex prompt: {label}]\n{prompt}\n\n", flush=True)
     turn = thread.turn(prompt, cwd=str(sandbox_cwd))
-    state: dict[str, Any] = {
+    turn_state: dict[str, Any] = {
         "error": None,
         "completed_status": None,
         "completed_usage": None,
         "completed_texts": [],
         "printed_response_prefix": False,
+        "completed_turn_error": None,
     }
 
     def worker() -> None:
@@ -554,23 +898,24 @@ def run_codex_turn(
                 if event.method == "item/agentMessage/delta":
                     delta = event.payload.delta
                     if delta:
-                        if not state["printed_response_prefix"]:
+                        if not turn_state["printed_response_prefix"]:
                             emit_console(f"[codex response: {label}] ", flush=True)
-                            state["printed_response_prefix"] = True
+                            turn_state["printed_response_prefix"] = True
                         emit_console(delta, flush=True)
                     continue
 
                 if event.method == "item/completed":
                     root = event.payload.item.root
                     if getattr(root, "type", None) == "agentMessage":
-                        state["completed_texts"].append(root.text)
+                        turn_state["completed_texts"].append(root.text)
                     continue
 
                 if event.method == "turn/completed":
-                    state["completed_status"] = event.payload.turn.status.value
-                    state["completed_usage"] = getattr(event.payload.turn, "usage", None)
+                    turn_state["completed_status"] = event.payload.turn.status.value
+                    turn_state["completed_usage"] = getattr(event.payload.turn, "usage", None)
+                    turn_state["completed_turn_error"] = getattr(event.payload.turn, "error", None)
         except Exception as exc:
-            state["error"] = exc
+            turn_state["error"] = exc
 
     worker_thread = threading.Thread(target=worker, name=f"codex-turn-{label}", daemon=True)
     worker_thread.start()
@@ -591,16 +936,19 @@ def run_codex_turn(
             f"Codex turn '{label}' exceeded {timeout_seconds // 60} minutes."
         )
 
-    if state["printed_response_prefix"]:
+    if turn_state["printed_response_prefix"]:
         emit_console("\n", flush=True)
 
-    if state["error"] is not None:
-        raise state["error"]
+    if turn_state["error"] is not None:
+        raise classify_codex_exception(turn_state["error"])
 
-    final_response = state["completed_texts"][-1].strip() if state["completed_texts"] else ""
-    log_phase(f"Codex turn completed: {label} ({state['completed_status'] or 'unknown'}).")
-    log_phase(f"Codex turn usage ({label}): {format_codex_usage(state['completed_usage'])}")
-    return CodexTurnStreamResult(final_response=final_response, usage=state["completed_usage"])
+    if turn_state["completed_status"] == "failed" and turn_state["completed_turn_error"] is not None:
+        raise classify_turn_failure(turn_state["completed_turn_error"])
+
+    final_response = turn_state["completed_texts"][-1].strip() if turn_state["completed_texts"] else ""
+    log_phase(f"Codex turn completed: {label} ({turn_state['completed_status'] or 'unknown'}).")
+    log_phase(f"Codex turn usage ({label}): {format_codex_usage(turn_state['completed_usage'])}")
+    return CodexTurnStreamResult(final_response=final_response, usage=turn_state["completed_usage"])
 
 
 def run_codex_implementation(state: dict[str, Any], candidate: Candidate) -> CodexSession:
@@ -617,6 +965,8 @@ def run_codex_implementation(state: dict[str, Any], candidate: Candidate) -> Cod
     try:
         log_phase("Opening new Codex session.")
         codex = manager.__enter__()
+        log_phase("Checking Codex account state.")
+        ensure_codex_account_ready(codex)
         log_phase("Creating workspace-write Codex thread.")
         thread = codex.thread_start(sandbox=Sandbox.workspace_write, cwd=str(candidate.sandbox_dir))
         log_phase("Waiting for Codex to finish the initial implementation pass.")
@@ -629,10 +979,10 @@ def run_codex_implementation(state: dict[str, Any], candidate: Candidate) -> Cod
         )
         final_response = result.final_response
         log_phase("Codex finished the initial implementation pass.")
-    except Exception:
+    except Exception as exc:
         if codex is not None:
             manager.__exit__(None, None, None)
-        raise
+        raise classify_codex_exception(exc)
     finally:
         os.chdir(previous_cwd)
 
@@ -663,6 +1013,8 @@ def run_codex_result_update(
         )
         final_response = result.final_response
         log_phase("Codex finished the evaluation follow-up prompt.")
+    except Exception as exc:
+        raise classify_codex_exception(exc)
     finally:
         os.chdir(previous_cwd)
         log_phase("Closing Codex session.")
@@ -707,6 +1059,8 @@ def run_evaluator(
     state: dict[str, Any],
     attempt_id: str,
     smoke_games: int | None,
+    *,
+    soc_cc_enabled: bool,
 ) -> bool:
     stockfish_path = os.environ.get("STOCKFISH_PATH")
     if not stockfish_path:
@@ -715,6 +1069,7 @@ def run_evaluator(
 
     evaluator = state["evaluator"]
     games = smoke_games or evaluator["games"]
+    workers = SOC_CC_EVALUATOR_WORKERS if soc_cc_enabled else evaluator["workers"]
     command = [
         "dotnet",
         "run",
@@ -735,7 +1090,7 @@ def run_evaluator(
         "--max-plies",
         str(evaluator["max_plies"]),
         "--workers",
-        str(evaluator["workers"]),
+        str(workers),
         "--log",
         "--short-sha",
         attempt_id,
@@ -1156,6 +1511,16 @@ def current_branch() -> str:
     return result.stdout.strip()
 
 
+def push_current_branch() -> None:
+    branch = current_branch()
+    if not branch:
+        raise RuntimeError("Cannot push autoresearch commit because the current branch is unknown.")
+    log_phase(f"Pushing latest autoresearch commit to origin/{branch}.")
+    result = run(["git", "push", "origin", branch], check=False)
+    if result.returncode != 0:
+        raise RuntimeError(f"git push origin {branch} failed with exit code {result.returncode}.")
+
+
 def format_score(metrics: dict[str, Any]) -> str:
     if "score" not in metrics:
         return "n/a"
@@ -1200,7 +1565,7 @@ def finalize_attempt_commit(
     status: str,
     commit_sha: str,
     approved_log_path: Path | None,
-) -> None:
+) -> str:
     approved_reference_source: str | None = None
     if status == "approved" and approved_log_path is not None and approved_log_path.exists():
         target = approved_log_path.with_name(f"{candidate.stem}-{commit_sha}-result.csv")
@@ -1217,6 +1582,8 @@ def finalize_attempt_commit(
     if approved_reference_source is not None:
         run(["git", "add", "autoresearch/approved_logs"], check=True)
     run(["git", "commit", "--amend", "--no-edit"], check=True)
+    amended = run(["git", "rev-parse", "--short", "HEAD"], check=True, capture=True)
+    return amended.stdout.strip()
 
 
 def replace_latest_attempt_placeholders(commit_sha: str, approved_reference_source: str | None) -> None:
@@ -1260,7 +1627,10 @@ def replace_latest_changelog_placeholders(commit_sha: str, approved_reference_so
     write_changelog(changelog)
 
 
-def prompt_continue(status: str, candidate: Candidate, verdict: str) -> str:
+def prompt_continue(status: str, candidate: Candidate, verdict: str, *, soc_cc_enabled: bool) -> str:
+    if soc_cc_enabled:
+        log_phase(f"SOC CC mode auto-continues after {candidate.version} {status}.")
+        return "continue"
     message = f"{candidate.version} {status}: {verdict}"
     while True:
         choice = run_kdialog(message)
