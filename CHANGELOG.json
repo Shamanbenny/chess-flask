@@ -791,6 +791,32 @@
         }
       },
       "limitations": []
+    },
+    {
+      "version": "v3.19",
+      "api_version": "v3_19",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_19Engine.cs",
+      "served": false,
+      "status": "rejected",
+      "commit": "<n/a>",
+      "hypotheses": [
+        "Adding a bounded quiet-history malus for quiet moves that fail low will prevent stale refuted quiet moves from staying over-prioritized, improving move ordering on top of v3.18 without changing evaluation or broadening pruning."
+      ],
+      "summary": "Added a negative quiet-history floor, clamped quiet-history ordering scores on both sides, and penalized quiet non-raising moves by a small depth-squared amount while preserving the existing quiet beta-cutoff reward path.",
+      "implementation_summary": "Added a negative quiet-history floor, clamped quiet-history ordering scores on both sides, and penalized quiet non-raising moves by a small depth-squared amount while preserving the existing quiet beta-cutoff reward path.",
+      "evaluation_log_path": "<n/a>",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 775,
+          "draws": 97,
+          "losses": 128,
+          "score": 823.5,
+          "score_rate": 0.8235,
+          "text": "C# v3.19 scored 823.5/1000 against Stockfish (1350 Elo): 775 wins, 97 draws, 128 losses, score rate 0.8235."
+        }
+      },
+      "limitations": []
     }
   ]
 }

@@ -24,7 +24,7 @@
     "approved_reference_score_source": "autoresearch/approved_logs/V3_18Engine-99698ba-result.csv",
     "notes": "Added a persistent quiet-history table to the v3.18 search context, scored quiet moves with a small capped history bonus below TT/capture/killer priority, and rewarded quiet beta cutoffs by remaining-depth-squared history increments while preserving the existing evaluation and pruning guards."
   },
-  "next_candidate_version": "v3.19",
+  "next_candidate_version": "v3.20",
   "agent": {
     "max_hypotheses_per_experiment": 2,
     "codex_turn_timeout_minutes": 15
