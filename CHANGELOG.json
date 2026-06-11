@@ -765,6 +765,32 @@
         }
       },
       "limitations": []
+    },
+    {
+      "version": "v3.18",
+      "api_version": "v3_18",
+      "engine_file": "engine_csharp/src/Engine.Core/V3/V3_18Engine.cs",
+      "served": false,
+      "status": "approved",
+      "commit": "99698ba",
+      "hypotheses": [
+        "A capped side-aware quiet-history table for quiet beta-cutoff moves will improve v3.15-style killer/LMR/futility search ordering without changing evaluation or adding broad pruning risk."
+      ],
+      "summary": "Added a persistent quiet-history table to the v3.18 search context, scored quiet moves with a small capped history bonus below TT/capture/killer priority, and rewarded quiet beta cutoffs by remaining-depth-squared history increments while preserving the existing evaluation and pruning guards.",
+      "implementation_summary": "Added a persistent quiet-history table to the v3.18 search context, scored quiet moves with a small capped history bonus below TT/capture/killer priority, and rewarded quiet beta cutoffs by remaining-depth-squared history increments while preserving the existing evaluation and pruning guards.",
+      "evaluation_log_path": "autoresearch/approved_logs/V3_18Engine-99698ba-result.csv",
+      "evaluation_opponents": {
+        "stockfish-1350": {
+          "games": 1000,
+          "wins": 796,
+          "draws": 92,
+          "losses": 112,
+          "score": 842.0,
+          "score_rate": 0.842,
+          "text": "C# v3.18 scored 842.0/1000 against Stockfish (1350 Elo): 796 wins, 92 draws, 112 losses, score rate 0.8420."
+        }
+      },
+      "limitations": []
     }
   ]
 }

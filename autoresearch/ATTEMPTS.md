@@ -651,3 +651,24 @@ Use this exact structure for each appended attempt:
 - average_processing_time_ms: `98.9151`
 - average_positions_or_nodes: `10486.3856`
 - inferred_conclusion: `The depth-1 razoring shortcut remained stable with zero crashes, illegal moves, or timeouts, but it underperformed the v3.15 seed at 0.8290 versus 0.8375 and slightly increased capped games to 0.0450. Future v3 attempts should avoid adding this broad pre-move-generation razoring layer on top of the existing futility pruning, and should instead target more selective pruning conditions or move-ordering changes that preserve v3.15's tactical coverage.`
+
+## Attempt: 2026-06-11T07:06:10Z - v3.18
+
+- status: `approved`
+- commit: `99698ba`
+- evaluator_baseline: `stockfish-1350`
+- seed_version: `v3.15`
+- seed_file: `engine_csharp/src/Engine.Core/V3/V3_15Engine.cs`
+- candidate_version: `v3.18`
+- version_bump: `minor`
+- hypotheses:
+  - `A capped side-aware quiet-history table for quiet beta-cutoff moves will improve v3.15-style killer/LMR/futility search ordering without changing evaluation or adding broad pruning risk.`
+- implementation_summary: `Added a persistent quiet-history table to the v3.18 search context, scored quiet moves with a small capped history bonus below TT/capture/killer priority, and rewarded quiet beta cutoffs by remaining-depth-squared history increments while preserving the existing evaluation and pruning guards.`
+- evaluation_log_path: `autoresearch/approved_logs/V3_18Engine-99698ba-result.csv`
+- wins/draws/losses: `796/92/112`
+- score: `842.0`
+- score_rate: `0.8420`
+- average_plies: `80.3890`
+- average_processing_time_ms: `98.9959`
+- average_positions_or_nodes: `9776.6691`
+- inferred_conclusion: `Approved: the capped side-aware quiet-history ordering layer produced a small but real improvement over v3.15, raising score_rate from 0.8375 to 0.8420 with lcb95=0.8246, zero crash/illegal/timeout/harness failures, and max_plies_rate=0.0390. Future v3 experiments should continue favoring narrow move-ordering and search-selectivity changes that improve the existing LMR/futility stack without broadening pruning risk or adding evaluation cost.`
