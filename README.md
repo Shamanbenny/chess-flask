@@ -172,9 +172,10 @@ dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --engine-file en
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --stockfish-path "$STOCKFISH_PATH" --stockfish-elo 1350 --games 500 --time-limit-ms 100 --max-plies 200 --workers 6 --log --short-sha 1a2b3c4
 ```
 
-For Stockfish evaluation, set `STOCKFISH_PATH` and use the evaluator contract in `autoresearch/README.md`.
+For Stockfish evaluation, point `--stockfish-path` at a local Stockfish binary, usually through `STOCKFISH_PATH`. The standard autoresearch evaluator contract uses `stockfish-1350`, `500` games, `100ms` per move, `200` max plies, `6` workers, `--log`, and a unique `--short-sha` attempt id. See `autoresearch/README.md` for the current approval contract and any workflow-specific overrides.
 
 ## Autoresearch
 
