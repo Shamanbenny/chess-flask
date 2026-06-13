@@ -122,6 +122,20 @@ The server-controlled move budget is read from `ENGINE_TIME_LIMIT_SECONDS` and d
 
 Install the .NET 8 SDK.
 
+If you cloned this repository for the first time, install Git LFS and fetch the
+repo-local Stockfish payload before running any Stockfish-backed evaluator
+commands:
+
+```bash
+git lfs install
+git lfs pull --include="autoresearch/stockfish/**"
+```
+
+A normal clone on a machine with Git LFS installed should populate
+`autoresearch/stockfish/` automatically. The explicit `git lfs pull` command is
+the recovery step when the folder contains pointer files instead of the real
+payload.
+
 Build everything:
 
 ```bash

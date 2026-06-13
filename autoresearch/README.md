@@ -12,7 +12,21 @@ updates.
 
 ## Run
 
-Create and activate a repo-local Python virtual environment first (Run the following in the Root Repo Directory):
+Before running autoresearch on a fresh clone, make sure Git LFS is installed
+and the repo-local Stockfish payload has been fetched:
+
+```bash
+git lfs install
+git lfs pull --include="autoresearch/stockfish/**"
+```
+
+If Git LFS was already installed when you cloned, the folder should usually be
+materialized automatically. Run the explicit `git lfs pull` command when
+`autoresearch/stockfish/` contains pointer files instead of the actual binary
+and source tree.
+
+Then create and activate a repo-local Python virtual environment first (Run the
+following in the Root Repo Directory):
 
 - For Linux:
 
