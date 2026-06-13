@@ -15,7 +15,7 @@ internal static class LocalTestingProgram
     private const int DefaultEvaluationMaxPlies = 200;
     private const double DefaultEvaluationTimeLimitSeconds = 0.100;
     private const double DefaultScenarioTimeLimitSeconds = 1.0;
-    private const string DefaultStockfishBinary = "stockfish";
+    private const string DefaultStockfishBinary = "autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2";
     private const string StartingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     public static int Run(string[] args)
@@ -1048,9 +1048,18 @@ internal static class LocalTestingProgram
             throw new ArgumentException("--stockfish-path must not be empty.");
         }
 
-        return Path.IsPathRooted(stockfishPath)
-            ? Path.GetFullPath(stockfishPath)
-            : stockfishPath;
+        if (Path.IsPathRooted(stockfishPath))
+        {
+            return Path.GetFullPath(stockfishPath);
+        }
+
+        var repoRelativeCandidate = Path.GetFullPath(Path.Combine(FindRepoRoot(), stockfishPath));
+        if (File.Exists(repoRelativeCandidate))
+        {
+            return repoRelativeCandidate;
+        }
+
+        return stockfishPath;
     }
 
     private static string FindRepoRoot()
@@ -1309,7 +1318,7 @@ internal static class LocalTestingProgram
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --workers 6 --log --short-sha 1a2b3c4");
-        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --stockfish-path /path/to/stockfish --stockfish-elo 1350 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4");
+        Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --stockfish-elo 1350 --games 20 --time-limit-ms 100 --workers 6 --log --short-sha 1a2b3c4");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- build-openings-lookup");
         Console.Error.WriteLine("  dotnet run --project engine_csharp/src/LocalTesting -- backend-worker-experiment --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --games 20 --time-limit-ms 100 --workers 6 --skip-1-worker");
     }

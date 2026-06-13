@@ -47,8 +47,8 @@ For later shells, reactivate the same venv before running autoresearch:
 source .venv/bin/activate
 ```
 
-The Stockfish evaluator requires `STOCKFISH_PATH` to point at the local Stockfish
-executable.
+The Stockfish evaluator uses the bundled repo-local binary at
+`autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2`.
 
 ## Command Arguments
 
@@ -239,7 +239,7 @@ The command shape is:
 ```bash
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
   --engine-file <candidate_engine_file> \
-  --stockfish-path "$STOCKFISH_PATH" \
+  --stockfish-path autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2 \
   --stockfish-elo 1350 \
   --games 500 \
   --time-limit-ms 100 \
@@ -250,9 +250,9 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
 ```
 
 `run_autoresearch.py` supplies the concrete candidate path and attempt id from
-its current state. Do not change these constants during normal experiments; edit
-`state.json` only when intentionally revising the workflow outside an active
-candidate run.
+its current state, and it resolves the bundled repo-local Stockfish binary.
+Do not change these constants during normal experiments; edit `state.json` only
+when intentionally revising the workflow outside an active candidate run.
 
 The evaluator must produce a canonical CSV at:
 

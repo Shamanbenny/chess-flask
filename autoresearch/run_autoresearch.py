@@ -35,6 +35,7 @@ SOC_CC_EVALUATOR_WORKERS = 12
 SOC_CC_SMTP_HOST = "smtp.gmail.com"
 SOC_CC_SMTP_PORT = 465
 CURRENT_TEXT_LOG: Path | None = None
+DEFAULT_STOCKFISH_PATH = REPO_ROOT / "autoresearch" / "stockfish" / "stockfish-ubuntu-x86-64-avx2"
 
 
 @dataclass(frozen=True)
@@ -1169,6 +1170,13 @@ def run_build() -> bool:
     return result.returncode == 0
 
 
+def resolve_stockfish_path() -> Path | None:
+    if DEFAULT_STOCKFISH_PATH.is_file():
+        return DEFAULT_STOCKFISH_PATH
+
+    return None
+
+
 def run_evaluator(
     candidate: Candidate,
     state: dict[str, Any],
@@ -1177,9 +1185,14 @@ def run_evaluator(
     *,
     soc_cc_enabled: bool,
 ) -> bool:
-    stockfish_path = os.environ.get("STOCKFISH_PATH")
-    if not stockfish_path:
-        emit_console("STOCKFISH_PATH is required for evaluation.\n", stream=sys.stderr, flush=True)
+    stockfish_path = resolve_stockfish_path()
+    if stockfish_path is None:
+        emit_console(
+            "Stockfish binary not found at "
+            "autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2.\n",
+            stream=sys.stderr,
+            flush=True,
+        )
         return False
 
     evaluator = state["evaluator"]
@@ -1195,7 +1208,7 @@ def run_evaluator(
         "--engine-file",
         str(candidate.engine_file.relative_to(REPO_ROOT)),
         "--stockfish-path",
-        stockfish_path,
+        str(stockfish_path),
         "--stockfish-elo",
         str(evaluator["stockfish_elo"]),
         "--games",
