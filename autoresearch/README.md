@@ -12,18 +12,23 @@ updates.
 
 ## Run
 
-Before running autoresearch on a fresh clone, make sure Git LFS is installed
-and the repo-local Stockfish payload has been fetched:
+Before running autoresearch on Linux, create the ignored
+`autoresearch/stockfish/` directory and extract the official Stockfish AVX2
+tarball into it:
 
 ```bash
-git lfs install
-git lfs pull --include="autoresearch/stockfish/**"
+mkdir -p autoresearch/stockfish
+curl -L https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar \
+  | tar -xf - -C autoresearch/stockfish
 ```
 
-If Git LFS was already installed when you cloned, the folder should usually be
-materialized automatically. Run the explicit `git lfs pull` command when
-`autoresearch/stockfish/` contains pointer files instead of the actual binary
-and source tree.
+`autoresearch/stockfish/` is gitignored and is no longer stored in the
+repository.
+
+On Windows, download
+`https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-windows-x86-64-avx2.zip`,
+extract it anywhere local, and pass the resulting executable path manually to
+`engine_csharp/src/LocalTesting` with `--stockfish-path`.
 
 Then create and activate a repo-local Python virtual environment first (Run the
 following in the Root Repo Directory):
@@ -61,7 +66,7 @@ For later shells, reactivate the same venv before running autoresearch:
 source .venv/bin/activate
 ```
 
-The Stockfish evaluator uses the bundled repo-local binary at
+The Linux autoresearch evaluator expects the locally extracted binary at
 `autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2`.
 
 ## Command Arguments
@@ -264,7 +269,8 @@ dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock \
 ```
 
 `run_autoresearch.py` supplies the concrete candidate path and attempt id from
-its current state, and it resolves the bundled repo-local Stockfish binary.
+its current state, and it resolves the Linux-local
+`autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2` binary.
 Do not change these constants during normal experiments; edit `state.json` only
 when intentionally revising the workflow outside an active candidate run.
 

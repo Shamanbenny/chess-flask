@@ -122,19 +122,23 @@ The server-controlled move budget is read from `ENGINE_TIME_LIMIT_SECONDS` and d
 
 Install the .NET 8 SDK.
 
-If you cloned this repository for the first time, install Git LFS and fetch the
-repo-local Stockfish payload before running any Stockfish-backed evaluator
-commands:
+If you want the Linux-local Stockfish layout used by the repo docs and
+autoresearch workflow, create the ignored `autoresearch/stockfish/` directory
+and extract the current AVX2 tarball into it:
 
 ```bash
-git lfs install
-git lfs pull --include="autoresearch/stockfish/**"
+mkdir -p autoresearch/stockfish
+curl -L https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar \
+  | tar -xf - -C autoresearch/stockfish
 ```
 
-A normal clone on a machine with Git LFS installed should populate
-`autoresearch/stockfish/` automatically. The explicit `git lfs pull` command is
-the recovery step when the folder contains pointer files instead of the real
-payload.
+`autoresearch/stockfish/` is intentionally gitignored and no longer tracked in
+the repository.
+
+On Windows, download
+`https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-windows-x86-64-avx2.zip`,
+extract it anywhere local, and pass that executable path explicitly with
+`--stockfish-path` for CLI evaluator commands.
 
 Build everything:
 
@@ -186,10 +190,10 @@ dotnet run --project engine_csharp/src/LocalTesting -- puzzle-2 --engine-file en
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-1 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- endgame-2 --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --time-limit-seconds 1.0
 dotnet run --project engine_csharp/src/LocalTesting -- evaluate-match --engine-a-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --engine-b-file engine_csharp/src/Engine.Core/V3/V3_0Engine.cs --games 20 --time-limit-ms 100 --max-plies 200 --workers 6
-dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --stockfish-elo 1350 --games 500 --time-limit-ms 100 --max-plies 200 --workers 6 --log --short-sha 1a2b3c4
+dotnet run --project engine_csharp/src/LocalTesting -- evaluate-stock --engine-file engine_csharp/src/Engine.Core/V3/V3_4Engine.cs --stockfish-path autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2 --stockfish-elo 1350 --games 500 --time-limit-ms 100 --max-plies 200 --workers 6 --log --short-sha 1a2b3c4
 ```
 
-For Stockfish evaluation, `LocalTesting` defaults to the repo-local binary at `autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2`. You can still pass `--stockfish-path` for manual debugging if needed. The standard autoresearch evaluator contract uses `stockfish-1350`, `500` games, `100ms` per move, `200` max plies, `6` workers, `--log`, and a unique `--short-sha` attempt id. See `autoresearch/README.md` for the current approval contract and any workflow-specific overrides.
+For Linux, the documented local path is `autoresearch/stockfish/stockfish-ubuntu-x86-64-avx2` after extracting the official tarball above. On Windows, install Stockfish separately and pass the extracted executable path with `--stockfish-path`. The standard autoresearch evaluator contract uses `stockfish-1350`, `500` games, `100ms` per move, `200` max plies, `6` workers, `--log`, and a unique `--short-sha` attempt id. See `autoresearch/README.md` for the current approval contract and any workflow-specific overrides.
 
 ## Autoresearch
 

@@ -23,3 +23,4 @@ __pycache__/
 autoresearch/logs/
 autoresearch/console-logs/
 autoresearch-sandbox/
+autoresearch/stockfish/
